@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ONE-TIMER: THE HIGH TABLE — HYSCORE 1UP</title>
+<!--
+  THE FULL BUILD on the DEEPWOOD HYSCORE 1UP cab. The complete front-end (attract -> venue menu ->
+  game = index.html) runs on the cab SCREEN; the wired panel_1up control deck sits below. Homography
+  rinks default-on. GET BIG = the deck button (lights when charged) or SPACE/F in the game.
+  Deck talks to index.html, which relays {bk} down to side.html and {ht:'ready'} back up.
+-->
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;background:#04040a;overflow:hidden;font-family:"Helvetica Neue",Arial,sans-serif;-webkit-user-select:none;user-select:none;color:#e9e0ff;}
+  #wrap{position:fixed;inset:0;display:flex;flex-direction:column;}
+  #screen{flex:1;border:0;width:100%;display:block;background:#04040a;}
+  #deck{height:26vh;min-height:150px;position:relative;display:flex;align-items:center;justify-content:center;
+        background:radial-gradient(ellipse at 50% 0%, #140a22 0%, #05030c 70%);border-top:1px solid #1c1030;}
+  #panel{height:100%;width:auto;display:block;filter:drop-shadow(0 -6px 20px rgba(0,0,0,.6));}
+  #glow{position:absolute;inset:0;pointer-events:none;}
+  #hintbar{position:absolute;top:6px;left:50%;transform:translateX(-50%);color:#7c6aa0;font-size:11px;letter-spacing:.16em;text-transform:uppercase;white-space:nowrap;}
+  #buildtag{position:absolute;top:6px;right:10px;color:#3f5a6a;font-size:10px;letter-spacing:.18em;}
+  #big{position:absolute;width:13%;aspect-ratio:1/1;border-radius:50%;cursor:pointer;transform:translate(-50%,-50%);
+       transition:filter .12s,background .12s;background:rgba(255,210,63,0);}
+  #big.ready{background:radial-gradient(circle, rgba(255,210,63,.45), rgba(255,210,63,0) 70%);
+       box-shadow:0 0 26px 6px rgba(255,210,63,.55);animation:pulse .7s infinite alternate;}
+  @keyframes pulse{to{filter:brightness(1.4);}}
+</style>
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSczMicgaGVpZ2h0PSczMic+PGVsbGlwc2UgY3g9JzE2JyBjeT0nMjEnIHJ4PScxMicgcnk9JzYnIGZpbGw9JyMxNDE0MTknLz48cmVjdCB4PSc0JyB5PScxMycgd2lkdGg9JzI0JyBoZWlnaHQ9JzgnIGZpbGw9JyMxNDE0MTknLz48ZWxsaXBzZSBjeD0nMTYnIGN5PScxMycgcng9JzEyJyByeT0nNicgZmlsbD0nI2YwYjQyOScvPjxlbGxpcHNlIGN4PScxNicgY3k9JzEzJyByeD0nNycgcnk9JzMuMicgZmlsbD0nI2ZmZDc2YicvPjwvc3ZnPg==">   <!-- gold puck — inline so there is no favicon.ico request (every build was 404ing one) -->
+</head>
+<body tabindex="0">
+<div id="wrap">
+  <iframe id="screen" allow="gamepad; autoplay" title="ONE-TIMER: THE HIGH TABLE"></iframe>
+  <div id="deck">
+    <div id="hintbar">move = mouse / stick · ● = GET BIG · space = GET BIG</div>
+    <div id="buildtag">HYSCORE 1UP</div>
+    <img id="panel" alt="control deck">
+    <div id="big" title="GET BIG"></div>
+    <canvas id="glow"></canvas>
+  </div>
+</div>
+<script>
+(()=>{
+"use strict";
+const screen=document.getElementById('screen'), panel=document.getElementById('panel'),
+      deck=document.getElementById('deck'), big=document.getElementById('big');
+panel.src='sprites/panel_1up.png';
+screen.src='index.html';                                  // the FULL shell: attract -> menu -> game
+
+// GET BIG deck-button hotspot, placed as a fraction of the panel art (tune BIGPOS to the real art)
+const BIGPOS={x:0.83,y:0.34};
+function place(){ const pr=panel.getBoundingClientRect(), dr=deck.getBoundingClientRect();
+  big.style.left=(pr.left-dr.left+pr.width*BIGPOS.x)+'px';
+  big.style.top =(pr.top -dr.top +pr.height*BIGPOS.y)+'px'; }
+panel.addEventListener('load',place); addEventListener('resize',place); setTimeout(place,60);
+
+// deck -> game (index.html relays {bk} down to side.html); game readiness comes back up as {ht:'ready'}
+function send(bk){ try{ screen.contentWindow.postMessage({bk},'*'); }catch(e){} }
+big.addEventListener('pointerdown',e=>{ e.preventDefault(); send('big'); });
+addEventListener('message',e=>{ if(e.data&&e.data.ht==='ready') big.classList.toggle('ready',!!e.data.on); });
+})();
+</script>
+</body>
+</html>

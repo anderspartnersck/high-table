@@ -1,0 +1,874 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>ONE-TIMER: BREAKAWAY AIR HOCKEY</title>
+<!--
+  ============================================================================
+  ONE-TIMER: BREAKAWAY AIR HOCKEY  ·  playable build
+  ----------------------------------------------------------------------------
+  The fan is the athlete · the knocker is the stick · the puck is the puck ·
+  the table is the rink. The ONE TIMER beats expressed on a table:
+    FACE-OFF (tension) -> FIRST STRIKE (grayscale slapshot ghost erupts in team
+    color) -> POSSESSION / CONTESTED -> CAROM SAVE (the rail is the goalie) ->
+    BREAKAWAY (everything dims, sudden-death). First to 7.
+
+  Art drops into ART/STRIKE below; anything null falls back to procedural neon.
+  Responsive, auto-orienting, mouse + multitouch. Drag an image to set the bg.
+  ============================================================================ -->
+<style>
+  :root{ --yellow:#ffe23a; --purple:#b14cff; --cyan:#27f6ff; --magenta:#ff37c7; }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  html,body{ height:100%; background:#04040a; overflow:hidden; touch-action:none;
+    font-family:"Helvetica Neue",Arial,sans-serif; -webkit-user-select:none; user-select:none; }
+  #stage{ position:fixed; inset:0; }
+  canvas{ display:block; width:100%; height:100%; }
+  #hint{ position:fixed; left:50%; bottom:18px; transform:translateX(-50%);
+    color:#9fb6c8; font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+    padding:7px 14px; border:1px solid rgba(39,246,255,.25); border-radius:20px;
+    background:rgba(4,8,16,.55); backdrop-filter:blur(3px); white-space:nowrap;
+    transition:opacity .8s ease; text-shadow:0 0 8px rgba(39,246,255,.4); }
+  #hint.gone{ opacity:0; pointer-events:none; }
+  #drop{ position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+    background:rgba(20,4,40,.6); color:#fff; font-size:20px; letter-spacing:.2em;
+    text-transform:uppercase; z-index:9; border:3px dashed rgba(177,76,255,.7); }
+  #drop.on{ display:flex; }
+
+  /* ---- SIMPLE FRONT-END: title -> knocker select -> overhead rink select (jailbreak: all unlocked) ---- */
+  #menu{ position:fixed; inset:0; z-index:20; display:flex; align-items:center; justify-content:center;
+    color:#fff; text-align:center; overflow:hidden; background:#04040a; }
+  #menu.hidden{ display:none; }
+  /* carpet backdrop (Queens-purple | Bees-gold) = carpet_hyscore.png (primary), falls back to carpet_hyscore_alt */
+  #m-carpet{ position:absolute; inset:0; background:#04040a center/cover no-repeat;
+    filter:saturate(1.05) brightness(.62); }
+  #m-carpet::after{ content:''; position:absolute; inset:0; background:radial-gradient(ellipse at center, rgba(4,4,12,.35), rgba(2,2,8,.92)); }
+  .page{ position:relative; z-index:2; width:100%; max-width:1100px; padding:4vmin; }
+  .page.hidden{ display:none; }
+  #m-logo{ width:min(74vw,640px); max-height:42vh; object-fit:contain;
+    filter:drop-shadow(0 6px 30px rgba(0,0,0,.8)); animation:logoIn .6s cubic-bezier(.2,1.3,.4,1) both; }
+  @keyframes logoIn{ from{ transform:translateY(-12px) scale(1.08); opacity:0 } to{ transform:none; opacity:1 } }
+  .m-sub{ margin-top:1.4vh; letter-spacing:.34em; font-weight:800; font-size:clamp(12px,2vw,18px);
+    color:#ffcf2a; text-shadow:0 0 16px rgba(255,174,0,.6); }
+  .m-go{ margin-top:3vh; letter-spacing:.3em; font-weight:800; font-size:clamp(13px,2.2vw,20px);
+    color:#fff; animation:blink 1.1s steps(2,end) infinite; }
+  @keyframes blink{ 50%{ opacity:.25 } }
+  .page h2{ letter-spacing:.28em; font-weight:800; font-size:clamp(16px,3vw,30px);
+    margin-bottom:3vh; text-shadow:0 0 18px rgba(0,0,0,.9); }
+  .m-grid{ display:flex; flex-wrap:wrap; gap:clamp(10px,2vw,22px); justify-content:center; align-items:flex-end; }
+  .card{ cursor:pointer; border:2px solid rgba(255,255,255,.14); border-radius:14px; overflow:hidden;
+    background:rgba(8,6,16,.55); transition:transform .12s ease, border-color .12s ease, box-shadow .12s ease;
+    backdrop-filter:blur(2px); }
+  .card:hover,.card.sel{ transform:translateY(-4px) scale(1.04); }
+  .card .cap{ padding:8px 6px; font-weight:800; letter-spacing:.12em; font-size:clamp(10px,1.5vw,14px); }
+  /* knocker cards */
+  .kcard{ width:clamp(86px,15vw,140px); }
+  .kcard img{ width:100%; aspect-ratio:1; object-fit:contain; padding:14% 14% 4%; display:block; }
+  /* rink cards (overhead blacklight boards) */
+  .rcard{ width:clamp(150px,30vw,320px); }
+  .rcard canvas,.rcard img{ width:100%; aspect-ratio:2/1; object-fit:cover; display:block; background:#000; }
+  /* puck cards (procedural thumbnails) */
+  .pcard{ width:clamp(70px,11vw,104px); }
+  .pcard img,.pcard canvas{ width:100%; aspect-ratio:1; object-fit:contain; padding:13% 13% 4%; display:block; }
+  .pcard .cap{ font-size:clamp(8px,1.1vw,11px); padding:5px 4px; }
+  .card .tag{ padding:0 6px 7px; font-weight:800; letter-spacing:.18em; font-size:clamp(8px,1.1vw,10px); color:#7f97a8; margin-top:-4px; }
+  /* THE HIGH TABLE (the apex / turbo) gets a hot border */
+  .card.high{ border-color:rgba(255,122,26,.5); }
+  .card.high:hover,.card.high.sel{ border-color:#ff7a1a; box-shadow:0 0 28px rgba(255,122,26,.6); }
+  /* per-team accent on hover */
+  .card[data-team="bees"]:hover,.card[data-team="bees"].sel{ border-color:#ffcf2a; box-shadow:0 0 26px rgba(255,174,0,.5); }
+  .card[data-team="queens"]:hover,.card[data-team="queens"].sel{ border-color:#b14cff; box-shadow:0 0 26px rgba(177,76,255,.55); }
+  .card[data-team="none"]:hover,.card[data-team="none"].sel{ border-color:#dfefff; box-shadow:0 0 22px rgba(190,230,255,.4); }
+  /* loading: a CARPET diagonal wipe (echoes the carpet's lightning seam) */
+  #m-load{ position:absolute; inset:0; z-index:3; display:flex; align-items:center; justify-content:center;
+    background:#04040a center/cover no-repeat; transform:translateX(-118%) skewX(-9deg);
+    transition:transform .42s cubic-bezier(.7,0,.3,1);
+    box-shadow:14px 0 60px rgba(255,174,0,.35), -14px 0 60px rgba(177,76,255,.35); }
+  #m-load::after{ content:''; position:absolute; inset:0; background:linear-gradient(100deg, rgba(255,174,0,.10), rgba(4,4,12,.86) 45%, rgba(177,76,255,.12)); }
+  #m-load.in{ transform:translateX(0) skewX(0deg); }
+  #m-load.out{ transform:translateX(118%) skewX(9deg); }
+  .m-loadcard{ position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; gap:1.4vh; animation:logoIn .42s cubic-bezier(.2,1.3,.4,1) both; }
+  #m-loadcrest{ display:none; width:min(28vw,200px); max-height:24vh; object-fit:contain; filter:drop-shadow(0 4px 22px rgba(0,0,0,.8)); }
+  .m-loadtxt{ font-weight:900; letter-spacing:.28em; font-size:clamp(15px,2.8vw,26px); color:#fff; text-shadow:0 0 18px rgba(0,0,0,.9); }
+  .m-loadsub{ font-weight:800; letter-spacing:.34em; font-size:clamp(11px,1.8vw,16px); color:#ffcf2a; text-shadow:0 0 14px rgba(255,174,0,.5); min-height:1em; }
+  /* BOOT IDENT — the killscreen slapshot cold-open (sits above the menu, fades out to reveal it) */
+  #boot{ position:fixed; inset:0; z-index:40; background:#04040a; transition:opacity .5s ease; }
+  #boot.gone{ opacity:0; pointer-events:none; }
+  #bootcv{ width:100%; height:100%; display:block; }
+</style>
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSczMicgaGVpZ2h0PSczMic+PGVsbGlwc2UgY3g9JzE2JyBjeT0nMjEnIHJ4PScxMicgcnk9JzYnIGZpbGw9JyMxNDE0MTknLz48cmVjdCB4PSc0JyB5PScxMycgd2lkdGg9JzI0JyBoZWlnaHQ9JzgnIGZpbGw9JyMxNDE0MTknLz48ZWxsaXBzZSBjeD0nMTYnIGN5PScxMycgcng9JzEyJyByeT0nNicgZmlsbD0nI2YwYjQyOScvPjxlbGxpcHNlIGN4PScxNicgY3k9JzEzJyByeD0nNycgcnk9JzMuMicgZmlsbD0nI2ZmZDc2YicvPjwvc3ZnPg==">   <!-- gold puck — inline so there is no favicon.ico request (every build was 404ing one) -->
+</head>
+<body>
+<div id="boot"><canvas id="bootcv"></canvas></div>
+<div id="stage"><canvas id="c"></canvas></div>
+<div id="hint">move to steer your knocker · score in the far goal</div>
+<div id="drop">drop to set table backdrop</div>
+
+<script src="lib/rink-geo.js"></script>
+<script src="lib/catalog.js"></script>
+<script src="lib/pucks.js?v=noglow1"></script>
+<script src="lib/menu.js?v=1"></script>
+
+<!-- SIMPLE FRONT-END: title -> knocker select -> overhead rink select -->
+<div id="menu">
+  <div id="m-carpet"></div>
+  <div id="m-title" class="page">
+    <img id="m-logo" src="sprites/title_high_table.png" alt="ONE-TIMER: THE HIGH TABLE">
+    <div class="m-sub">TO-GO · POINT &amp; SHOOT</div>
+    <div class="m-go">PRESS TO START</div>
+    <div id="m-cstatus" style="margin-top:18px"></div>
+  </div>
+  <div id="m-knocker" class="page hidden">
+    <h2>CHOOSE YOUR KNOCKER</h2>
+    <div class="m-grid" id="kgrid"></div>
+  </div>
+  <div id="m-rink" class="page hidden">
+    <h2>CHOOSE YOUR RINK</h2>
+    <div class="m-grid" id="rgrid"></div>
+  </div>
+  <div id="m-puck" class="page hidden">
+    <h2>CHOOSE YOUR PUCK</h2>
+    <div class="m-grid" id="pgrid"></div>
+  </div>
+  <div id="m-load"><div class="m-loadcard"><img id="m-loadcrest" alt=""><div class="m-loadtxt">DROPPING THE PUCK…</div><div class="m-loadsub"></div></div></div>
+</div>
+
+<script>
+(()=>{
+"use strict";
+
+/* ----- ART HOOKS — any table works here; pick with ?table= (nachos|rivalry|throne|throneuv) -- */
+const _TBL={nachos:'table_nachos_top_land',rivalry:'table_rivalry_bg',bees:'table_bees_bg',throne:'table_throne_bg',throneuv:'table_throne_uv',garden:'table_garden_top',box:'table_box_top'};
+const _tbl=new URLSearchParams(location.search).get('table')||'nachos';
+const DEMO=new URLSearchParams(location.search).has('demo');   // ?demo=1 = CPU-vs-CPU attract: auto-start, both mallets AI, loops
+const MUTE=new URLSearchParams(location.search).has('mute');   // ?mute=1 = silence SFX (attract reel supplies its own bed)
+let VENUE_TEAM = (_tbl==='bees') ? 'bees' : (_tbl==='throne'||_tbl==='throneuv') ? 'queens' : null;  // rivalry/nachos/default = neutral (both sirens); reset by the rink menu
+const ART = {
+  bg:            'sprites/'+(_TBL[_tbl]||_TBL.nachos)+'.png',  // default Penalty Box Nachos; any table via ?table=
+  knockerYellow: "sprites/knocker_yellow.png",  // Bees striker
+  knockerPurple: "sprites/knocker_purple.png",  // Queens striker
+  puck:          "sprites/puck_neutral.png",    // black puck, UV edge
+};
+const IMG = {};
+for (const k in ART){ if(ART[k]){ const im=new Image(); im.onload=()=>{ IMG[k]=im;
+  if(k==='knockerYellow') IMG.knockerP1=IMG.knockerP1||im;   // defaults: P1 gold / P2 purple (menu overrides)
+  if(k==='knockerPurple') IMG.knockerP2=IMG.knockerP2||im;
+  if(k==='bg') layout(); }; im.src=ART[k]; } }
+
+/* ----- FIRST-STRIKE mash-up: grayscale anime slapshot ghost erupting in team color -------- */
+// key out the sprite's dark background box -> transparent (ramp alpha by luminance). file:// taint -> raw img fallback.
+function keyAlpha(img){ try{ const w=img.naturalWidth||img.width,h=img.naturalHeight||img.height,oc=document.createElement('canvas');oc.width=w;oc.height=h;
+  const x=oc.getContext('2d'); x.drawImage(img,0,0); const im=x.getImageData(0,0,w,h),d=im.data;
+  for(let i=0;i<d.length;i+=4){ const L=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]; let a=(L-26)/64; a=a<0?0:a>1?1:a; d[i+3]=Math.round(d[i+3]*a); }
+  x.putImageData(im,0,0); return oc; }catch(e){ return img; } }
+const STRIKE={frames:6, bees:null, queens:null};
+for(const t of ['bees','queens']){ const im=new Image(); im.onload=(k=>()=>STRIKE[k]=keyAlpha(im))(t); im.src='sprites/strike_'+t+'.png'; }
+const strikes=[];   // active strike-ghost flashes
+const TITLE=new Image(); TITLE.src='sprites/title_high_table.png';
+/* ----- SFX + MUSIC (ONE TIMER library) ----- */
+const SFX=(()=>{ const lib={}, names=['slap','bomb','wave_off','bees_goal','queens_goal','center_countdown','select','bees_game_start','killscreen','title_logo_drop'];
+  for(const n of names){ const a=new Audio('audio/'+n+'.mp3'); a.preload='auto'; lib[n]=a; }
+  const MASTER=0.5;   // MASTER gain — the To-Go build ran hot; every one-shot + bed is scaled by this
+  function play(n,v){ if(MUTE)return; const s=lib[n]; if(!s)return; try{ const c=s.cloneNode(); c.volume=Math.min(1,(v==null?0.7:v)*MASTER); c.play(); }catch(e){} }
+  // ---- looping MUSIC BED: one <audio> loop=true, cross-swapped by menu/venue with a short fade so it
+  //      never hard-cuts and never dies after one pass (loop=true = seamless repeat). ----
+  let bedEl=null, bedName=null, fadeTimer=null;
+  function bed(name,vol){
+    const target=Math.min(1,(vol==null?0.16:vol)*MASTER);
+    if(MUTE){ bedName=name; return; }
+    if(name===bedName && bedEl && !bedEl.paused){ bedEl.volume=target; return; }   // already on it — don't restart
+    bedName=name;
+    if(!bedEl){ bedEl=new Audio(); bedEl.loop=true; bedEl.preload='auto'; }
+    try{ bedEl.pause(); bedEl.src='audio/'+name+'.mp3'; bedEl.loop=true; bedEl.currentTime=0; bedEl.volume=0;
+      const p=bedEl.play(); if(p&&p.catch)p.catch(()=>{});
+      clearInterval(fadeTimer); let g=0; fadeTimer=setInterval(()=>{ g=Math.min(target,g+target/12); if(bedEl)bedEl.volume=g; if(g>=target)clearInterval(fadeTimer); },40);
+    }catch(e){}
+  }
+  function bedStop(){ clearInterval(fadeTimer); if(bedEl){ try{ bedEl.pause(); }catch(e){} } bedName=null; }
+  let ac=null; function resume(){ try{ if(!ac)ac=new(window.AudioContext||window.webkitAudioContext)(); if(ac.state==='suspended')ac.resume(); }catch(e){} }
+  function roar(){ if(MUTE)return; try{ if(!ac)ac=new(window.AudioContext||window.webkitAudioContext)(); const c=ac,t=c.currentTime,dur=1.1,n=Math.floor(c.sampleRate*dur),b=c.createBuffer(1,n,c.sampleRate),d=b.getChannelData(0); for(let i=0;i<n;i++)d[i]=Math.random()*2-1; const s=c.createBufferSource();s.buffer=b; const f=c.createBiquadFilter();f.type='bandpass';f.frequency.value=700;f.Q.value=0.5; const g=c.createGain();g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.18*MASTER,t+0.18);g.gain.exponentialRampToValueAtTime(0.0001,t+dur); s.connect(f).connect(g).connect(c.destination);s.start(t);s.stop(t+dur);}catch(e){} }
+  function groan(){ if(MUTE)return; try{ if(!ac)ac=new(window.AudioContext||window.webkitAudioContext)(); const c=ac,t=c.currentTime,dur=0.95,n=Math.floor(c.sampleRate*dur),buf=c.createBuffer(1,n,c.sampleRate),d=buf.getChannelData(0); for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*(1-i/n*0.6); const s=c.createBufferSource();s.buffer=buf; const f=c.createBiquadFilter();f.type='lowpass';f.frequency.setValueAtTime(440,t);f.frequency.exponentialRampToValueAtTime(110,t+dur);f.Q.value=0.7; const g=c.createGain();g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.17*MASTER,t+0.12);g.gain.exponentialRampToValueAtTime(0.0001,t+dur); s.connect(f).connect(g).connect(c.destination);s.start(t);s.stop(t+dur);}catch(e){} }   // away goal in a team barn = deflated home crowd
+  return { resume, roar, groan, play, bed, bedStop, fire(s){ play(s>2.6?'bomb':'slap', s>2.6?0.7:0.5); }, save(){ play('wave_off',0.7); },
+    goal(w){ play(w==='Y'?'bees_goal':'queens_goal',0.5); }, drop(){ play('center_countdown',0.55); }, start(){ play('bees_game_start',0.7); } }; })();
+// which looping bed fits the current venue (per-venue gameplay beds; menu uses the title bed)
+function venueBed(){ return VENUE_TEAM==='queens' ? 'queens_breakaway' : 'bees_breakaway'; }
+const CELE={frames:5,bees:null,queens:null};
+for(const t of ['bees','queens']){ const im=new Image(); im.onload=(k=>()=>CELE[k]=keyAlpha(im))(t); im.src='sprites/cele_'+t+'.png'; }
+const celes=[];
+// undersides for the goal-leap flip (defaults; the menu reloads them for the picked knocker)
+{ const yb=new Image(); yb.onload=()=>IMG.knockerP1B=IMG.knockerP1B||yb; yb.src='sprites/knocker_yellow_bottom.png';
+  const pb=new Image(); pb.onload=()=>IMG.knockerP2B=IMG.knockerP2B||pb; pb.src='sprites/knocker_purple_bottom.png'; }
+
+/* ----- canvas / layout ----------------------------------------------------- */
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+let DPR=1, VW=0, VH=0;
+let land=true, bx=0, by=0, bw=0, bh=0, shortPx=0, unit=0;
+const A_MAX=2.0, B_MAX=1.0;          // play-field units: long axis 0..2, short 0..1
+let GOAL=0.13;                        // half-width of the goal mouth (units of B). Set PER TABLE at launch from the RINK LAB locked presets (lib/rink-geo.js). Was a hardcoded 0.30 (a 60%-wide wall = "the whole side scores").
+// per-table goal-mouth half-width, exactly as LOCKED in RINK LAB (lib/rink-geo.js). Prefers the
+// mouse-clicker presets (this engine), falls back to the top-view presets, then a sane default.
+function goalHalfFor(key){
+  const G=window.RinkGeo; if(!G) return 0.13;
+  const P=G.MOUSE_PRESETS||{}, T=G.RINK_PRESETS||{};
+  const pre = ({ nachos:P.nachos_mouse||T.penalty_box_top, throne:P.throneuv_mouse||T.throne_top,
+                 bees:T.honey_top, rivalry:T.rivalry_top })[key];
+  return (pre && pre.goalHalf) || 0.13;
+}
+
+function layout(){
+  DPR = Math.min(window.devicePixelRatio||1, 2.5);
+  VW = window.innerWidth; VH = window.innerHeight;
+  cv.width = Math.round(VW*DPR); cv.height = Math.round(VH*DPR);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  // Orient the PLAYFIELD to the TABLE ART, not the screen — every table render is a long
+  // landscape view with the two goals on the short ENDS, and the engine bakes its goals at the
+  // long-axis ends. Driving orientation off the screen flipped the field portrait inside a tall
+  // cab/iframe, so the knockers ended up on the long sides instead of across the short-end goals.
+  // Falls back to screen aspect until the bg image has loaded its natural size.
+  land = (IMG.bg && IMG.bg.naturalWidth) ? (IMG.bg.naturalWidth >= IMG.bg.naturalHeight) : (VW >= VH);
+  const pad = 0.94;
+  if (land){ let sp = Math.min(VH*pad, VW*pad/2); shortPx = sp; bw = sp*2; bh = sp; }
+  else      { let sp = Math.min(VW*pad, VH*pad/2); shortPx = sp; bw = sp;   bh = sp*2; }
+  unit = shortPx;
+  bx = (VW-bw)/2; by = (VH-bh)/2;
+}
+window.addEventListener('resize', layout);
+layout();
+
+function S(a,b){ return land ? [bx + (a/2)*bw, by + b*bh] : [bx + b*bw, by + (a/2)*bh]; }
+function inv(x,y){ return land ? [((x-bx)/bw)*2, (y-by)/bh] : [((y-by)/bh)*2, (x-bx)/bw]; }
+function u(v){ return v*unit; }
+
+/* ----- entities + match state ---------------------------------------------- */
+const PR=0.052, KR=0.088;
+const puck = {a:1, b:.5, va:0, vb:0, trail:[], owner:null, contest:0, lastHit:-9, hitT:0, hnx:0, hnb:1};   // hitT/hn* = contact-squash spring + blow normal (juice lives in the deform, not bloom)
+const yk = {a:.45, b:.5, pa:.45, pb:.5, va:0, vb:0, col:'#ffe23a', celebT:0, celebLife:0};
+const pk = {a:1.55, b:.5, pa:1.55, pb:.5, va:0, vb:0, col:'#b14cff', celebT:0, celebLife:0};
+let scoreY=0, scoreP=0, serve=0.9, serveDir=1, clock=0;
+const fx=[];
+// FX REBUILD (Joe 2026-06-18): the additive bloom layer (ring bursts, save sparks, GET BIG sparks,
+// colour celebration sprite, possession aura) is OFF — rebuild juice from the CONTACT ANIMATION itself.
+// The only kept "fx" is the GRAYSCALE strike-ghost (strikes[]). Flip FXBLOOM=true to restore the bloom.
+const FXBLOOM=false;
+const motes=[];
+for(let i=0;i<46;i++) motes.push({a:Math.random()*2, b:Math.random(), s:.12+Math.random()*.5, ph:Math.random()*6.28});
+
+// BREAKAWAY match flow
+const GAME = { state:'menu', target:7, breakaway:0, save:0, goalT:0, pendingServe:1,
+               winner:null, shot:null, msg:'', msgT:0, msgCol:'#fff', sub:'' };
+const LANES = { L:'RICOCHET ◄', straight:'STRAIGHT', R:'RICOCHET ►' };  // top / middle / 5-hole
+function banner(text, col, dur, sub){ GAME.msg=text; GAME.msgCol=col||'#fff'; GAME.msgT=dur||1.1; GAME.sub=sub||''; }
+
+function resetPuck(dir){
+  puck.a=1; puck.b=.5; puck.va=0; puck.vb=0; puck.trail.length=0;
+  puck.owner=null; puck.contest=0;
+  serve=0.95; serveDir=dir||(Math.random()<.5?-1:1);
+}
+// air hockey has no face-off — we use it only to START a period; after that, possession is
+// taken over by the game action (a goal just drops the puck and play resumes). center/point
+// drops are reserved for period starts + penalties.
+function faceoff(dir){ resetPuck(dir); GAME.state='faceoff'; GAME.breakaway=0; SFX.drop(); banner('FACE-OFF','#cfe6ff',0.9,'PERIOD START'); }
+function restart(dir){ resetPuck(dir); serve=0.55; GAME.state='play'; GAME.breakaway=0; SFX.drop(); banner('DROP','#cfe6ff',0.45); }       // drop-and-go after a goal
+function penaltyDrop(dir){ resetPuck(dir); serve=0.8; GAME.state='play'; banner('PENALTY · DROP','#ff5a5a',0.9); }            // center/point drop for infractions (hook)
+function startMatch(){ scoreY=0; scoreP=0; GAME.winner=null; yk.a=.45;yk.b=.5; pk.a=1.55;pk.b=.5; faceoff(Math.random()<.5?-1:1); try{hint.classList.remove('gone');}catch(e){} clearTimeout(hintT); hintT=setTimeout(hideHint,5600); }   // arm the gameplay hint on the FIRST drop, not at page load
+
+/* ----- input --------------------------------------------------------------- */
+const pointers = new Map();
+function pick(a){ return yk; }   // 1-player top-down: pk is ALWAYS the AI (see aiMode), so ALL input drives the player's gold knocker. (A far-half touch used to puppet the AI opponent AND park your own mallet.)
+function setPtr(id,x,y){ const [a,b]=inv(x,y); pointers.set(id,{k:pick(a),a,b}); }
+function move(id,x,y){ const p=pointers.get(id); if(p){ const [a,b]=inv(x,y); p.a=a;p.b=b; } }
+function up(id){ pointers.delete(id); }
+
+// mouse: the gold striker follows the cursor (no need to hold the button)
+window.addEventListener('mousemove', e=>{ if(DEMO)return; const [a,b]=inv(e.clientX,e.clientY); pointers.set('m',{k:yk,a,b}); });   // DEMO/attract = both mallets AI: the mouse must NOT grab the gold knocker (it used to freeze it at the cursor + stop self-playing)
+window.addEventListener('mouseout', e=>{ if(!e.relatedTarget) pointers.delete('m'); });   // cursor left the window → release the gold knocker back to rest/AI
+cv.addEventListener('mousedown', ()=>startGesture());
+cv.addEventListener('touchstart', e=>{ e.preventDefault(); startGesture(); for(const t of e.changedTouches) setPtr(t.identifier,t.clientX,t.clientY); },{passive:false});
+cv.addEventListener('touchmove', e=>{ e.preventDefault(); for(const t of e.changedTouches) move(t.identifier,t.clientX,t.clientY); },{passive:false});
+cv.addEventListener('touchend', e=>{ for(const t of e.changedTouches) up(t.identifier); });
+cv.addEventListener('touchcancel', e=>{ for(const t of e.changedTouches) up(t.identifier); });
+window.addEventListener('keydown', e=>{ if(e.key===' '||e.key==='Enter'){ e.preventDefault(); startGesture(); } });
+/* ---- GAMEPAD (Mayflash F300 / 8BitDo etc.): the left stick (or d-pad) steers the gold knocker via
+   the same pointer the mouse uses; ANY button starts / rematches. Put the pad in a PC mode (F300 →
+   XInput; 8BitDo → START+X for X-INPUT). DirectInput/Switch 8BitDo parks the d-pad on a POV hat
+   (axes[9]) — decoded below. The browser only sees the pad after its first focused button press. ---- */
+(function(){
+  var DEAD=0.18, prevAny=false, HX=[0,1,1,1,0,-1,-1,-1], HY=[-1,-1,0,1,1,1,0,-1];
+  // Honor the in-cab CONTROLLER MAPPER (gamepad_mapper.html): shared localStorage profile picks the
+  // steer axes + deadzone + invert. No profile → the defaults below.
+  var M=(function(){ try{ var m=JSON.parse(localStorage.getItem('highTableGamepad')); return (m&&m.v)?m:null; }catch(e){ return null; } })();
+  var AXX=(M&&M.axisX!=null)?M.axisX:0, AYY=(M&&M.axisY!=null)?M.axisY:1;
+  var INVX=(M&&M.invertX)?-1:1, INVY=(M&&M.invertY)?-1:1;
+  if(M&&M.deadzone!=null) DEAD=M.deadzone;
+  // Standard pads use the d-pad BUTTONS (12-15), not the hat axis — and a hat resting within range
+  // would decode to a phantom direction. So ignore the hat for standard mapping / near-neutral.
+  function hat(gp){ if(gp.mapping==='standard') return null; if(gp.axes.length<10) return null; var h=gp.axes[9]; if(h<-1.1||h>1.1||Math.abs(h)<=0.10) return null; var k=Math.round((h+1)/0.2857)&7; return [HX[k],HY[k]]; }
+  function poll(){
+    var pads=navigator.getGamepads?navigator.getGamepads():[], gp=null;
+    for(var i=0;i<pads.length;i++){ if(pads[i]&&pads[i].connected){ gp=pads[i]; break; } }
+    if(gp){
+      var ax=(gp.axes[AXX]||0)*INVX, ay=(gp.axes[AYY]||0)*INVY, hd=hat(gp);
+      if(Math.abs(ax)<0.35 && Math.abs(gp.axes[2]||0)>0.3) ax=(gp.axes[2]||0)*INVX;   // 8BitDo on right-stick (engages sooner)
+      if(Math.abs(ay)<0.35 && Math.abs(gp.axes[3]||0)>0.3) ay=(gp.axes[3]||0)*INVY;
+      if(gp.buttons[14]&&gp.buttons[14].pressed) ax=-1; else if(gp.buttons[15]&&gp.buttons[15].pressed) ax=1; else if(hd&&hd[0]) ax=hd[0]*INVX;   // d-pad ◄ ►
+      if(gp.buttons[12]&&gp.buttons[12].pressed) ay=-1; else if(gp.buttons[13]&&gp.buttons[13].pressed) ay=1; else if(hd&&hd[1]) ay=hd[1]*INVY;   // d-pad ▲ ▼
+      if(Math.hypot(ax,ay)>DEAD){
+        var a=Math.max(KR,Math.min(1.0, 0.5+ax*0.5)), b=Math.max(KR,Math.min(B_MAX-KR, 0.5+ay*0.5));   // gold knocker lives in the near half
+        pointers.set('m',{k:yk,a,b});
+      }
+      var any=false; for(var j=0;j<gp.buttons.length;j++){ if(gp.buttons[j]&&gp.buttons[j].pressed){ any=true; break; } }
+      if(any&&!prevAny) startGesture();
+      prevAny=any;
+    }
+    requestAnimationFrame(poll);
+  }
+  requestAnimationFrame(poll);
+})();
+function startGesture(){ SFX.resume(); hideHint(); if(GAME.state==='attract'||GAME.state==='win'){ SFX.start(); startMatch(); } }
+function hasPtr(k){ for(const p of pointers.values()) if(p.k===k) return true; return false; }
+
+const hint=document.getElementById('hint');
+let hintT=0;   // hint timer now armed by startMatch(), not at page load (it used to expire during the boot+menu)
+function hideHint(){ hint.classList.add('gone'); clearTimeout(hintT); }
+
+/* ----- drag-and-drop backdrop --------------------------------------------- */
+const drop=document.getElementById('drop');
+['dragenter','dragover'].forEach(ev=>window.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('on');}));
+['dragleave','drop'].forEach(ev=>window.addEventListener(ev,e=>{e.preventDefault();if(ev==='dragleave'&&e.relatedTarget)return;drop.classList.remove('on');}));
+window.addEventListener('drop',e=>{
+  const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0];
+  if(f&&/^image\//.test(f.type)){ const r=new FileReader(); r.onload=()=>{ const im=new Image(); im.onload=()=>IMG.bg=im; im.src=r.result; }; r.readAsDataURL(f); }
+});
+
+/* ----- simulation ---------------------------------------------------------- */
+function driveKnocker(k, dt){
+  let tx=null,ty=null,bestd=9;
+  for(const p of pointers.values()){ if(p.k!==k) continue; const d=Math.hypot(p.a-k.a,p.b-k.b); if(d<bestd){bestd=d;tx=p.a;ty=p.b;} }
+  const aiMode = (tx===null) && (k===pk || GAME.state==='attract' || DEMO);
+  if(tx===null){
+    if(aiMode){
+      const home = (k===yk)?0.45:1.55;
+      const onMyHalf = (k===yk)? puck.a<1.0 : puck.a>1.0;
+      const loose = Math.abs(puck.a-1.0)<0.14 && Math.hypot(puck.va,puck.vb)<0.85;   // neutral drop at centre → DASH for it
+      if((onMyHalf||loose) && (GAME.state==='play'||GAME.state==='attract')){
+        tx = (k===yk)? Math.max(KR+0.02, puck.a-0.05) : Math.min(2-KR-0.02, puck.a+0.05);
+        ty = puck.b;
+      } else { tx=home; ty=0.5; }
+    } else { tx=k.pa; ty=k.pb; }   // player idle: rest in place
+  }
+  const loA = (k===yk)? KR : 1.0;   const hiA = (k===yk)? 1.0 : 2-KR;
+  tx=Math.max(loA, Math.min(hiA, tx));
+  ty=Math.max(KR, Math.min(B_MAX-KR, ty));
+  const ease = aiMode ? 8.5 : 24;
+  const na=k.a+(tx-k.a)*Math.min(1,ease*dt);
+  const nb=k.b+(ty-k.b)*Math.min(1,ease*dt);
+  k.va=(na-k.a)/dt; k.vb=(nb-k.b)/dt; k.a=na; k.b=nb;
+}
+
+function collide(k){
+  const dx=puck.a-k.a, dy=puck.b-k.b, d=Math.hypot(dx,dy), min=PR+KR;
+  if(d>0 && d<min){
+    const nx=dx/d, ny=dy/d;
+    puck.a=k.a+nx*min; puck.b=k.b+ny*min;
+    const rvx=puck.va-k.va, rvy=puck.vb-k.vb, vn=rvx*nx+rvy*ny;
+    if(vn<0){ const j=-(1.55)*vn; puck.va+=j*nx + k.va*0.55; puck.vb+=j*ny + k.vb*0.55;
+      puck.hitT=Math.min(1,0.45+Math.abs(vn)*0.45); puck.hnx=nx; puck.hnb=ny;   // PUCK squashes against the blow (springs back)
+      k.hitT=Math.min(1,0.5+Math.abs(vn)*0.3); }                                 // KNOCKER pops on the strike
+    else    { puck.va+=k.va*0.55; puck.vb+=k.vb*0.55; }
+    const sp=Math.hypot(puck.va,puck.vb);
+    if(sp>4.2){ puck.va*=4.2/sp; puck.vb*=4.2/sp; }
+    // burst ring — cooldown-gated so a pinned puck (dragged knocker holding it on a wall) can't spawn one
+    // every frame and accumulate into a crash (same class as the strike-ghost fix below).
+    if((clock-(puck.lastBurst||-9))>0.10){ puck.lastBurst=clock; burst(puck.a,puck.b,k.col,1); }
+    // possession + contested (quick exchange between the two strikers)
+    const team = (k===yk)?'Y':'P';
+    if(puck.owner && puck.owner!==team && (clock-puck.lastHit)<0.6) puck.contest=0.6;
+    puck.owner=team; puck.lastHit=clock;
+    // FIRST STRIKE ghost — cooldown-gated + capped so a pinned puck can't spam/accumulate (was a crash risk)
+    if(sp>1.1 && (clock-(puck.lastFire||-9))>0.16){ puck.lastFire=clock;
+      if(strikes.length<6) strikes.push({ team:(k===yk)?'bees':'queens', a:k.a, b:k.b, flip: puck.va<0?-1:1, t:0, life:0.42 });
+      SFX.fire(sp); }
+  }
+}
+
+function caromWall(){
+  const sp=Math.hypot(puck.va,puck.vb);
+  burst(puck.a,puck.b,'#27f6ff',.6);
+  // the rail is the goalie: a hard puck turned away beside the mouth is a SAVE
+  if(GAME.state==='play' && sp>1.7 && Math.abs(puck.b-0.5) < GOAL+0.12){
+    GAME.save=0.6; banner('SAVE!','#27f6ff',0.65); saveFX(puck.a,puck.b); SFX.save();
+  }
+}
+
+function detectBreakaway(){
+  const sp=Math.hypot(puck.va,puck.vb);
+  let threatened=null, defender=null;
+  if(puck.va<-0.2 && puck.a<0.95){ threatened='Y'; defender=yk; }
+  else if(puck.va>0.2 && puck.a>1.05){ threatened='P'; defender=pk; }
+  if(threatened && sp>2.0){
+    const dd=Math.hypot(puck.a-defender.a, puck.b-defender.b);
+    const beaten = (threatened==='Y') ? (defender.a<=puck.a) : (defender.a>=puck.a);
+    if(dd>0.45 || beaten){ if(GAME.breakaway<=0) banner('BREAKAWAY','#ffffff',0.8); GAME.breakaway=0.5; }
+  }
+}
+
+function step(dt){
+  if(GAME.state==='menu') return;            // frozen behind the front-end menu
+  // HARD CAP the particle pools — belt-and-braces so no spawn path can ever run the tab out of memory.
+  if(fx.length>240)fx.splice(0,fx.length-240); if(strikes.length>12)strikes.splice(0,strikes.length-12); if(celes.length>16)celes.splice(0,celes.length-16);
+  clock+=dt;
+  if(yk.celebT>0) yk.celebT=Math.max(0,yk.celebT-dt); if(pk.celebT>0) pk.celebT=Math.max(0,pk.celebT-dt);   // goal-leap decay
+  if(puck.hitT>0)puck.hitT=Math.max(0,puck.hitT-dt*4.6); if(yk.hitT>0)yk.hitT=Math.max(0,yk.hitT-dt*4); if(pk.hitT>0)pk.hitT=Math.max(0,pk.hitT-dt*4);   // contact-squash springs
+  if(GAME.msgT>0) GAME.msgT-=dt;
+  if(GAME.breakaway>0) GAME.breakaway-=dt;
+  if(GAME.save>0) GAME.save-=dt;
+  if(puck.contest>0) puck.contest-=dt;
+
+  if(GAME.state==='win'){ return; }
+
+  // goal celebrate: knockers ease home, puck frozen at center, then face off
+  if(GAME.state==='goal'){
+    driveKnocker(yk,dt); driveKnocker(pk,dt);
+    GAME.goalT-=dt; if(GAME.goalT<=0) restart(GAME.pendingServe);   // drop-and-go, not a ceremonial face-off
+    return;
+  }
+
+  driveKnocker(yk,dt); driveKnocker(pk,dt);
+
+  // FACE-OFF / serve hold (tension, no FX) -> launch
+  if(serve>0){ serve-=dt; if(serve<=0){ puck.va=serveDir*0.5; puck.vb=(Math.random()-.5)*0.6; if(GAME.state==='faceoff') GAME.state='play'; } return; }   // gentle centre drop — dash for it
+
+  const sp0=Math.hypot(puck.va,puck.vb);
+  const steps=Math.max(1,Math.min(8,Math.ceil(sp0*dt/PR)));
+  const h=dt/steps;
+  for(let s=0;s<steps;s++){
+    puck.a+=puck.va*h; puck.b+=puck.vb*h;
+    if(puck.b<PR){ puck.b=PR; puck.vb=Math.abs(puck.vb); burst(puck.a,puck.b,'#27f6ff',.6); }
+    if(puck.b>B_MAX-PR){ puck.b=B_MAX-PR; puck.vb=-Math.abs(puck.vb); burst(puck.a,puck.b,'#27f6ff',.6); }
+    const inBand = Math.abs(puck.b-0.5) < GOAL;
+    if(puck.a<PR){
+      if(inBand && GAME.state==='play'){ goal('P'); return; }
+      puck.a=PR; puck.va=Math.abs(puck.va); caromWall();
+    }
+    if(puck.a>A_MAX-PR){
+      if(inBand && GAME.state==='play'){ goal('Y'); return; }
+      puck.a=A_MAX-PR; puck.va=-Math.abs(puck.va); caromWall();
+    }
+    collide(yk); collide(pk);
+  }
+  puck.va*=0.998; puck.vb*=0.998;
+  if(GAME.state==='play'){ const spN=Math.hypot(puck.va,puck.vb);   // anti-trap: a pinned/near-still puck gets nudged toward center so the CPU can't get stuck trapping
+    if(spN<0.22){ puck.stuckT=(puck.stuckT||0)+dt; if(puck.stuckT>1.1){ puck.va=(puck.a<1?1:-1)*1.3; puck.vb=(Math.random()-.5)*1.2; puck.stuckT=0; } }
+    else puck.stuckT=0; }
+  // CORNER-DWELL watchdog: the speed anti-trap above misses a knocker PINNING the puck in a corner (it
+  // jitters WITH speed, so spN>0.22 never fires) — the "puck trapped in the CPU corner" bug. Force it out.
+  if(GAME.state==='play'){
+    const inCorner = (puck.a<0.34 || puck.a>A_MAX-0.34) && (puck.b<0.24 || puck.b>B_MAX-0.24);
+    if(inCorner){ puck.cornerT=(puck.cornerT||0)+dt;
+      if(puck.cornerT>0.8){ const dx=(puck.a<1?1:-1), dy=(puck.b<0.5?1:-1);
+        puck.a=Math.max(0.30,Math.min(A_MAX-0.30,puck.a+dx*0.05)); puck.b=Math.max(0.26,Math.min(B_MAX-0.26,puck.b));
+        puck.va=dx*1.6; puck.vb=dy*1.0; puck.cornerT=0; } }   // shove it off the corner toward centre ice
+    else puck.cornerT=0;
+  }
+  if(GAME.state==='play') detectBreakaway();
+  puck.trail.push([puck.a,puck.b]); if(puck.trail.length>16) puck.trail.shift();
+}
+
+function goal(who){
+  const yWin = who==='Y';
+  if(yWin){ scoreY++; bigFlash('#ffe23a'); } else { scoreP++; bigFlash('#b14cff'); }
+  { const scoringTeam = who==='Y' ? 'bees' : 'queens';
+    const home = (!VENUE_TEAM) || (scoringTeam === VENUE_TEAM);   // neutral rinks cheer both; team barns groan the enemy
+    if(home){ SFX.goal(who); SFX.roar(); } else { SFX.groan(); } }
+  if(FXBLOOM){ const ge=who==='Y'?2:0; fx.push({a:ge,b:.5,col:(who==='Y'?'#ffe23a':'#b14cff'),t:0,life:.7,r0:0.15,r1:1.6,kind:'ring'}); }
+  if(FXBLOOM)celes.push({team:who==='Y'?'bees':'queens',a:who==='Y'?0.72:1.28,b:0.42,t:0,life:1.2});
+  { const scorer = who==='Y'?yk:pk; scorer.celebT=scorer.celebLife=1.25; }   // the STRIKE leap — scoring mallet bounds + spins + flips
+  GAME.breakaway=0;
+  if(scoreY>=GAME.target || scoreP>=GAME.target){
+    GAME.winner = scoreY>scoreP?'Y':'P'; GAME.state='win';
+    banner(GAME.winner==='Y'?'BEES WIN!':'QUEENS WIN!', GAME.winner==='Y'?'#ffe23a':'#b14cff', 99, DEMO?'':'tap · button · space to rematch');
+    resetPuck(0);
+    if(DEMO) setTimeout(()=>{ if(GAME.state==='win') startMatch(); }, 2600);   // attract: rematch loop
+  } else {
+    GAME.state='goal'; GAME.goalT=1.4; GAME.pendingServe = yWin?1:-1;
+    banner('GOAL!', yWin?'#ffe23a':'#b14cff', 1.4, yWin?'BEES':'QUEENS');
+    resetPuck(0);
+  }
+}
+
+/* ----- fx ------------------------------------------------------------------ */
+function burst(a,b,col,scale){ if(!FXBLOOM)return; fx.push({a,b,col,t:0,life:.45,r0:KR*.6,r1:KR*2.4*scale,kind:'ring'}); }
+function saveFX(a,b){ if(!FXBLOOM)return; fx.push({a,b,col:'#bfefff',t:0,life:.5,r0:KR*.5,r1:KR*4,kind:'ring'});
+  for(let i=0;i<10;i++){ const ang=Math.random()*6.28, s=1+Math.random()*2; fx.push({a,b,col:'#dff6ff',t:0,life:.5,kind:'spark',va:Math.cos(ang)*s,vb:Math.sin(ang)*s}); } }
+let flash={col:null,t:0};
+function bigFlash(col){ if(!FXBLOOM)return; flash={col,t:0}; for(let i=0;i<22;i++){ const ang=Math.random()*6.28, sp=1+Math.random()*2.6; fx.push({a:1,b:.5,col,t:0,life:.7,kind:'spark',va:Math.cos(ang)*sp,vb:Math.sin(ang)*sp*.5}); } }
+
+/* ----- render helpers ------------------------------------------------------ */
+function neonRoundRect(x,y,w,h,r,col,lw,blur){ ctx.save(); ctx.shadowColor=col; ctx.shadowBlur=blur; ctx.strokeStyle=col; ctx.lineWidth=lw;
+  neonRoundRectPath(x,y,w,h,r); ctx.stroke(); ctx.restore(); }
+function neonRoundRectPath(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function neonLine(a0,b0,a1,b1,col,lw,blur){ const p=S(a0,b0), q=S(a1,b1);
+  ctx.save(); ctx.shadowColor=col; ctx.shadowBlur=blur; ctx.strokeStyle=col; ctx.lineWidth=lw; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(p[0],p[1]); ctx.lineTo(q[0],q[1]); ctx.stroke(); ctx.restore(); }
+function neonCircle(a,b,rad,col,lw,blur,fill){ const c=S(a,b);
+  ctx.save(); ctx.shadowColor=col; ctx.shadowBlur=blur; ctx.beginPath(); ctx.arc(c[0],c[1],u(rad),0,6.2832);
+  if(fill){ ctx.fillStyle=fill; ctx.fill(); } ctx.strokeStyle=col; ctx.lineWidth=lw; ctx.stroke(); ctx.restore(); }
+
+function draw(time){
+  const pulse = 0.78 + 0.22*Math.sin(time*0.0016);
+  ctx.clearRect(0,0,VW,VH);
+
+  const rg=ctx.createRadialGradient(VW/2,VH/2,0,VW/2,VH/2,Math.max(VW,VH)*.7);
+  rg.addColorStop(0,'rgba(28,10,60,.55)'); rg.addColorStop(1,'rgba(2,2,8,0)');
+  ctx.fillStyle=rg; ctx.fillRect(0,0,VW,VH);
+
+  // ---- table surface ----
+  ctx.save(); neonRoundRectPath(bx,by,bw,bh,u(.06)); ctx.clip();
+  if(IMG.bg){ coverDraw(IMG.bg,bx,by,bw,bh); ctx.fillStyle='rgba(3,2,12,.54)'; ctx.fillRect(bx,by,bw,bh); }   // darken the venue so the neon/team colour pops
+  else {
+    const fg=ctx.createRadialGradient(bx+bw/2,by+bh/2,0,bx+bw/2,by+bh/2,Math.max(bw,bh)*.6);
+    fg.addColorStop(0,'#120a26'); fg.addColorStop(1,'#06030f'); ctx.fillStyle=fg; ctx.fillRect(bx,by,bw,bh);
+    ctx.globalAlpha=.05; ctx.fillStyle='#6a4cff';
+    for(let a=0.1;a<2;a+=0.13) for(let b=0.08;b<1;b+=0.13){ const p=S(a,b); ctx.fillRect(p[0],p[1],2,2); }
+    ctx.globalAlpha=1;
+  }
+  for(const m of motes){ const p=S(m.a,(m.b+0.04*Math.sin(time*0.001+m.ph))%1); const gl=(.4+.6*Math.sin(time*0.002+m.ph));
+    ctx.save(); ctx.globalAlpha=.14*gl; ctx.fillStyle='#7fe9ff'; ctx.shadowColor='#27f6ff'; ctx.shadowBlur=8;
+    ctx.beginPath(); ctx.arc(p[0],p[1],m.s,0,6.28); ctx.fill(); ctx.restore(); }
+  ctx.restore();
+
+  // ---- RINK STRUCTURE (boards + goal mouths) — ALWAYS drawn. The venue table-art bg is a
+  //      decorative crest only (no rails / no goal mouths baked in), so without this the boards
+  //      are invisible and the whole end reads as a goal. This is the drawn rink. ----
+  const blur=18*pulse;
+  drawRink(pulse);
+  // center-ice line + faceoff rings only when there's NO art bg (the venue art supplies its own)
+  if(!IMG.bg){
+    neonLine(1,0.04,1,0.96,'#ff37c7',2.5,blur);
+    neonCircle(1,0.5,0.20,'#ff37c7',2.5,blur);
+    neonCircle(1,0.5,0.016,'#ff37c7',2,blur,'#ff37c7');
+    neonCircle(0,0.5,0.34,'#27f6ff',2,blur*.8);
+    neonCircle(2,0.5,0.34,'#27f6ff',2,blur*.8);
+  }
+
+  // ---- BREAKAWAY veil (dim everything but the seam, puck + strikers drawn after = bright) ----
+  if(GAME.breakaway>0){
+    const k=Math.min(1,GAME.breakaway/0.5);
+    ctx.save(); neonRoundRectPath(bx,by,bw,bh,u(.06)); ctx.clip();
+    ctx.fillStyle='rgba(2,2,8,'+(0.62*k)+')'; ctx.fillRect(bx,by,bw,bh); ctx.restore();
+    neonLine(1,0.04,1,0.96,'#ff37c7',3.5,30);   // seam stays lit
+  }
+
+  // ---- puck trail (tinted by possession) ----
+  const trailCol = puck.contest>0 ? (Math.floor(time/80)%2?'#ffe23a':'#b14cff')
+                 : puck.owner==='Y' ? '#ffe23a' : puck.owner==='P' ? '#b14cff' : '#bfffff';
+  for(let i=0;i<puck.trail.length;i++){ const t=puck.trail[i], al=(i/puck.trail.length); const p=S(t[0],t[1]);
+    ctx.save(); ctx.globalAlpha=al*.4; ctx.fillStyle=trailCol; ctx.shadowColor=trailCol; ctx.shadowBlur=14*al;
+    ctx.beginPath(); ctx.arc(p[0],p[1],u(PR)*al,0,6.28); ctx.fill(); ctx.restore(); }
+
+  // ---- knockers ----
+  drawKnocker(yk, pulse); drawKnocker(pk, pulse);
+
+  // ---- first-strike mash-up ghosts ----
+  for(let i=strikes.length-1;i>=0;i--){ const g=strikes[i]; g.t+=0.016;
+    const img=STRIKE[g.team], kk=g.t/g.life;
+    if(kk>=1 || !img){ strikes.splice(i,1); continue; }
+    const fr=Math.min(STRIKE.frames-1, Math.floor(kk*STRIKE.frames)), fw=img.width/STRIKE.frames, fh=img.height;
+    const c=S(g.a,g.b), size=u(0.5);
+    ctx.save(); ctx.globalAlpha=Math.max(0,1-kk*0.25)*0.8;   // normal composite — no white bloom
+    ctx.translate(c[0], c[1]-size*0.18); ctx.scale(g.flip,1);
+    ctx.drawImage(img, fr*fw,0,fw,fh, -size/2,-size/2,size,size); ctx.restore();
+  }
+
+  // ---- goal celebration ghost ----
+  for(let i=celes.length-1;i>=0;i--){ const g=celes[i]; g.t+=0.016; const img=CELE[g.team], kk=g.t/g.life;
+    if(kk>=1||!img){ celes.splice(i,1); continue; }
+    const fr=Math.min(CELE.frames-1,Math.floor(kk*CELE.frames)),fw=img.width/CELE.frames,fh=img.height; const c=S(g.a,g.b),size=u(0.72);
+    ctx.save(); ctx.globalAlpha=Math.max(0,1-kk*0.2)*0.85; ctx.translate(c[0],c[1]-size*0.12); ctx.drawImage(img,fr*fw,0,fw,fh,-size/2,-size/2,size,size); ctx.restore(); }   // celebration ghost, normal composite
+  // ---- puck + possession aura ----
+  drawPuck(pulse);
+
+  // serve / face-off countdown ring
+  if(serve>0 && serve<2){ const c=S(1,.5); ctx.save(); ctx.globalAlpha=.55; ctx.strokeStyle='#ffcf2a'; ctx.lineWidth=3; ctx.shadowColor='#ffae00'; ctx.shadowBlur=14;   // gold, no white bloom
+    ctx.beginPath(); ctx.arc(c[0],c[1],u(.12),-1.57,-1.57+6.283*(1-serve/0.95)); ctx.stroke(); ctx.restore(); }
+
+  // ---- fx ----
+  for(let i=fx.length-1;i>=0;i--){ const f=fx[i]; f.t+=0.016;
+    if(f.kind==='ring'){ const k=f.t/f.life, c=S(f.a,f.b); ctx.save(); ctx.globalAlpha=Math.max(0,1-k); ctx.strokeStyle=f.col; ctx.lineWidth=3; ctx.shadowColor=f.col; ctx.shadowBlur=20;
+      ctx.beginPath(); ctx.arc(c[0],c[1],u(f.r0+(f.r1-f.r0)*k),0,6.28); ctx.stroke(); ctx.restore(); }
+    else if(f.kind==='spark'){ f.a+=f.va*0.016; f.b+=f.vb*0.016; const k=f.t/f.life, c=S(f.a,f.b); ctx.save(); ctx.globalAlpha=Math.max(0,1-k); ctx.fillStyle=f.col; ctx.shadowColor=f.col; ctx.shadowBlur=16;
+      ctx.beginPath(); ctx.arc(c[0],c[1],u(.012),0,6.28); ctx.fill(); ctx.restore(); }
+    if(f.t>=f.life) fx.splice(i,1);
+  }
+
+  // ---- big goal flash ----
+  if(flash.col){ flash.t+=0.016; const k=flash.t/0.6; if(k<1){ ctx.save(); ctx.globalAlpha=(1-k)*.3; ctx.fillStyle=flash.col;
+      neonRoundRectPath(bx,by,bw,bh,u(.06)); ctx.fill(); ctx.restore(); } else flash.col=null; }
+
+  // ---- rail + score + overlays ----
+  neonRoundRect(bx,by,bw,bh,u(.06),'#27f6ff',Math.max(3,u(.012)),24*pulse);
+  drawScore();
+  if(GAME.state==='attract') drawAttract();
+  if(GAME.state==='win'){ ctx.save(); ctx.fillStyle='rgba(2,2,10,.5)'; ctx.fillRect(0,0,VW,VH); ctx.restore(); }
+  drawBanner();
+}
+
+// THE RINK — boards (perimeter rail) + the two goal mouths. Drawn over the venue art every frame.
+function drawRink(pulse){
+  ctx.save();
+  ctx.lineJoin='round';
+  // BOARDS: a bright rounded rail hugging the play field so the boundary reads (was missing entirely)
+  ctx.strokeStyle='rgba(150,244,255,'+(0.42+0.22*pulse)+')';
+  ctx.lineWidth=Math.max(3,u(.018)); ctx.shadowColor='#27f6ff'; ctx.shadowBlur=16*pulse;
+  neonRoundRectPath(bx+u(.012),by+u(.012),bw-u(.024),bh-u(.024),u(.055)); ctx.stroke();
+  ctx.restore();
+  // the two scoring openings
+  goalMouth(0,'#ffe23a',pulse);
+  goalMouth(A_MAX,'#b14cff',pulse);
+}
+
+// A goal mouth: crease glow + goal line across the opening + a bright POST pip at each end.
+function goalMouth(aEnd,col,pulse){
+  const p=S(aEnd,0.5-GOAL), q=S(aEnd,0.5+GOAL), mid=S(aEnd,.5);
+  ctx.save();
+  // crease glow filling the mouth (soft, so the opening reads as "the net")
+  ctx.globalAlpha=.26*pulse;
+  const g=ctx.createRadialGradient(mid[0],mid[1],0,mid[0],mid[1],u(GOAL*1.7));
+  g.addColorStop(0,col); g.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=g;
+  ctx.fillRect(mid[0]-u(GOAL*1.7),mid[1]-u(GOAL*1.2),u(GOAL*1.7)*2,u(GOAL*1.2)*2);
+  ctx.globalAlpha=1;
+  // goal line across the mouth
+  ctx.strokeStyle=col; ctx.lineWidth=Math.max(4,u(.028)); ctx.lineCap='round'; ctx.shadowColor=col; ctx.shadowBlur=28*pulse;
+  ctx.beginPath(); ctx.moveTo(p[0],p[1]); ctx.lineTo(q[0],q[1]); ctx.stroke();
+  // POSTS — white pip cored with team colour at each end of the mouth (marks the opening edges)
+  ctx.shadowBlur=16*pulse;
+  for(const pt of [p,q]){
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(pt[0],pt[1],Math.max(3,u(.019)),0,6.28); ctx.fill();
+    ctx.fillStyle=col;   ctx.beginPath(); ctx.arc(pt[0],pt[1],Math.max(2,u(.011)),0,6.28); ctx.fill();
+  }
+  ctx.restore();
+}
+
+// THE STRIKE LEAP (flat-overhead): the scoring mallet bounds toward the camera (grows + casts a
+// drop-shadow on the ice), spins, and flips once to flash its underside, then settles. null = idle.
+function celebPose(k){ if(!(k.celebT>0)) return null;
+  const T=k.celebLife||1.0, e=Math.min(1,1-k.celebT/T), damp=Math.max(0,1-e);
+  const rise=Math.abs(Math.sin(e*Math.PI*2.2))*damp;        // ~two diminishing hops toward the camera
+  const rot=e*Math.PI*2.6;                                  // 1.3 celebratory spins
+  let sy=1, showBottom=false;
+  if(e<0.46){ const tumble=Math.cos((e/0.46)*Math.PI*2); sy=Math.max(0.07,Math.abs(tumble)); showBottom=tumble<0; }  // one full flip
+  return { scale:1+0.40*rise, rot, sy, rise, showBottom }; }
+function drawKnocker(k,pulse){
+  const top = k===yk?IMG.knockerP1:IMG.knockerP2, bot=k===yk?IMG.knockerP1B:IMG.knockerP2B;
+  const c=S(k.a,k.b), cp=celebPose(k);
+  if(top){ const base=u(KR)*2.05;
+    if(cp){ ctx.save(); ctx.globalAlpha=0.30*(1-cp.rise*0.55); ctx.fillStyle='#000';      // shadow stays on the ice as it leaps
+        const sh=base*0.5; ctx.beginPath(); ctx.ellipse(c[0],c[1]+base*0.16*cp.rise,sh*0.9,sh*0.42,0,0,6.28); ctx.fill(); ctx.restore();
+      const img=(cp.showBottom&&bot)?bot:top, d=base*cp.scale;
+      ctx.save(); ctx.translate(c[0],c[1]-base*0.34*cp.rise); ctx.rotate(cp.rot); ctx.scale(1,cp.sy); ctx.drawImage(img,-d/2,-d/2,d,d); ctx.restore(); return; }
+    const d=base;
+    if(k.hitT>0){ const q=1-k.hitT, a=0.20*Math.cos(q*Math.PI*3)*(1-q);   // contact pop — springs out then settles
+      ctx.save(); ctx.translate(c[0],c[1]); ctx.scale(1+a,1+a); ctx.drawImage(top,-d/2,-d/2,d,d); ctx.restore(); return; }
+    ctx.drawImage(top,c[0]-d/2,c[1]-d/2,d,d); return; }
+  ctx.save(); ctx.shadowColor=k.col; ctx.shadowBlur=28*pulse;
+  ctx.beginPath(); ctx.arc(c[0],c[1],u(KR),0,6.28);
+  const g=ctx.createRadialGradient(c[0],c[1],u(KR)*.2,c[0],c[1],u(KR));
+  g.addColorStop(0,k.col); g.addColorStop(.6,k.col); g.addColorStop(1,'rgba(0,0,0,.15)'); ctx.fillStyle=g; ctx.fill();
+  ctx.shadowBlur=14*pulse; ctx.strokeStyle=k.col; ctx.globalAlpha=.85; ctx.lineWidth=Math.max(2,u(.012)); ctx.stroke();   // team rim, no white bloom
+  ctx.globalAlpha=1; ctx.shadowBlur=0; ctx.beginPath(); ctx.arc(c[0],c[1],u(KR)*.42,0,6.28);
+  ctx.fillStyle='rgba(10,6,24,.85)'; ctx.fill(); ctx.strokeStyle=k.col; ctx.lineWidth=2; ctx.stroke(); ctx.restore();
+}
+
+function drawPuck(pulse){
+  const c=S(puck.a,puck.b);
+  // possession aura (additive ring in owner color; both colors when contested)
+  if(FXBLOOM && (puck.owner || puck.contest>0)){
+    ctx.save(); ctx.globalCompositeOperation='lighter';
+    if(puck.contest>0){
+      ctx.globalAlpha=.7*pulse; ctx.lineWidth=3;
+      ctx.strokeStyle='#ffe23a'; ctx.shadowColor='#ffe23a'; ctx.shadowBlur=22;
+      ctx.beginPath(); ctx.arc(c[0],c[1],u(PR)*1.55,-1.05,2.09); ctx.stroke();
+      ctx.strokeStyle='#b14cff'; ctx.shadowColor='#b14cff';
+      ctx.beginPath(); ctx.arc(c[0],c[1],u(PR)*1.55,2.09,5.23); ctx.stroke();
+    } else {
+      const oc = puck.owner==='Y'?'#ffe23a':'#b14cff';
+      ctx.globalAlpha=.6*pulse; ctx.strokeStyle=oc; ctx.shadowColor=oc; ctx.shadowBlur=24; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(c[0],c[1],u(PR)*1.5,0,6.28); ctx.stroke();
+    }
+    ctx.restore();
+  }
+  if(IMG.puck){ const d=u(PR)*2;
+    // CONTACT DEFORM — squash against the blow on impact (spring) + a touch of flight stretch so speed/
+    // direction read through SHAPE, not a glow. Oriented in screen space via two projected points.
+    let along=1,perp=1,rot=0; const sp=Math.hypot(puck.va,puck.vb), useHit=puck.hitT>0;
+    const ax=useHit?puck.hnx:puck.va, ay=useHit?puck.hnb:puck.vb;
+    if(useHit||sp>0.05){ const p1=S(puck.a+ax*0.04,puck.b+ay*0.04); rot=Math.atan2(p1[1]-c[1],p1[0]-c[0]); }
+    if(sp>0.8){ const st=Math.min(0.24,(sp-0.8)*0.04); along+=st; perp-=st*0.55; }
+    if(useHit){ const q=1-puck.hitT,a=0.44*Math.cos(q*Math.PI*3)*(1-q); along-=a; perp+=a; }
+    if(along!==1||perp!==1||rot!==0){ ctx.save(); ctx.translate(c[0],c[1]); ctx.rotate(rot); ctx.scale(along,perp); ctx.drawImage(IMG.puck,-d/2,-d/2,d,d); ctx.restore(); }
+    else ctx.drawImage(IMG.puck,c[0]-d/2,c[1]-d/2,d,d); }
+  else { neonCircle(puck.a,puck.b,PR,'#1a1620',2,10,'#0a0810');               // inky puck body (no white bloom)
+         neonCircle(puck.a,puck.b,PR*.62,'#b9c6d2',1.5,8,'rgba(120,140,160,.5)'); }
+}
+
+function drawScore(){
+  ctx.save(); ctx.font=`800 ${Math.round(unit*.16)}px "Helvetica Neue",Arial`; ctx.textBaseline='top'; ctx.textAlign='center';
+  const yp=S(0.18,0.5), pp=S(1.82,0.5);
+  ctx.shadowColor='#ffe23a'; ctx.shadowBlur=20; ctx.fillStyle='#ffe23a'; ctx.fillText(scoreY, yp[0], yp[1]-unit*.08);
+  ctx.shadowColor='#b14cff'; ctx.fillStyle='#b14cff'; ctx.fillText(scoreP, pp[0], pp[1]-unit*.08);
+  // tiny labels + target
+  ctx.shadowBlur=8; ctx.font=`700 ${Math.round(unit*.045)}px "Helvetica Neue",Arial`;
+  ctx.fillStyle='rgba(255,226,58,.8)'; ctx.fillText('BEES', yp[0], yp[1]+unit*.10);
+  ctx.fillStyle='rgba(177,76,255,.8)'; ctx.fillText('QUEENS', pp[0], pp[1]+unit*.10);
+  ctx.restore();
+}
+
+function drawBanner(){
+  if(GAME.msgT<=0) return;
+  const a=Math.min(1, GAME.msgT*2.2); const cx=VW/2, cy=by+bh*0.30;
+  ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.globalAlpha=a;
+  ctx.shadowColor=GAME.msgCol; ctx.shadowBlur=30; ctx.fillStyle=GAME.msgCol;
+  ctx.font=`800 ${Math.round(unit*0.22)}px "Helvetica Neue",Arial`; ctx.fillText(GAME.msg, cx, cy);
+  if(GAME.sub){ ctx.font=`700 ${Math.round(unit*0.07)}px "Helvetica Neue",Arial`; ctx.fillStyle='#fff'; ctx.shadowBlur=12; ctx.fillText(GAME.sub, cx, cy+unit*0.17); }
+  ctx.restore();
+}
+
+function drawAttract(){
+  const cx=VW/2;
+  ctx.save(); ctx.fillStyle='rgba(2,2,10,.5)'; ctx.fillRect(0,0,VW,VH);
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  if(TITLE.complete&&TITLE.naturalWidth){ const w=Math.min(VW*0.72,bw*0.82),h=w*TITLE.naturalHeight/TITLE.naturalWidth; ctx.drawImage(TITLE,cx-w/2,by+bh*0.16,w,h); }
+  else { ctx.shadowColor='#27f6ff'; ctx.shadowBlur=28; ctx.fillStyle='#fff'; ctx.font=`800 ${Math.round(unit*0.18)}px "Helvetica Neue",Arial`; ctx.fillText('ONE-TIMER', cx, by+bh*0.30); }
+  ctx.shadowColor='#ff37c7'; ctx.shadowBlur=16; ctx.fillStyle='#ffe23a';
+  ctx.font=`800 ${Math.round(unit*0.075)}px "Helvetica Neue",Arial`; ctx.fillText('PENALTY BOX NACHOS', cx, by+bh*0.58);
+  ctx.shadowBlur=10; ctx.fillStyle='#cfe6ff';
+  ctx.font=`700 ${Math.round(unit*0.05)}px "Helvetica Neue",Arial`; ctx.fillText('MOVE TO STEER · SCORE IN THE FAR GOAL', cx, by+bh*0.68);
+  ctx.fillText('TAP / SPACE TO FACE OFF', cx, by+bh*0.75);
+  ctx.restore();
+}
+
+function coverDraw(im,x,y,w,h){
+  const ir=im.width/im.height, br=w/h; let dw,dh,dx,dy;
+  if(ir>br){ dh=h; dw=h*ir; dx=x-(dw-w)/2; dy=y; } else { dw=w; dh=w/ir; dx=x; dy=y-(dh-h)/2; }
+  ctx.drawImage(im,dx,dy,dw,dh);
+}
+
+/* ===== FRONT-END MENU: title -> knocker -> venue -> puck (shared HTCatalog/HTMenu toolkit) =====
+   Same catalog + carpet-wipe + blacklight as the SIDE game (lib/catalog.js, lib/menu.js) so the
+   top-down mouse/iPhone front-end stays "close on all versions." Puck select is wired here. */
+(function(){
+  const C=window.HTCatalog, M=window.HTMenu;
+  if(!C||!M) return;   // lib/catalog.js + lib/menu.js not loaded (e.g. the headless fuzz harness) — leave the menu inert; the engine still runs
+  const menu=document.getElementById('menu'), carpet=document.getElementById('m-carpet'), loadEl=document.getElementById('m-load');
+  const pTitle=document.getElementById('m-title'), pKnock=document.getElementById('m-knocker'),
+        pRink=document.getElementById('m-rink'), pPuck=document.getElementById('m-puck');
+  const kgrid=document.getElementById('kgrid'), rgrid=document.getElementById('rgrid'), pgrid=document.getElementById('pgrid');
+
+  // carpet backdrop + wipe panel: prefer the new bees/queens split carpet, fall back to the existing one
+  (function setCarpet(){ const cands=['sprites/carpet_hyscore.png','sprites/carpet_hyscore_alt.png'];
+    (function tryNext(i){ if(i>=cands.length)return; const im=new Image();
+      im.onload=()=>{ const u="url('"+cands[i]+"')"; carpet.style.backgroundImage=u; loadEl.style.backgroundImage=u; };
+      im.onerror=()=>tryNext(i+1); im.src=cands[i]; })(0); })();
+
+  let pick={ knock:C.knock('bees'), rink:C.RINKS_TOP[0], puck:C.puck('neutral') };
+  const goLoad=M.makeLoader(loadEl, SFX);
+  function show(p){ [pTitle,pKnock,pRink,pPuck].forEach(x=>x.classList.add('hidden')); p.classList.remove('hidden'); }
+
+  // detected-controller pill (mouse game → minimal)
+  M.controllerStatus(document.getElementById('m-cstatus'), {minimal:true});
+
+  M.buildKnockers(kgrid, C.KNOCKERS, { engine:'top', onPick:(K)=>{ pick.knock=K; SFX.resume();
+    goLoad(()=>show(pRink), { crest:C.CREST[K.team], title:C.CHANT[K.team]||K.name,
+      sting:()=>{ if(K.team==='bees')SFX.goal('Y'); else if(K.team==='queens')SFX.goal('P'); else SFX.start(); } }); } });
+  M.buildRinks(rgrid, C.RINKS_TOP, { engine:'top', onPick:(R)=>{ pick.rink=R; SFX.resume();
+    goLoad(()=>show(pPuck), { title:'CHOOSE YOUR PUCK', sub:R.name }); } });
+  M.buildPucks(pgrid, C.PUCKS, { onPick:(P)=>{ pick.puck=P; SFX.resume();
+    goLoad(()=>launch(), { title:'DROPPING THE PUCK', sub:P.name }); } });
+
+  function launch(){
+    const K=pick.knock, R=pick.rink, P=pick.puck;
+    const p1=new Image(); p1.onload=()=>IMG.knockerP1=p1; p1.src=C.knockerSprite(K,'top'); yk.col=K.col;
+    const b1=new Image(); b1.onload=()=>IMG.knockerP1B=b1; b1.src=C.knockerBottom(K,'top');   // P1 underside for the flip
+    const oppGold=(K.key==='queens');                 // if the player took queens, the rival goes gold
+    const opp=oppGold?C.knock('bees'):C.knock('queens');
+    const p2=new Image(); p2.onload=()=>IMG.knockerP2=p2; p2.src=C.knockerSprite(opp,'top'); pk.col=opp.col;
+    const b2=new Image(); b2.onload=()=>IMG.knockerP2B=b2; b2.src=C.knockerBottom(opp,'top');   // P2 underside
+    const bg=new Image(); bg.onload=()=>{ IMG.bg=bg; layout(); }; bg.src=R.bg;
+    if(P){ const pk2=new Image(); pk2.onload=()=>IMG.puck=pk2; pk2.src=P.img; }   // the chosen puck colour
+    VENUE_TEAM=R.venue;
+    GOAL=goalHalfFor(R.key);                 // apply the RINK LAB locked goal-mouth width for this table
+    menu.classList.add('hidden');
+    SFX.resume(); if(SFX.start)SFX.start();
+    SFX.bed(venueBed(), 0.15);               // swap the menu bed → the venue gameplay bed (looping)
+    startMatch();
+  }
+
+  pTitle.onclick=()=>{ SFX.resume(); SFX.bed('title', 0.16); goLoad(()=>show(pKnock),{title:'CHOOSE YOUR KNOCKER'}); };
+  window.addEventListener('keydown',e=>{ if(menu.classList.contains('hidden'))return;
+    if(e.key==='Enter'||e.key===' '){ e.preventDefault(); if(!pTitle.classList.contains('hidden')) pTitle.onclick(); } });
+
+  // ATTRACT (?demo): skip the front-end, drop straight into a self-playing CPU-vs-CPU match that loops.
+  if(DEMO){ pick.rink = C.rinkTop(_tbl) || C.RINKS_TOP[0]; pick.knock = C.knock('bees'); pick.puck = C.puck('neutral'); hideHint(); launch(); }
+})();
+
+/* ===== BOOT IDENT — the killscreen slapshot cold-open. Small by design (~1.9s), tap/key to skip.
+   A puck rips in, CRACKS the 4th wall (flash + killscreen slap), the ONE-TIMER logo snaps in, then
+   it fades to reveal the menu. Skipped for ?demo (attract) and ?noboot. ===== */
+(function boot(){
+  const el=document.getElementById('boot');
+  const skipIt = DEMO || new URLSearchParams(location.search).has('noboot');
+  if(!el){ return; }
+  if(skipIt){ el.classList.add('gone'); setTimeout(()=>{ try{el.remove();}catch(e){} },0); return; }
+  const bc=document.getElementById('bootcv'); const g=bc&&bc.getContext&&bc.getContext('2d');
+  if(!g){ el.classList.add('gone'); return; }                 // headless / no-canvas: just reveal the menu
+  const DPR=Math.min(2, (window.devicePixelRatio||1));
+  let W=0,H=0; function size(){ W=bc.width=Math.floor(innerWidth*DPR); H=bc.height=Math.floor(innerHeight*DPR); }
+  size(); addEventListener('resize',size);
+  const FLY=0.52, DONE_AT=1.95; let t0=null, impacted=false, finished=false;
+  function finish(){ if(finished)return; finished=true; el.classList.add('gone'); setTimeout(()=>{ try{el.remove();}catch(e){} },520); }
+  el.addEventListener('pointerdown',finish); addEventListener('keydown',finish,{once:true});
+  function bframe(now){
+    if(finished) return;
+    if(t0==null) t0=now; const t=(now-t0)/1000;
+    const cx=W*0.5, cy=H*0.5, R=Math.min(W,H)*0.06;
+    g.fillStyle='#04040a'; g.fillRect(0,0,W,H);
+    if(t<FLY){
+      const e=1-Math.pow(1-Math.min(1,t/FLY),3), px=(-0.14+e*0.64)*W, py=cy;   // puck slaps in left -> centre
+      for(let i=7;i>=1;i--){ g.globalAlpha=0.05*i; g.fillStyle='#bfffff'; g.beginPath(); g.arc(px-i*R*0.85,py,R*(1-i*0.05),0,6.28); g.fill(); }
+      g.globalAlpha=1; g.fillStyle='#0a0a12'; g.strokeStyle='#dff6ff'; g.lineWidth=Math.max(2,R*0.14);
+      g.beginPath(); g.arc(px,py,R,0,6.28); g.fill(); g.stroke();
+    } else {
+      if(!impacted){ impacted=true; try{ SFX.resume(); SFX.play('killscreen',0.85); SFX.play('slap',0.6);
+        setTimeout(()=>{ try{ SFX.play('title_logo_drop',0.7); }catch(e){} },150); }catch(e){} }
+      const it=t-FLY;
+      if(it<0.22){ g.globalAlpha=Math.max(0,1-it/0.22); g.fillStyle='#fff'; g.fillRect(0,0,W,H); g.globalAlpha=1; }   // CRACK flash
+      if(it<0.5){ g.save(); g.globalAlpha=Math.max(0,1-it/0.5); g.strokeStyle='#7fe9ff'; g.lineWidth=Math.max(2,R*0.1); g.shadowColor='#27f6ff'; g.shadowBlur=28;
+        for(let a=0;a<8;a++){ const an=a/8*6.283+0.22, rr=R+it*W*0.85; g.beginPath(); g.moveTo(cx,cy); g.lineTo(cx+Math.cos(an)*rr,cy+Math.sin(an)*rr); g.stroke(); } g.restore(); }
+      const lt=Math.min(1,it/0.42), pop=1+0.16*Math.sin(lt*Math.PI)*(1-lt), scale=(0.62+0.38*(1-Math.pow(1-lt,3)))*pop, al=Math.min(1,it/0.2);
+      g.globalAlpha=al;
+      if(TITLE && TITLE.complete && TITLE.naturalWidth){
+        const tw=Math.min(W*0.72, W*0.6*scale), th=tw*(TITLE.naturalHeight/TITLE.naturalWidth);
+        g.drawImage(TITLE, cx-tw/2, cy-th/2, tw, th);
+      } else {
+        g.fillStyle='#fff'; g.textAlign='center'; g.textBaseline='middle';
+        g.font=`900 ${Math.floor(R*2.0*scale)}px "Helvetica Neue",Arial`; g.fillText('ONE-TIMER',cx,cy-R*0.5);
+        g.fillStyle='#ffcf2a'; g.font=`800 ${Math.floor(R*0.9*scale)}px "Helvetica Neue",Arial`; g.fillText('THE HIGH TABLE',cx,cy+R*1.0);
+      }
+      g.globalAlpha=1;
+    }
+    if(t>=DONE_AT){ finish(); return; }
+    requestAnimationFrame(bframe);
+  }
+  requestAnimationFrame(bframe);
+})();
+
+/* ----- main loop ----------------------------------------------------------- */
+let last=0;
+function frame(t){ const dt=last? Math.min(0.033,(t-last)/1000):0.016; last=t; step(dt); draw(t); requestAnimationFrame(frame); }
+requestAnimationFrame(frame);
+
+})();
+</script>
+</body>
+</html>

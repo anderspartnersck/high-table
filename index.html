@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>ONE-TIMER: THE HIGH TABLE</title>
+<!--
+  FRONT-END SHELL — ATTRACT REEL -> menu (venue / difficulty / players) -> game.
+  Arcade loop (no lore — mirrors attract.html):
+    MAIN TITLE — the HIGH TABLE logo ZINGS in (sting + swell)
+    SPLASH     — bees-gold + queens-purple logos burst — THE RIVALRY
+    DEMO       — live CPU-vs-CPU (side.html?demo)
+    LEADERBOARD— the HALL OF FLIGHT high scores, sliding in hot
+    MOUSE      — live mouse-clicker (table_temp_engine.html?demo) + ONE-TIMER MOBILE ad
+    ADS        — the tables + the cabs (INSERT COIN)
+  Music swells/stings on the title + board cuts. Modes get teed up in the MENU.
+  Self-contained; serve over localhost (it iframes side.html + table_temp_engine.html).
+-->
+<style>
+  :root{--bee:#ffe23a;--queen:#b14cff;--cyan:#27f6ff;--green:#39ff14;}
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:#000;overflow:hidden;color:#fff;font-family:"Helvetica Neue",Arial,system-ui,sans-serif;-webkit-user-select:none;user-select:none}
+  #bg{position:fixed;inset:0;display:block;z-index:0}
+  .bars{position:fixed;left:0;right:0;height:8vh;background:#000;z-index:1;pointer-events:none}
+  #vig{position:fixed;inset:0;z-index:1;pointer-events:none;box-shadow:inset 0 0 220px 60px rgba(0,0,0,.82)}
+  #cut{position:fixed;inset:0;z-index:7;background:#000;opacity:0;pointer-events:none;transition:opacity .26s ease-out}
+  .screen{position:fixed;inset:0;z-index:3;display:none;flex-direction:column;align-items:center;justify-content:center}
+  .screen.on{display:flex}
+
+  /* MAIN TITLE — the zing */
+  #title{z-index:4}
+  #title #logo{width:min(74vw,720px);filter:drop-shadow(0 0 44px var(--queen)) drop-shadow(0 0 16px var(--bee))}
+  #title #logotext{font:900 clamp(34px,9vw,92px)/0.92 system-ui;letter-spacing:.02em;text-shadow:0 0 36px var(--queen),0 0 12px var(--bee);text-align:center}
+  #title #logotext small{display:block;font-size:.32em;letter-spacing:.4em;color:var(--cyan);margin-top:.4em;text-shadow:0 0 16px var(--cyan)}
+  #title.pop #logo,#title.pop #logotext{animation:logoIn 1.15s cubic-bezier(.22,.61,.36,1) both}   /* gentler, slower logo settle (was a snappy .85s pop) */
+  @keyframes logoIn{0%{transform:scale(1.28) translateY(-2vh);opacity:0;filter:blur(10px) drop-shadow(0 0 44px var(--queen))}50%{opacity:1;filter:blur(0) drop-shadow(0 0 60px var(--bee)) drop-shadow(0 0 20px var(--queen))}100%{transform:scale(1) translateY(0);opacity:1}}
+  #tagline{margin-top:2.6vh;font:800 clamp(13px,2.1vw,22px)/1 system-ui;letter-spacing:.44em;color:var(--cyan);text-shadow:0 0 18px var(--cyan);opacity:0;animation:fadeUp .7s .3s ease-out both}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:.95;transform:none}}
+
+  /* CAPTION (cold lower-third + legend pods) */
+  #cap{position:fixed;left:0;right:0;bottom:11vh;text-align:center;z-index:4;pointer-events:none;padding:0 8%;font-weight:800;font-size:clamp(15px,2.7vw,28px);line-height:1.32;text-shadow:0 2px 18px #000,0 0 30px #000;opacity:0;transition:opacity .5s}
+  #cap b{color:var(--bee)} #cap .q{color:var(--queen)} #cap small{display:block;font-weight:500;font-size:.74em;opacity:.92;margin-top:.4em}
+  #cap.eerie{font-weight:600;letter-spacing:.28em;font-style:italic;color:#cfe6ff;text-transform:uppercase;font-size:clamp(13px,2.2vw,22px)}
+  #press{position:fixed;left:0;right:0;bottom:4vh;text-align:center;z-index:5;font-weight:800;letter-spacing:.36em;font-size:clamp(13px,2vw,20px);color:var(--cyan);text-shadow:0 0 16px var(--cyan);animation:blink 1.25s steps(1,end) infinite}
+  @keyframes blink{0%,55%{opacity:1}56%,100%{opacity:0}}
+
+  /* MENU */
+  #menu{background:rgba(4,2,12,.62);backdrop-filter:blur(3px)}
+  #menu h1{font:900 clamp(19px,3.6vw,36px)/1 system-ui;letter-spacing:.04em;margin-bottom:1.7vh;text-shadow:0 0 26px var(--queen)}
+  #menu h1 b{color:var(--bee)}
+  #menu .sub{font:600 12px/1 system-ui;letter-spacing:.14em;color:#9c89c4;margin:-1vh 0 1.8vh}
+  #menugroups{display:flex;flex-direction:column;gap:1.4vh;align-items:center;max-width:1100px}
+  .grp{display:flex;flex-direction:column;gap:6px;align-items:center}
+  .grp-h{font:800 11px/1 system-ui;letter-spacing:.26em;text-transform:uppercase;color:#9c89c4}
+  .grp-h b{color:var(--bee)} .grp-h .q{color:var(--queen)} .grp-h .g{color:var(--green)}
+  .grp .row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+  .card{width:168px;border-radius:14px;overflow:hidden;background:#0c0620;border:2px solid #2c1850;cursor:pointer;transition:transform .2s,border-color .2s,box-shadow .2s}
+  .card:hover{transform:translateY(-4px)}
+  .card.sel{border-color:var(--cc);box-shadow:0 0 0 1px var(--cc),0 0 28px -4px var(--cc)}
+  .card .thumb{height:80px;background:#000 center/cover no-repeat;border-bottom:1px solid #2c1850}
+  .card .nm{font:800 14px/1.1 system-ui;letter-spacing:.02em;padding:9px 10px 2px;color:var(--cc)}
+  .card .sb{font-size:11px;color:#b7a6d6;padding:0 10px}
+  .card .te{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#7c6ba0;padding:4px 10px 10px}
+  .opts{display:flex;gap:30px;margin-top:2vh;flex-wrap:wrap;justify-content:center}
+  .opt{text-align:center}
+  .opt .lbl{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#9c89c4;margin-bottom:8px}
+  .seg{display:inline-flex;border:1px solid #46297e;border-radius:22px;overflow:hidden}
+  .seg button{background:#1a0f33;color:#cdb6ff;border:0;padding:9px 16px;font:700 13px system-ui;cursor:pointer;letter-spacing:.05em}
+  .seg button.on{background:var(--cyan);color:#04121a;text-shadow:none}
+  #go{margin-top:2.4vh;background:linear-gradient(180deg,#ffe23a,#ffb800);color:#1a1000;border:0;border-radius:30px;padding:14px 52px;font:900 18px system-ui;letter-spacing:.16em;cursor:pointer;box-shadow:0 0 34px -4px var(--bee)}
+  #go:active{transform:scale(.97)}
+  #back{position:fixed;top:14px;left:14px;z-index:6;background:rgba(8,4,18,.8);color:#cdb6ff;border:1px solid #46297e;border-radius:20px;padding:8px 16px;font:700 12px system-ui;letter-spacing:.12em;cursor:pointer;display:none}
+  #game{position:fixed;inset:0;z-index:5;border:0;width:100%;height:100%;display:none;background:#000}
+  .hintbar{position:fixed;bottom:1.4vh;left:0;right:0;text-align:center;color:#7c6ba0;font-size:11px;letter-spacing:.12em;z-index:4}
+</style>
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSczMicgaGVpZ2h0PSczMic+PGVsbGlwc2UgY3g9JzE2JyBjeT0nMjEnIHJ4PScxMicgcnk9JzYnIGZpbGw9JyMxNDE0MTknLz48cmVjdCB4PSc0JyB5PScxMycgd2lkdGg9JzI0JyBoZWlnaHQ9JzgnIGZpbGw9JyMxNDE0MTknLz48ZWxsaXBzZSBjeD0nMTYnIGN5PScxMycgcng9JzEyJyByeT0nNicgZmlsbD0nI2YwYjQyOScvPjxlbGxpcHNlIGN4PScxNicgY3k9JzEzJyByeD0nNycgcnk9JzMuMicgZmlsbD0nI2ZmZDc2YicvPjwvc3ZnPg==">   <!-- gold puck — inline so there is no favicon.ico request (every build was 404ing one) -->
+</head>
+<body>
+<canvas id="bg"></canvas>
+<div class="bars" style="top:0"></div>
+<div class="bars" style="bottom:0"></div>
+<div id="vig"></div>
+
+<!-- ATTRACT LAYERS -->
+<section class="screen on" id="title">
+  <img id="logo" src="sprites/title_high_table.png" alt="ONE-TIMER: THE HIGH TABLE"
+       onerror="this.style.display='none';document.getElementById('logotext').style.display='block'">
+  <div id="logotext" style="display:none">ONE-TIMER<small>THE HIGH TABLE</small></div>
+  <div id="tagline"></div>
+</section>
+<div id="cap"></div>
+<div id="press">PRESS START</div>
+
+<!-- MENU -->
+<section class="screen" id="menu">
+  <h1>CHOOSE YOUR <b>TABLE</b></h1>
+  <div class="sub">EACH HOUSE PLAYS ITS OWN GAME</div>
+  <div id="menugroups"></div>
+  <div class="opts">
+    <div class="opt"><div class="lbl">Mode</div><div class="seg" id="modeSeg"></div></div>
+    <div class="opt"><div class="lbl">Difficulty</div><div class="seg" id="diffSeg"></div></div>
+    <div class="opt"><div class="lbl">Players</div><div class="seg" id="pSeg"></div></div>
+  </div>
+  <button id="go">FACE OFF ▸</button>
+  <div class="hintbar">← → / click to choose · ENTER to face off · the Rivalry is the jewel</div>
+</section>
+
+<iframe id="game" allow="gamepad; autoplay"></iframe>
+<button id="back">❮ MENU</button>
+<div id="cut"></div>
+
+<script src="lib/catalog.js"></script>
+<script>
+(function(){
+"use strict";
+var cv=document.getElementById('bg'), ctx=cv.getContext('2d');
+function imgReady(im){ return im && im.naturalWidth>0; }
+var beesLogo=new Image(); beesLogo.src='sprites/logo_hivemind.png';
+var queensLogo=new Image(); queensLogo.src='sprites/logo_queens_table.png';
+// THE TABLE ADS — the venues + the editions (the games, not the cabs). Each holds >=3s with a 12-frame dissolve.
+// ADS now come from the shared catalog (HTCatalog.ATTRACT_ADS) so index.html + side.html can't drift.
+var ADIMG={}; var ADS=(window.HTCatalog&&window.HTCatalog.ATTRACT_ADS)||[];
+ADS.forEach(function(a){ var im=new Image(); im.onload=function(){ADIMG[a.k]=im;}; im.src=a.src; });
+var ADS_DUR=ADS.length*3.4;   // 3.4s per ad -> each holds ~3s after its 12-frame dissolves (readable, not a flash)
+function gradBg(c0,c1){ var CW=cv.width,CH=cv.height,g=ctx.createRadialGradient(CW/2,CH*0.42,0,CW/2,CH*0.5,Math.max(CW,CH)*0.7);
+  g.addColorStop(0,c0); g.addColorStop(1,c1); ctx.fillStyle=g; ctx.fillRect(0,0,CW,CH); }
+
+/* ---------- THE REEL (arcade loop, no lore — mirrors attract.html) ----------
+   title : the logo zings in
+   splash: bees-gold + queens-purple logos burst — THE RIVALRY
+   demo  : live CPU-vs-CPU (side.html?demo)
+   board : the high-score wall
+   mouse : live mouse-clicker (table_temp_engine.html?demo) + ONE-TIMER MOBILE ad
+   ads   : the tables + cabs                                                              */
+// Calm cross-dissolving loop: logo → live demo → the TABLE ADS (venues + editions, each readable for ≥3s) →
+// leaderboard. The ads are back (Joe 2026-06-26): the attract has to actually sell the tables/editions.
+var REEL=[
+ {t:'title', dur:6.5, tag:'ONE-TIMER · THE HIGH TABLE', vol:0.6, sting:'logo'},
+ {t:'demo',  dur:14.0, vol:0.5, sting:'mode'},
+ {t:'ads',   dur:ADS_DUR, vol:0.5, sting:'logo'},
+ {t:'board', dur:7.0, vol:0.5, sting:'logo'},
+];
+
+/* ---------- elements ---------- */
+var titleEl=document.getElementById('title'),menuEl=document.getElementById('menu'),
+    gameEl=document.getElementById('game'),backEl=document.getElementById('back'),
+    pressEl=document.getElementById('press'),capEl=document.getElementById('cap'),
+    cutEl=document.getElementById('cut'),taglineEl=document.getElementById('tagline');
+
+/* ---------- music: bed ducks under legend, swells on title/board, with stings ---------- */
+var music=new Audio('audio/title.mp3'); music.loop=true; music.volume=0; var musicOn=false, musicTarget=0.5, AC=null;
+function startMusic(){ if(musicOn)return; musicOn=true; try{music.play();}catch(e){} try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){AC=null;} }
+function sting(kind){ if(!AC)return; try{
+  var now=AC.currentTime, g=AC.createGain(); g.connect(AC.destination);
+  var notes = kind==='logo' ? [660,990] : [523];
+  notes.forEach(function(f,i){ var o=AC.createOscillator(); o.type=i?'sine':'triangle'; o.frequency.value=f;
+    var t0=now+i*0.085; o.connect(g); o.start(t0); o.stop(t0+0.26); });
+  g.gain.setValueAtTime(0.0001,now);
+  g.gain.exponentialRampToValueAtTime(kind==='logo'?0.20:0.13, now+0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, now+(kind==='logo'?0.46:0.30));
+}catch(e){} }
+function blip(f){ if(!AC)return; try{ var now=AC.currentTime,g=AC.createGain(),o=AC.createOscillator();
+  o.type='square'; o.frequency.value=f; o.connect(g); g.connect(AC.destination);
+  g.gain.setValueAtTime(0.12,now); g.gain.exponentialRampToValueAtTime(0.0001,now+0.14); o.start(now); o.stop(now+0.16);
+}catch(e){} }
+
+/* ---------- helpers ---------- */
+var easeIO=function(t){return t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;}, lerp=function(a,b,t){return a+(b-a)*t;};
+var clamp=function(v,a,b){return v<a?a:v>b?b:v;};
+function drawImgRect(im,rect,dark){ var CW=cv.width,CH=cv.height; if(!imgReady(im)){ctx.fillStyle='#0a0618';ctx.fillRect(0,0,CW,CH);return;}
+  var IW=im.naturalWidth,IH=im.naturalHeight,rw=rect[2]*IW,rh=rect[3]*IH,s=Math.max(CW/rw,CH/rh);
+  var dx=CW/2-(rect[0]*IW+rw/2)*s,dy=CH/2-(rect[1]*IH+rh/2)*s; ctx.drawImage(im,dx,dy,IW*s,IH*s);
+  if(dark){ctx.fillStyle='rgba(4,2,12,'+dark+')';ctx.fillRect(0,0,CW,CH);} }
+
+/* ===== COLD OPEN — eerie starfield ===== */
+var stars=null;
+function drawStarfield(dt){ var CW=cv.width,CH=cv.height;
+  if(!stars){ stars=[]; for(var i=0;i<140;i++)stars.push({x:Math.random(),y:Math.random(),z:Math.random(),p:Math.random()*6.28,s:0.3+Math.random()*1.4}); }
+  ctx.fillStyle='#000'; ctx.fillRect(0,0,CW,CH);
+  var neb=ctx.createRadialGradient(CW*0.5,CH*0.42,0,CW*0.5,CH*0.5,CH*0.95);
+  neb.addColorStop(0,'rgba(40,18,70,0.30)'); neb.addColorStop(0.5,'rgba(20,10,40,0.12)'); neb.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=neb; ctx.fillRect(0,0,CW,CH);
+  for(var j=0;j<stars.length;j++){ var st=stars[j]; st.p+=dt*(0.6+st.z); st.y+=dt*0.004*(0.4+st.z); if(st.y>1)st.y-=1;
+    var tw=0.35+0.65*(0.5+0.5*Math.sin(st.p)); var r=st.s*(0.6+st.z*1.3);
+    ctx.globalAlpha=tw; ctx.fillStyle= st.z>0.8?'#dff0ff':(st.z>0.5?'#bcd6ff':'#8aa6d0');
+    ctx.beginPath(); ctx.arc(st.x*CW,st.y*CH,r,0,6.2832); ctx.fill(); }
+  ctx.globalAlpha=1; }
+
+/* ===== DEMO — gameplay highlight (airy glide / TRAP / BLAST / GOAL) ===== */
+var D=null;
+function demoReset(){ var CW=cv.width,CH=cv.height;
+  D={ rink:{x:CW*0.12,y:CH*0.15,w:CW*0.76,h:CH*0.70}, atk:0, blastIn:1.4, score:[7,5],
+      flash:0, shake:0, label:'', labelT:0, trail:[], ptrail:[] };
+  var r=D.rink; D.near={x:r.x+r.w*0.5,y:r.y+r.h*0.78,col:'#ffe23a'};
+  D.far ={x:r.x+r.w*0.5,y:r.y+r.h*0.22,col:'#b14cff'};
+  D.puck={x:r.x+r.w*0.5,y:r.y+r.h*0.5,vx:0,vy:0,go:false}; }
+function drawDemo(dt){ if(gameEl&&gameEl.getAttribute('data-demo')==='1') return;   // live engine is mounted over the canvas; skip the procedural fallback
+  if(!D)demoReset(); var CW=cv.width,CH=cv.height,r=D.rink;
+  D.flash=Math.max(0,D.flash-dt*1.8); D.shake=Math.max(0,D.shake-dt*40); D.labelT=Math.max(0,D.labelT-dt);
+  var sx=(Math.random()-0.5)*D.shake, sy=(Math.random()-0.5)*D.shake;
+  // ----- sim -----
+  var atkK=D.atk===0?D.near:D.far, defK=D.atk===0?D.far:D.near;
+  var goalY=D.atk===0? r.y : r.y+r.h;             // gold(0) attacks top goal, purple(1) attacks bottom
+  if(!D.puck.go){
+    D.puck.x=lerp(D.puck.x,r.x+r.w*(0.5+0.18*Math.sin(D.labelT+performance.now()/1400)),clamp(dt*1.5,0,1));
+    D.blastIn-=dt;
+    // attacker lines up just behind the puck; defender guards its mouth
+    var aty=D.puck.y+(D.atk===0?52:-52);
+    atkK.x=lerp(atkK.x,D.puck.x,clamp(dt*5,0,1)); atkK.y=lerp(atkK.y,aty,clamp(dt*4,0,1));
+    defK.x=lerp(defK.x,r.x+r.w*0.5+(D.puck.x-(r.x+r.w*0.5))*0.6,clamp(dt*3,0,1));
+    defK.y=lerp(defK.y,(D.atk===0?r.y+r.h*0.12:r.y+r.h*0.88),clamp(dt*4,0,1));
+    if(D.blastIn<=0){ var tx=r.x+r.w*(0.5+(Math.random()-0.5)*0.5), ty=goalY+(D.atk===0?-6:6);
+      var ang=Math.atan2(ty-D.puck.y,tx-D.puck.x), sp=Math.max(CW,CH)*1.25;
+      D.puck.vx=Math.cos(ang)*sp; D.puck.vy=Math.sin(ang)*sp; D.puck.go=true;
+      D.label='BLAST!'; D.labelT=0.7; D.shake=12; blip(680); }
+  } else {
+    D.puck.x+=D.puck.vx*dt; D.puck.y+=D.puck.vy*dt;
+    if(D.puck.y<r.y-4 || D.puck.y>r.y+r.h+4){ D.flash=0.6; D.shake=18; D.score[D.atk]++; D.label='GOAL!'; D.labelT=1.0; blip(990);
+      D.puck.go=false; D.puck.x=r.x+r.w*0.5; D.puck.y=r.y+r.h*0.5; D.puck.vx=D.puck.vy=0; D.atk=1-D.atk; D.blastIn=1.3+Math.random()*0.5; }
+  }
+  D.ptrail.push([D.puck.x,D.puck.y]); if(D.ptrail.length>14)D.ptrail.shift();
+  // ----- draw -----
+  ctx.save(); ctx.translate(sx,sy);
+  var g=ctx.createLinearGradient(0,r.y,0,r.y+r.h); g.addColorStop(0,'#140a26'); g.addColorStop(0.5,'#1d0f38'); g.addColorStop(1,'#140a26');
+  ctx.fillStyle=g; ctx.fillRect(r.x,r.y,r.w,r.h);
+  ctx.strokeStyle='rgba(124,107,160,0.5)'; ctx.lineWidth=2; ctx.strokeRect(r.x,r.y,r.w,r.h);
+  ctx.strokeStyle='rgba(39,246,255,0.35)'; ctx.beginPath(); ctx.moveTo(r.x,r.y+r.h/2); ctx.lineTo(r.x+r.w,r.y+r.h/2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(r.x+r.w/2,r.y+r.h/2,Math.min(r.w,r.h)*0.13,0,6.2832); ctx.stroke();
+  // goals
+  var gw=r.w*0.26; ctx.lineWidth=5;
+  ctx.strokeStyle='#b14cff'; ctx.beginPath(); ctx.moveTo(r.x+r.w/2-gw/2,r.y); ctx.lineTo(r.x+r.w/2+gw/2,r.y); ctx.stroke();
+  ctx.strokeStyle='#ffe23a'; ctx.beginPath(); ctx.moveTo(r.x+r.w/2-gw/2,r.y+r.h); ctx.lineTo(r.x+r.w/2+gw/2,r.y+r.h); ctx.stroke();
+  // puck trail + puck
+  for(var i=0;i<D.ptrail.length;i++){ var a=i/D.ptrail.length; ctx.globalAlpha=a*0.5; ctx.fillStyle='#fff';
+    ctx.beginPath(); ctx.arc(D.ptrail[i][0],D.ptrail[i][1],10*a,0,6.2832); ctx.fill(); }
+  ctx.globalAlpha=1; ctx.shadowBlur=24; ctx.shadowColor='#fff'; ctx.fillStyle='#fff';
+  ctx.beginPath(); ctx.arc(D.puck.x,D.puck.y,11,0,6.2832); ctx.fill(); ctx.shadowBlur=0;
+  // knockers (glow)
+  [D.near,D.far].forEach(function(k){ ctx.shadowBlur=26; ctx.shadowColor=k.col; ctx.fillStyle=k.col;
+    ctx.beginPath(); ctx.arc(k.x,k.y,20,0,6.2832); ctx.fill(); ctx.shadowBlur=0;
+    ctx.fillStyle='rgba(0,0,0,0.45)'; ctx.beginPath(); ctx.arc(k.x,k.y,10,0,6.2832); ctx.fill(); });
+  // score
+  ctx.textAlign='center'; ctx.font='900 '+Math.round(CH*0.07)+'px system-ui'; ctx.shadowBlur=18;
+  ctx.shadowColor='#ffe23a'; ctx.fillStyle='#ffe23a'; ctx.fillText(D.score[0],r.x+r.w*0.30,r.y-CH*0.012);
+  ctx.shadowColor='#b14cff'; ctx.fillStyle='#b14cff'; ctx.fillText(D.score[1],r.x+r.w*0.70,r.y-CH*0.012); ctx.shadowBlur=0;
+  // labels
+  if(D.labelT>0){ var lc=D.label==='GOAL!'?'#39ff14':'#27f6ff'; ctx.globalAlpha=clamp(D.labelT*2,0,1);
+    ctx.font='900 '+Math.round(CH*0.11)+'px system-ui'; ctx.shadowBlur=30; ctx.shadowColor=lc; ctx.fillStyle=lc;
+    ctx.fillText(D.label,r.x+r.w/2,r.y+r.h/2+CH*0.04); ctx.shadowBlur=0; ctx.globalAlpha=1; }
+  ctx.restore();
+  if(D.flash>0){ ctx.fillStyle='rgba(255,255,255,'+(D.flash*0.5)+')'; ctx.fillRect(0,0,CW,CH); }
+  // DEMO tag
+  ctx.textAlign='left'; ctx.font='800 '+Math.round(CH*0.022)+'px system-ui'; ctx.fillStyle='rgba(124,107,160,0.9)';
+  ctx.fillText('DEMO  ·  TRAP + BLAST',r.x,r.y+r.h+CH*0.05); ctx.textAlign='start';
+}
+
+/* ===== SPLASH — bees + queens logos burst in colour ===== */
+function drawSplash(sT){ var CW=cv.width,CH=cv.height; gradBg('#0c0820','#05030c');
+  function side(im,cx,gp,col){ if(!imgReady(im))return; var a=clamp(gp,0,1);
+    ctx.save(); ctx.globalAlpha=a; ctx.shadowColor=col; ctx.shadowBlur=36*a;
+    var s=Math.min((CW*0.34)/im.naturalWidth,(CH*0.40)/im.naturalHeight),w=im.naturalWidth*s,h=im.naturalHeight*s;
+    ctx.drawImage(im,cx-w/2,CH*0.44-h/2,w,h); ctx.restore(); }
+  side(beesLogo,  CW*0.29, easeIO(clamp(sT/0.7,0,1)),       '#ffe23a');
+  side(queensLogo,CW*0.71, easeIO(clamp((sT-0.25)/0.7,0,1)),'#b14cff');
+  var va=clamp((sT-0.7)/0.4,0,1);
+  if(va>0){ ctx.save(); ctx.globalAlpha=va; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.font='900 '+Math.round(CH*0.16)+'px system-ui'; ctx.fillStyle='#fff'; ctx.shadowColor='#27f6ff'; ctx.shadowBlur=24;
+    ctx.fillText('VS',CW/2,CH*0.44); ctx.restore(); ctx.textAlign='start'; ctx.textBaseline='alphabetic'; } }
+
+/* ===== RAISE IT EXPLAINER — what the best-of-7 series is + how to start it (no story) ===== */
+function drawCup(sT){ var CW=cv.width,CH=cv.height; gradBg('#2a1a05','#05030c');
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  var ah=clamp(sT/0.5,0,1);
+  ctx.save(); ctx.globalAlpha=ah; ctx.font='900 '+Math.round(CH*0.08)+'px system-ui';
+  ctx.fillStyle='#ffe23a'; ctx.shadowColor='#ffae00'; ctx.shadowBlur=28*ah;
+  ctx.fillText('★ RAISE IT',CW/2,CH*0.18); ctx.shadowBlur=0; ctx.restore();
+  // BEST OF 7 — first to 4 game-wins. Seven pips; the 4th is the clincher.
+  var n=7, gap=CW*0.012, pipW=Math.min(CW*0.09,(CW*0.74)/n-gap), pipH=CH*0.14,
+      total=n*pipW+(n-1)*gap, x0=CW/2-total/2, cy=CH*0.42;
+  for(var i=0;i<n;i++){ var ap=clamp((sT-0.4-i*0.12)/0.35,0,1); if(ap<=0)continue; var x=x0+i*(pipW+gap), clinch=(i===3);
+    ctx.save(); ctx.globalAlpha=ap; ctx.translate(0,(1-easeIO(ap))*CH*0.05);
+    ctx.fillStyle='rgba(255,226,58,'+((clinch?0.22:0.08)+0.06*ap)+')'; ctx.strokeStyle='#ffe23a'; ctx.lineWidth=Math.max(2,CW*0.0016*(clinch?1.6:1));
+    roundRect(x,cy-pipH/2,pipW,pipH,pipH*0.22); ctx.fill(); ctx.stroke();
+    ctx.fillStyle=clinch?'#fff':'#bfa9e6'; ctx.font='900 '+Math.round(pipH*0.42)+'px system-ui'; ctx.fillText(String(i+1),x+pipW/2,cy-(clinch?pipH*0.06:0));
+    if(clinch){ ctx.fillStyle='#ffcf2a'; ctx.font='800 '+Math.round(pipH*0.18)+'px system-ui'; ctx.fillText('CLINCH',x+pipW/2,cy+pipH*0.26); }
+    ctx.restore();
+  }
+  var bp=clamp((sT-1.3)/0.5,0,1);
+  if(bp>0){ ctx.save(); ctx.globalAlpha=bp; ctx.fillStyle='#fff'; ctx.font='800 '+Math.round(CH*0.036)+'px system-ui';
+    ctx.fillText('BEST OF 7 vs ESCALATING CPU · GAME 7 ON THE HIGH TABLE',CW/2,CH*0.64); ctx.restore(); }
+  var hp=clamp((sT-1.9)/0.5,0,1);
+  if(hp>0){ ctx.save(); ctx.globalAlpha=hp;
+    ctx.font='800 '+Math.round(CH*0.032)+'px system-ui'; ctx.fillStyle='#9c89c4'; ctx.fillText('HOW TO START',CW/2,CH*0.76);
+    ctx.font='900 '+Math.round(CH*0.042)+'px system-ui'; ctx.fillStyle='#ffe23a'; ctx.shadowColor='#ffae00'; ctx.shadowBlur=16;
+    ctx.fillText('PICK  RAISE IT  IN THE MENU',CW/2,CH*0.83); ctx.shadowBlur=0; ctx.restore(); }
+  ctx.textAlign='start'; ctx.textBaseline='alphabetic'; }
+function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+/* ===== ADS — the tables + the cabs ===== */
+function drawAds(sT){ var CW=cv.width,CH=cv.height,dur=REEL[si].dur,per=dur/ADS.length,
+  idx=Math.min(ADS.length-1,Math.floor(sT/per)),lt=sT-idx*per,ad=ADS[idx],im=ADIMG[ad.k];
+  ctx.fillStyle='#05030c'; ctx.fillRect(0,0,CW,CH);
+  if(imgReady(im)){ var s=Math.max(CW/im.naturalWidth,CH/im.naturalHeight),iw=im.naturalWidth*s,ih=im.naturalHeight*s;
+    ctx.drawImage(im,(CW-iw)/2,(CH-ih)/2,iw,ih); }
+  var a=Math.min(clamp(lt/0.2,0,1),clamp((per-lt)/0.2,0,1));   // 12-frame dissolve in/out (~0.2s); full hold ~3s between
+  var base=ad.bare?0.14:0.45;   // bare = the neon signs read on their own (light scrim); titled slides get the readable dark scrim
+  ctx.fillStyle='rgba(5,3,12,'+(base+0.3*(1-a))+')'; ctx.fillRect(0,0,CW,CH);
+  if(!ad.bare){
+    ctx.save(); ctx.globalAlpha=a; ctx.textAlign='center'; ctx.textBaseline='middle';
+    if(ad.tag){ ctx.font='800 '+Math.round(CH*0.026)+'px system-ui'; ctx.fillStyle='#39ff14'; ctx.shadowColor='#39ff14'; ctx.shadowBlur=14;
+      ctx.fillText('▸ '+ad.tag+' ◂',CW/2,CH*0.30); ctx.shadowBlur=0; }
+    fitCanvasFont(ad.head,'900',CH*0.085,CW*0.9); ctx.fillStyle=ad.col; ctx.shadowColor=ad.col; ctx.shadowBlur=26;
+    ctx.fillText(ad.head,CW/2,CH*0.40); ctx.shadowBlur=0;
+    fitCanvasFont(ad.sub,'700',CH*0.04,CW*0.92); ctx.fillStyle='#fff'; ctx.fillText(ad.sub,CW/2,CH*0.52);
+    ctx.restore();
+  }
+  ctx.textAlign='start'; ctx.textBaseline='alphabetic'; }
+function fitCanvasFont(txt,weight,px,maxW){ px=Math.round(px); ctx.font=weight+' '+px+'px system-ui';   // shrink to fit so ad text never clips the edges
+  while(px>11 && ctx.measureText(txt).width>maxW){ px-=2; ctx.font=weight+' '+px+'px system-ui'; } }
+
+/* ===== LEADERBOARD — the Hall of Flight ===== */
+var BOARD=[
+ ['HVE','THE HIVEMIND','842,500',  'THE HONEY HOLE',  '#ffe23a'],
+ ['HRM','HER MAJESTY', '799,000',  'THE THRONE ROOM', '#b14cff'],
+ ['MAB','MABEL',       '651,200',  'PENALTY BOX',     '#39ff14'],
+ ['JOE','J. COLEMAN',  '500,000',  'BEE AFRAID',      '#27f6ff'],
+ ['CLD','CLAUDE',      '480,512',  'PENALTY BOX',     '#27f6ff'],
+ ['GPT','CHATGPT',     '333,000',  "QUEEN'S RANSOM",  '#b14cff'],
+];
+function drawBoard(sT){ var CW=cv.width,CH=cv.height;
+  // dark drift backdrop
+  gradBg('#1a0c33','#05030c');
+  ctx.textAlign='center'; ctx.shadowBlur=24; ctx.shadowColor='#27f6ff'; ctx.fillStyle='#27f6ff';
+  ctx.font='900 '+Math.round(CH*0.055)+'px system-ui'; ctx.fillText('HALL OF FLIGHT',CW/2,CH*0.205);
+  ctx.shadowBlur=0; ctx.fillStyle='#9c89c4'; ctx.font='800 '+Math.round(CH*0.02)+'px system-ui';
+  ctx.fillText('H I G H   S C O R E S',CW/2,CH*0.245);
+  var top=CH*0.30, rowH=CH*0.072, x0=CW*0.20, x1=CW*0.80;
+  for(var i=0;i<BOARD.length;i++){ var b=BOARD[i];
+    var ap=clamp((sT-0.3-i*0.12)/0.4,0,1), e=easeIO(ap); if(ap<=0)continue;
+    var y=top+i*rowH, slide=(1-e)*CW*0.5; ctx.globalAlpha=e;
+    var first=i===0, pulse=first?0.7+0.3*Math.sin(sT*5):1;
+    ctx.save(); ctx.translate(slide,0);
+    if(first){ ctx.globalAlpha=e*0.18*pulse; ctx.fillStyle='#ffe23a'; ctx.fillRect(x0-CH*0.02,y-rowH*0.62,x1-x0+CH*0.04,rowH*0.92); ctx.globalAlpha=e; }
+    // rank tag
+    ctx.textAlign='left'; ctx.font='900 '+Math.round(rowH*0.4)+'px ui-monospace,monospace';
+    ctx.fillStyle=b[4]; ctx.shadowBlur=first?16:0; ctx.shadowColor=b[4]; ctx.fillText((i+1)+'.',x0,y); ctx.shadowBlur=0;
+    // name
+    ctx.font=(first?'900 ':'800 ')+Math.round(rowH*0.46)+'px system-ui';
+    ctx.fillStyle=first?'#fff':'#eadcff'; if(first){ctx.shadowBlur=18;ctx.shadowColor='#ffe23a';}
+    ctx.fillText(b[1],x0+CW*0.05,y); ctx.shadowBlur=0;
+    // table (dim)
+    ctx.font='600 '+Math.round(rowH*0.26)+'px system-ui'; ctx.fillStyle='#7c6ba0';
+    ctx.fillText(b[3],x0+CW*0.05,y+rowH*0.30);
+    // score (right)
+    ctx.textAlign='right'; ctx.font='900 '+Math.round(rowH*0.48)+'px ui-monospace,monospace';
+    ctx.fillStyle=b[4]; ctx.shadowBlur=first?16:0; ctx.shadowColor=b[4]; ctx.fillText(b[2],x1,y); ctx.shadowBlur=0;
+    ctx.restore(); ctx.globalAlpha=1; ctx.textAlign='center';
+  }
+  ctx.textAlign='start';
+}
+
+/* ===== dark drifting backdrop (title) ===== */
+var clock=0;
+function drawDrift(){ var CW=cv.width,CH=cv.height,wob=Math.sin(clock*0.25);
+  gradBg('#160a2e','#05030c');
+  var g=ctx.createRadialGradient(CW*(0.5+0.05*wob),CH*0.44,CH*0.1,CW*0.5,CH*0.5,CH*0.9);
+  g.addColorStop(0,'rgba(70,34,110,0.20)'); g.addColorStop(1,'rgba(4,2,12,0)'); ctx.fillStyle=g; ctx.fillRect(0,0,CW,CH); }
+
+/* ---------- reel runner ---------- */
+var scr='title', si=-1, sT=0, from=[0,0,1,1], to=[0,0,1,1], cur=[0,0,1,1], capDelay=0;
+function flashCut(){ cutEl.style.transition='none'; cutEl.style.opacity='1';   // menu<->game cut (snap to black, gentle reveal)
+  requestAnimationFrame(function(){ cutEl.style.transition='opacity .44s ease-out'; cutEl.style.opacity='0'; }); }
+// smooth CROSS-DISSOLVE through black for the attract reel (no more hard per-scene flash) — fade to black, swap at peak, fade back
+var TR={on:false,t:0,fn:null,swapped:false,IN:0.42,OUT:0.6};
+function crossTo(fn){ if(TR.on)return; TR.on=true; TR.t=0; TR.fn=fn; TR.swapped=false;
+  cutEl.style.transition='opacity '+TR.IN+'s ease-in-out'; cutEl.style.opacity='1'; }
+function enterScene(i){ si=i; sT=0; var s=REEL[i];
+  titleEl.classList.toggle('on', s.t==='title');
+  capEl.style.opacity='0'; capEl.className=''; capDelay=0;
+  if(s.t==='title'){ taglineEl.textContent=s.tag||''; titleEl.classList.remove('pop'); void titleEl.offsetWidth; titleEl.classList.add('pop'); }
+  if(s.t==='splash'||s.t==='mouse'){ capEl.innerHTML=s.cap||''; capDelay=0.4; }
+  if(s.t==='demo'){ demoReset(); setDemoFrame(true,'side'); }
+  else if(s.t==='mouse'){ setDemoFrame(true,'mouse'); }
+  else setDemoFrame(false);
+  if(s.vol!=null) musicTarget=s.vol;
+  if(s.sting) sting(s.sting);
+}
+var menuRect=[0.18,0.12,0.64,0.64], last=0;
+function loop(t){ var dt=last?Math.min(0.05,(t-last)/1000):0.016; last=t; clock+=dt;
+  ctx.clearRect(0,0,cv.width,cv.height);
+  if(TR.on){ TR.t+=dt;   // drive the cross-dissolve: swap the scene at peak black, then fade back in
+    if(!TR.swapped && TR.t>=TR.IN){ TR.swapped=true; if(TR.fn)TR.fn(); cutEl.style.transition='opacity '+TR.OUT+'s ease-out'; cutEl.style.opacity='0'; }
+    if(TR.t>=TR.IN+TR.OUT) TR.on=false; }
+  if(scr==='title'){
+    if(si<0) enterScene(0); var s=REEL[si]; sT+=dt;
+    if(s.t==='demo') drawDemo(dt);
+    else if(s.t==='cup') drawCup(sT);
+    else if(s.t==='board') drawBoard(sT);
+    else if(s.t==='splash') drawSplash(sT);
+    else if(s.t==='ads') drawAds(sT);
+    else if(s.t==='mouse'){ ctx.fillStyle='#05030c'; ctx.fillRect(0,0,cv.width,cv.height); }   // live iframe covers
+    else drawDrift();
+    if(capDelay>0){ capDelay-=dt; if(capDelay<=0) capEl.style.opacity='1'; }
+    if(sT>s.dur && !TR.on) crossTo((function(n){ return function(){ enterScene(n); }; })((si+1)%REEL.length));   // smooth dissolve to the next beat
+  } else if(scr==='menu'){ gradBg('#160a2e','#05030c'); }
+  if(musicOn){ music.volume += (musicTarget-music.volume)*Math.min(1,dt*2.4); }
+  requestAnimationFrame(loop);
+}
+function resize(){cv.width=innerWidth;cv.height=innerHeight; if(D)demoReset(); stars=null;} addEventListener('resize',resize);resize();
+requestAnimationFrame(loop);
+
+/* ---------- screens / flow ---------- */
+function show(s){ scr=s; var attract=s==='title';
+  titleEl.classList.toggle('on', attract && si>=0 && REEL[si].t==='title');
+  menuEl.classList.toggle('on', s==='menu');
+  pressEl.style.display=attract?'block':'none'; capEl.style.display=attract?'block':'none';
+  gameEl.style.display=s==='game'?'block':'none'; backEl.style.display=s==='game'?'block':'none';
+  if(!attract){ titleEl.classList.remove('on'); capEl.style.opacity='0'; setDemoFrame(false); } }
+// Mount the REAL side.html engine, self-playing (?demo), over the reel canvas during the demo beat.
+// z-index 2 sits above the procedural canvas but UNDER the caption/PRESS overlays. Muted + clean
+// (the reel supplies music + its own PRESS text). Idempotent; blanked when the scene leaves.
+function setDemoFrame(on,kind){ if(!gameEl)return;
+  if(on){ var want=kind==='mouse'?'mouse':'side';
+    if(gameEl.getAttribute('data-demo')!==want){ var v=(VEN&&VEN[venI])?VEN[venI].key:'rivalry';
+      gameEl.src = want==='mouse' ? 'table_temp_engine.html?demo=1&mute=1&table=nachos'
+                                  : 'side.html?embed=1&demo=1&mute=1&clean=1&diff=0&table='+v;
+      gameEl.setAttribute('data-demo',want); }
+    gameEl.style.zIndex='2'; gameEl.style.display='block'; }
+  else { if(gameEl.getAttribute('data-demo')){ gameEl.src='about:blank'; gameEl.removeAttribute('data-demo'); }
+    gameEl.style.zIndex=''; if(scr!=='game') gameEl.style.display='none'; } }
+
+function toMenu(){ startMusic(); if(scr==='title'){ flashCut(); musicTarget=0.5; show('menu'); } }
+document.body.addEventListener('pointerdown',function(){ if(scr==='title')toMenu(); });
+// PRESS START on a controller cab (Joe 2026-06-30): the title only advanced on click/Space/Enter, so a stick/button
+//   cab's START did nothing — the prompt lied. Poll the pads while the title is up; ANY button (START included)
+//   advances to the menu, matching the "PRESS START" prompt. Edge-triggered so a held button can't re-fire.
+(function padTitle(){ try{ if(scr==='title'){ var ps=navigator.getGamepads?navigator.getGamepads():[]; var down=false;
+      for(var i=0;i<ps.length;i++){ var p=ps[i]; if(!p)continue; for(var b=0;b<p.buttons.length;b++){ var bt=p.buttons[b]; if(bt&&(bt.pressed||bt.value>0.5)){down=true;break;} } if(down)break; }
+      if(down&&!padTitle._was) toMenu(); padTitle._was=down; } else padTitle._was=false; }catch(e){} requestAnimationFrame(padTitle); })();
+addEventListener('keydown',function(e){ if(scr==='title'&&(e.key===' '||e.key==='Enter')){e.preventDefault();toMenu();}
+  else if(scr==='menu'){ if(e.key==='Enter'){go();} else if(e.key==='ArrowRight'){selVenue((venI+1)%VEN.length);} else if(e.key==='ArrowLeft'){selVenue((venI-1+VEN.length)%VEN.length);} } });
+  // NOTE: Escape during a live game is NOT intercepted here — the side.html iframe owns Escape (→ its own PAUSE menu, RESUME-only).
+  // We deliberately do NOT let the shell bail a paid game back to the menu on a keystroke (quarter-eater; matches the Suck Up fix). Intentional exit = the on-screen BACK button (toBack). Joe 2026-07-10
+
+/* MENU build */
+var VEN=[
+ {key:'bee',   name:'BEE AFRAID',         sub:'Rivalry · play the Bees',   te:'conviction', img:'sprites/table_bee_side.png',    c:'#ffe23a'},
+ {key:'queens',name:'QUEENS RANSOM',      sub:'Rivalry · play the Queens', te:'conviction', img:'sprites/table_queens_side.png', c:'#b14cff'},
+ {key:'bees',  name:'THE HONEY HOLE',     sub:'Bees home table',           te:'loyalty',    img:'sprites/table_bees_side.png',   c:'#ffe23a'},
+ {key:'throne',name:'THE THRONE ROOM',    sub:'Queens home table',         te:'ambition',   img:'sprites/table_throne_side.png', c:'#b14cff'},
+ {key:'nachos',name:'PENALTY BOX NACHOS', sub:'The family table',          te:'devotion',   img:'sprites/table_nachos_side.png', c:'#39ff14'},
+];
+// ARCADE FRONT DOOR (Joe 2026-06-22): the coin-op build shows ONLY Rivalry (both ends) + Penalty Box Nachos.
+//   ?all restores the full table list (Honey Hole / Throne Room) for showcase builds.
+var ARCADE_KEYS={bee:1,queens:1,nachos:1};
+if(!/[?&]all(=|&|$)/.test(location.search)) VEN=VEN.filter(function(v){return ARCADE_KEYS[v.key];});
+var venI=0, diff=1, players=1;
+var groupsEl=document.getElementById('menugroups'), cardEls=[];
+// modes are teed up here: the tables grouped by house so you can read the menu at a glance
+var GROUPS=[
+  {h:'The Rivalry · <b>the jewel</b>', keys:['bee','queens']},
+  {h:'Home Tables',                    keys:['bees','throne']},
+  {h:'The Family Table',               keys:['nachos']},
+];
+GROUPS.forEach(function(grp){ var keys=grp.keys.filter(function(k){return VEN.some(function(v){return v.key===k;});}); if(!keys.length)return;   // skip groups whose tables are filtered out (arcade mode)
+  var sec=document.createElement('div'); sec.className='grp';
+  var hd=document.createElement('div'); hd.className='grp-h'; hd.innerHTML=grp.h; sec.appendChild(hd);
+  var row=document.createElement('div'); row.className='row';
+  keys.forEach(function(key){ var i=-1; VEN.forEach(function(v,j){ if(v.key===key)i=j; }); var v=VEN[i];
+    var d=document.createElement('div'); d.className='card'; d.style.setProperty('--cc',v.c);
+    d.innerHTML='<div class="thumb" style="background-image:url(\''+v.img+'\')"></div><div class="nm" style="color:'+v.c+'">'+v.name+'</div><div class="sb">'+v.sub+'</div><div class="te">teaches '+v.te+'</div>';
+    d.addEventListener('click',function(){selVenue(i);}); d.addEventListener('dblclick',go);
+    cardEls[i]=d; row.appendChild(d); });
+  sec.appendChild(row); groupsEl.appendChild(sec); });
+function selVenue(i){venI=i;cardEls.forEach(function(c,j){c.classList.toggle('sel',j===i);});}
+selVenue(0);
+
+function seg(host,labels,getI,setI){ labels.forEach(function(l,i){var b=document.createElement('button');b.textContent=l;
+  b.addEventListener('click',function(){setI(i);[].forEach.call(host.children,function(x,j){x.classList.toggle('on',j===getI());});});host.appendChild(b);});
+  [].forEach.call(host.children,function(x,j){x.classList.toggle('on',j===getI());}); }
+var mode=0;   // 0 = exhibition · 1 = RAISE IT (best-of-7 series vs escalating CPU; passes ?cup=1, which side.html maps to RAISE IT)
+var goEl=document.getElementById('go');
+function updateModeUI(){ var cup=mode===1; if(goEl)goEl.textContent=cup?'RAISE IT ▸':'FACE OFF ▸';
+  var ds=document.getElementById('diffSeg'), ps=document.getElementById('pSeg');   // RAISE IT sets its own difficulty + is 1-player
+  if(ds)ds.style.opacity=cup?'.4':'1'; if(ps)ps.style.opacity=cup?'.4':'1';
+  var hb=document.querySelector('.hintbar'); if(hb) hb.innerHTML = cup   // explain RAISE IT right where you pick it
+    ? '★ <b style="color:#ffe23a">RAISE IT</b> — best-of-7 series vs escalating CPU · first to 4 lifts it'
+    : '← → / click to choose · ENTER to face off · the Rivalry is the jewel'; }
+seg(document.getElementById('modeSeg'),['EXHIBITION','RAISE IT'],function(){return mode;},function(i){mode=i;updateModeUI();});
+seg(document.getElementById('diffSeg'),['ROOKIE','PRO','ALL-STAR'],function(){return diff;},function(i){diff=i;});
+seg(document.getElementById('pSeg'),['1 PLAYER','2 PLAYER'],function(){return players-1;},function(i){players=i+1;});
+updateModeUI();
+
+function go(){ var v=VEN[venI], cup=mode===1; flashCut();   // black-flash wipe smooths the menu→game cut
+  gameEl.src='side.html?embed=1&go=1&stick=8way&table='+v.key+'&diff='+diff+(cup?'&cup=1':'')+((players===2&&!cup)?'&p2=1':'')+'&_cb='+Date.now();
+  show('game'); try{music.pause();}catch(e){} }
+document.getElementById('go').addEventListener('click',go);
+function toBack(){ flashCut(); gameEl.src='about:blank'; show('menu'); startMusic(); musicTarget=0.5; }   // smooth game→menu
+backEl.addEventListener('click',toBack);
+
+// cab relay (hyscore_1up.html): forward deck {bk} down, game {ht:'ready'} up
+addEventListener('message',function(e){var d=e.data;if(!d)return;
+  if(d.bk){try{gameEl.contentWindow.postMessage(d,'*');}catch(_){}}
+  else if(d.ht&&parent!==window){try{parent.postMessage(d,'*');}catch(_){}}
+});
+})();
+</script>
+</body>
+</html>

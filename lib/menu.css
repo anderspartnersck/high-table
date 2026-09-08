@@ -1,0 +1,55 @@
+/* ============================================================================
+   menu.css — shared front-end menu chrome for ONE-TIMER: THE HIGH TABLE.
+   Lifted from side.html so the SIDE and TOP-DOWN front-ends look identical.
+   Class names match the existing menu DOM (#menu / .page / .m-grid / .card /
+   .kcard / .rcard / .pcard / .jbtn / #m-load …). Gameplay-pause styles stay in
+   each engine; the live control-toggle + controller-status widgets are injected
+   by menu.js so they need no stylesheet.
+   ============================================================================ */
+#menu{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;
+  color:#fff;text-align:center;overflow:hidden;background:#04040a;cursor:pointer}
+#menu.hidden{display:none}
+#m-carpet{position:absolute;inset:0;background:#04040a center/cover no-repeat;filter:saturate(1.05) brightness(.6)}
+#m-carpet::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(4,4,12,.35),rgba(2,2,8,.93))}
+.page{position:relative;z-index:2;width:100%;max-width:1180px;padding:4vmin}
+.page.hidden{display:none}
+#m-logo{width:min(72vw,620px);max-height:40vh;object-fit:contain;filter:drop-shadow(0 6px 30px rgba(0,0,0,.8));
+  animation:logoIn .6s cubic-bezier(.2,1.3,.4,1) both}
+@keyframes logoIn{from{transform:translateY(-12px) scale(1.08);opacity:0}to{transform:none;opacity:1}}
+.m-sub{margin-top:1.4vh;letter-spacing:.34em;font-weight:800;font-size:clamp(12px,2vw,18px);color:#ffcf2a;text-shadow:0 0 16px rgba(255,174,0,.6)}
+.m-go{margin-top:3vh;letter-spacing:.3em;font-weight:800;font-size:clamp(13px,2.2vw,20px);color:#fff;animation:blink 1.1s steps(2,end) infinite}
+@keyframes blink{50%{opacity:.25}}
+.page h2{letter-spacing:.28em;font-weight:800;font-size:clamp(16px,3vw,30px);margin-bottom:3vh;text-shadow:0 0 18px rgba(0,0,0,.9)}
+.m-grid{display:flex;flex-wrap:wrap;gap:clamp(10px,2vw,22px);justify-content:center;align-items:flex-end}
+.card{cursor:pointer;border:2px solid rgba(255,255,255,.14);border-radius:14px;overflow:hidden;background:rgba(8,6,16,.55);
+  transition:transform .12s ease,border-color .12s ease,box-shadow .12s ease}
+.card:hover,.card.sel{transform:translateY(-4px) scale(1.04)}
+.card .cap{padding:8px 6px;font-weight:800;letter-spacing:.12em;font-size:clamp(10px,1.5vw,14px)}
+.card .tag{padding:0 6px 7px;font-weight:800;letter-spacing:.18em;font-size:clamp(8px,1.1vw,10px);color:#7f97a8;margin-top:-4px}
+.kcard{width:clamp(110px,20vw,180px)}
+.kcard img{width:100%;aspect-ratio:1;object-fit:contain;padding:12% 12% 4%;display:block}
+.rcard{width:clamp(200px,40vw,360px)}
+.rcard canvas,.rcard img{width:100%;aspect-ratio:16/7;object-fit:cover;display:block;background:#000}
+.pcard{width:clamp(70px,11vw,104px)}
+.pcard img,.pcard canvas{width:100%;aspect-ratio:1;object-fit:contain;padding:13% 13% 4%;display:block}
+.pcard .cap{font-size:clamp(8px,1.1vw,11px);padding:5px 4px}
+.jbtn{cursor:pointer;border:2px solid rgba(255,255,255,.18);border-radius:11px;background:rgba(10,8,20,.6);color:#cfe6ff;
+  padding:9px 15px;font:800 12px/1 'Helvetica Neue',Arial;letter-spacing:.1em;transition:transform .12s,border-color .12s,box-shadow .12s}
+.jbtn:hover,.jbtn.sel{transform:translateY(-3px) scale(1.05);border-color:#ffe23a;box-shadow:0 0 20px rgba(255,226,58,.45);color:#fff}
+.jbtn.cup.on,.jbtn.on{border-color:#ffe23a;color:#ffe23a;box-shadow:0 0 18px rgba(255,174,0,.5)}
+.jbtn.lock{opacity:.5;border-style:dashed}
+.card[data-team="bees"]:hover,.card[data-team="bees"].sel{border-color:#ffcf2a;box-shadow:0 0 26px rgba(255,174,0,.5)}
+.card[data-team="queens"]:hover,.card[data-team="queens"].sel{border-color:#b14cff;box-shadow:0 0 26px rgba(177,76,255,.55)}
+.card[data-team="none"]:hover,.card[data-team="none"].sel{border-color:#dfefff;box-shadow:0 0 22px rgba(190,230,255,.4)}
+.card.high{border-color:rgba(255,122,26,.5)}
+.card.high:hover,.card.high.sel{border-color:#ff7a1a;box-shadow:0 0 28px rgba(255,122,26,.6)}
+#m-load{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;
+  background:#04040a center/cover no-repeat;transform:translateX(-118%) skewX(-9deg);
+  transition:transform .42s cubic-bezier(.7,0,.3,1);box-shadow:14px 0 60px rgba(255,174,0,.35),-14px 0 60px rgba(177,76,255,.35)}
+#m-load::after{content:'';position:absolute;inset:0;background:linear-gradient(100deg,rgba(255,174,0,.10),rgba(4,4,12,.86) 45%,rgba(177,76,255,.12))}
+#m-load.in{transform:translateX(0) skewX(0deg)}
+#m-load.out{transform:translateX(118%) skewX(9deg)}
+.m-loadcard{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:1.4vh;animation:logoIn .42s cubic-bezier(.2,1.3,.4,1) both}
+#m-loadcrest{display:none;width:min(28vw,200px);max-height:24vh;object-fit:contain;filter:drop-shadow(0 4px 22px rgba(0,0,0,.8))}
+.m-loadtxt{font-weight:900;letter-spacing:.28em;font-size:clamp(15px,2.8vw,26px);color:#fff;text-shadow:0 0 18px rgba(0,0,0,.9)}
+.m-loadsub{font-weight:800;letter-spacing:.34em;font-size:clamp(11px,1.8vw,16px);color:#ffcf2a;text-shadow:0 0 14px rgba(255,174,0,.5);min-height:1em}
