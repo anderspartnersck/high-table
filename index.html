@@ -1951,7 +1951,7 @@ function drawBoard(){ const u=Math.min(VW,VH), cx=VW/2, t=interT; ctx.clearRect(
     ctx.fillStyle='#9fb6c8'; ctx.fillText((i+1)+'.', VW*0.21, y); ctx.fillStyle=col; ctx.shadowColor=col; ctx.shadowBlur=10; ctx.fillText(L.r, VW*0.275, y);
     ctx.textAlign='right'; ctx.fillStyle='#fff'; ctx.shadowBlur=0; ctx.fillText(L.s.toLocaleString(), VW*0.79, y); ctx.restore(); }
   ctx.save(); ctx.textAlign='center'; ctx.globalAlpha=0.7; ctx.fillStyle='#8aa0b8'; ctx.font=`700 ${Math.round(VH*0.022)}px "Helvetica Neue",Arial`;
-  ctx.globalAlpha=0.62; ctx.fillStyle='#c79bff'; ctx.font=`700 ${Math.round(VH*0.02)}px "Helvetica Neue",Arial`; ctx.fillText('MUSIC BY TAYLOR LYONS & JOSEPH COLEMAN', cx, VH*0.885); ctx.restore(); }
+  ctx.globalAlpha=0.62; ctx.fillStyle='#c79bff'; ctx.font=`700 ${Math.round(VH*0.02)}px "Helvetica Neue",Arial`; ctx.fillText('MUSIC & SFX BY TAYLOR LYONS & JOSEPH COLEMAN', cx, VH*0.885); ctx.restore(); }
 function winPress(){   // win-screen tap: advance the series / fire the unlock playoff / lift the cup; otherwise rematch
   const won = TIMED ? (scoreN>scoreF) : (scoreN>=TARGET);   // near = the human side. TIMED (Castle Rules) is decided by GOALS at the clock, not by reaching TARGET — so a VS · TIMED series resolves correctly (was scoreN>=TARGET, which a 3–2 clock game never meets → series mis-crowned).
   if(CUP.inPlayoff){ CUP.inPlayoff=false;
