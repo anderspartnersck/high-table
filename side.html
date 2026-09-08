@@ -96,7 +96,7 @@
 </head>
 <body>
 <canvas id="c"></canvas>
-<div id="hint"><b>P1</b> mouse or <kbd>WASD</kbd> · <kbd>Z</kbd> BIG · <kbd>X</kbd> BLAST · <kbd>C</kbd> TRAP &nbsp;·&nbsp; <b>P2</b> <kbd>OKL;</kbd> · <kbd>M</kbd> BIG · <kbd>,</kbd> BLAST &nbsp;·&nbsp; score in the far goal</div>
+<div id="hint"><b>P1</b> mouse or <kbd>WASD</kbd> to steer · <kbd>C</kbd> TRAP · <kbd>X</kbd> BLAST · <kbd>Z</kbd> GET BIG &nbsp;·&nbsp; <b>P2</b> <kbd>OKL;</kbd> · <kbd>,</kbd> BLAST · <kbd>M</kbd> GET BIG &nbsp;·&nbsp; score in the far goal</div>
 
 <!-- FRONT-END: title -> knocker select -> rink select -->
 <div id="menu">
@@ -2130,15 +2130,8 @@ function toggleFullscreen(){ try{ if(document.fullscreenElement){ document.exitF
 cv.addEventListener('mousedown',e=>{if(REG){regDown(e.clientX,e.clientY);return;} if(AUTOFS&&!_fsTried){_fsTried=true;goFullscreen();}
   if(state==='select'){ if(e.clientX<innerWidth*0.30){selCycle(-1);} else if(e.clientX>innerWidth*0.70){selCycle(1);} else begin(); return; }   // SELECT: click ◄/► to cycle, centre to play
   if(state==='config'){ if(e.clientY>innerHeight*0.86){ begin(); return; } const ry=Math.max(0,Math.min(2,Math.floor((e.clientY/innerHeight-0.24)/0.125))); cfgRow=ry; if(e.clientX<innerWidth*0.5)cfgCycle(-1); else cfgCycle(1); return; }   // CONFIG: click a row L/R to change it; bottom = PLAY
-  // MOUSE WEAPONS (Joe): LEFT = TRAP (unchanged, hold to catch and charge), RIGHT = BLAST.
-  // Only while the mouse scheme is active and a match is actually live -- never on a menu, the
-  // select screen or while PAUSED, where a click has to keep meaning "click".
-  if(e.button===2){
-    if(CTRL.mouse && state==='play' && !PAUSED) deckBlast=true;              // one-shot pulse, same path as the deck/pad
-    e.preventDefault(); return; }                                            // return BEFORE mouseDown, or right-click would arm TRAP too
   mouseDown=true; var _wasLive=(state==='play');
   begin(); if(_wasLive) pointer(e.clientX,e.clientY);});   // the click that STARTS a match must not set the play target (clicking a corner to begin used to zip the knocker there past faceoff's re-center); only steer on clicks during live play
-cv.addEventListener('contextmenu',e=>e.preventDefault());   // right-click is GET BIG, not the OS menu
 cv.addEventListener('mouseup',()=>dragC=-1); addEventListener('mouseup',()=>{mouseDown=false;});
 cv.addEventListener('mousemove',e=>{if(REG){if(e.buttons)regMove(e.clientX,e.clientY);return;}pointer(e.clientX,e.clientY);});
 cv.addEventListener('touchstart',e=>{e.preventDefault();if(AUTOFS&&!_fsTried){_fsTried=true;goFullscreen();}begin();const t=e.changedTouches[0];pointer(t.clientX,t.clientY);},{passive:false});
