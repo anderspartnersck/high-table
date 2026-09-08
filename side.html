@@ -966,8 +966,8 @@ function step(dt){
     moveKnocker(far, cX, cY, spd, dt);
     if(far.sup>=1 && settle<=0 && margin<=0 && puck.Y>AR*0.6 && Math.random()<0.04) bigUp(far,OTEAM);   // CPU only unleashes GET BIG when NOT ahead and not in grace
   }
-  // TRAP (near/Bees): hold mouse / C / deck-TRAP to catch the puck dead on your half (it charges while held).
-  // BLAST: tap V / X / deck-BLAST to fire the trapped puck goalward (charge-scaled). Let go of TRAP without BLAST = a gentle drop.
+  // TRAP (near/Bees): hold mouse / Z / deck-TRAP to catch the puck dead on your half (it charges while held).
+  // BLAST: tap C / deck-BLAST to fire the trapped puck goalward (charge-scaled). Let go of TRAP without BLAST = a gentle drop.
   if(grabCool>0) grabCool-=dt;
   var grabN = (mouseDown || !!keys['z'] || !!keys['Z'] || deckGrab);            // TRAP = Z (or hold the mouse)
   var blastRaw = (!!keys['c'] || !!keys['C'] || !!keys['v']);                   // BLAST = C ('v' kept as the old alias)
