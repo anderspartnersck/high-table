@@ -96,7 +96,7 @@
 </head>
 <body>
 <canvas id="c"></canvas>
-<div id="hint">move to steer · <b>LEFT-CLICK</b> BLAST · hold to TRAP · <b>RIGHT-CLICK</b> GET BIG when charged · score in the far goal</div>
+<div id="hint">move to steer · hold <b>LEFT-CLICK</b> to TRAP · <b>RIGHT-CLICK</b> to BLAST · score in the far goal</div>
 
 <!-- FRONT-END: title -> knocker select -> rink select -->
 <div id="menu">
@@ -2098,16 +2098,13 @@ function toggleFullscreen(){ try{ if(document.fullscreenElement){ document.exitF
 cv.addEventListener('mousedown',e=>{if(REG){regDown(e.clientX,e.clientY);return;} if(AUTOFS&&!_fsTried){_fsTried=true;goFullscreen();}
   if(state==='select'){ if(e.clientX<innerWidth*0.30){selCycle(-1);} else if(e.clientX>innerWidth*0.70){selCycle(1);} else begin(); return; }   // SELECT: click ◄/► to cycle, centre to play
   if(state==='config'){ if(e.clientY>innerHeight*0.86){ begin(); return; } const ry=Math.max(0,Math.min(2,Math.floor((e.clientY/innerHeight-0.24)/0.125))); cfgRow=ry; if(e.clientX<innerWidth*0.5)cfgCycle(-1); else cfgCycle(1); return; }   // CONFIG: click a row L/R to change it; bottom = PLAY
-  // MOUSE WEAPONS (Joe): LEFT = BLAST, RIGHT = GET BIG. Left still TRAPS, because the two never
-  // collide -- BLAST is a TAP and is gated on puckHeld!=='near', TRAP is a HOLD and only engages once
-  // you actually have the puck. So a click in open play lunges; a click on a loose puck catches and
-  // holds it; a click while holding fires it. Right-click is a pure one-shot and must not set
-  // mouseDown, or it would arm TRAP as a side effect.
+  // MOUSE WEAPONS (Joe): LEFT = TRAP (unchanged, hold to catch and charge), RIGHT = BLAST.
+  // Only while the mouse scheme is active and a match is actually live -- never on a menu, the
+  // select screen or while PAUSED, where a click has to keep meaning "click".
   if(e.button===2){
-    if(CTRL.mouse && state==='play' && near && near.sup>=1) bigUp(near,PTEAM);
-    e.preventDefault(); return; }
+    if(CTRL.mouse && state==='play' && !PAUSED) deckBlast=true;              // one-shot pulse, same path as the deck/pad
+    e.preventDefault(); return; }                                            // return BEFORE mouseDown, or right-click would arm TRAP too
   mouseDown=true; var _wasLive=(state==='play');
-  if(_wasLive && CTRL.mouse && e.button===0) deckBlast=true;                 // tap = BLAST (one-shot pulse, same path as the deck/pad)
   begin(); if(_wasLive) pointer(e.clientX,e.clientY);});   // the click that STARTS a match must not set the play target (clicking a corner to begin used to zip the knocker there past faceoff's re-center); only steer on clicks during live play
 cv.addEventListener('contextmenu',e=>e.preventDefault());   // right-click is GET BIG, not the OS menu
 cv.addEventListener('mouseup',()=>dragC=-1); addEventListener('mouseup',()=>{mouseDown=false;});
@@ -2181,7 +2178,7 @@ function cabReport(){ try{ if(parent===window) return; }catch(_){ return; }   //
   if(Q.get('stick')==='4way') WAYS=4; else if(Q.get('stick')==='8way') WAYS=8;
   function only4(dx,dy,ax,ay){ if(WAYS===4 && dx && dy){ if(Math.abs(ax)>=Math.abs(ay)) dy=0; else dx=0; } return [dx,dy]; }
   // 3-BUTTON CAB defaults — A=TRAP (catch/hold) · B=BLAST (fire) · RT=GET BIG (team power). Overridable by the saved map (highTableGamepad).
-  var BTN={trap:(M&&M.buttons&&M.buttons.trap!=null)?M.buttons.trap:0, big:(M&&M.buttons&&M.buttons.big!=null)?M.buttons.big:1, blast:(M&&M.buttons&&M.buttons.blast!=null)?M.buttons.blast:7, start:(M&&M.buttons&&M.buttons.start!=null)?M.buttons.start:9};   // A=TRAP · B=GET BIG · RT=BLAST (Joe's cab layout, F300 + 8BitDo)
+  var BTN={trap:(M&&M.buttons&&M.buttons.trap!=null)?M.buttons.trap:0, big:(M&&M.buttons&&M.buttons.big!=null)?M.buttons.big:7, blast:(M&&M.buttons&&M.buttons.blast!=null)?M.buttons.blast:1, start:(M&&M.buttons&&M.buttons.start!=null)?M.buttons.start:9};   // A=TRAP · B=GET BIG · RT=BLAST (Joe's cab layout, F300 + 8BitDo)
   var prevBlast=false, prevBig2=false, prevFarBig=false, prevFarBlast=false, prevAnyC=false, prevStart=false;
   // CONTROLLER PAIRING (KILLBOX → localStorage 'ckPads'): resolve P1/P2 by DEVICE id, so plug order
   // and right-stick mode never matter. Cached + refreshed on 'storage' — NEVER read per frame (chugs).
