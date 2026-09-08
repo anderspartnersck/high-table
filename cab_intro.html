@@ -1,0 +1,107 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ONE-TIMER: THE HIGH TABLE — CAB</title>
+<!--
+  REUSABLE CAB INTRO (2026-06-24) — one shell, every cab. Castle Killscreen ident (neon power-on +
+  killscreen cue) -> Ken Burns push-in on the cab beauty-shot -> reveal the FULL-BLEED game (NOT
+  superimposed into a tiny monitor rect). Modeled on ONE TIMER/cab_1up_desktop.html.
+    ?cab=<name>   cab art file in cab_final/ (no extension), e.g. ?cab=OTTHT_1 up HYSCORE color
+    ?game=<url>   the game to reveal, e.g. ?game=side.html?stick=8way   (default: side.html?stick=8way)
+    ?title=<txt>  optional marquee label under the logo
+-->
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+  html,body{margin:0;height:100%;background:#04050a;overflow:hidden;font-family:'Saira Condensed',Arial,sans-serif}
+  /* blurred cab ambience behind the play */
+  #room{ position:fixed; inset:-6%; z-index:0; background:#04050a center/cover no-repeat; filter:blur(54px) brightness(.30) saturate(1.15); }
+  /* FULL-BLEED game (no tiny-monitor superimpose) */
+  #game{ position:absolute; inset:0; width:100%; height:100%; border:0; display:block; z-index:1; background:#04040a; }
+  #cabVig{ position:fixed; inset:0; z-index:2; pointer-events:none;
+    box-shadow:inset 0 0 160px 52px rgba(0,0,0,.66);
+    background:radial-gradient(135% 105% at 50% 50%, transparent 64%, rgba(0,0,0,.46)); }
+
+  /* ===== CASTLE KILLSCREEN ident (neon power-on) ===== */
+  #ckSplash{ position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(ellipse at 50% 46%, #1a0a06 0%, #0a0402 55%, #000 100%);
+    transition:opacity 1.1s ease, transform 1.1s ease; }
+  #ckSplash.gone{ opacity:0; transform:scale(1.16); pointer-events:none; }
+  #ckSplash::after{ content:""; position:absolute; inset:0; pointer-events:none;
+    background:repeating-linear-gradient(0deg, rgba(0,0,0,0) 0 2px, rgba(0,0,0,.18) 2px 3px); mix-blend-mode:multiply; }
+  #ckSplash::before{ content:""; position:absolute; inset:0; pointer-events:none; box-shadow:inset 0 0 220px 60px rgba(0,0,0,.85); }
+  .ckWrap{ width:min(78vw,720px); transform:translateY(-2%); text-align:center; }
+  .ckLogoImg{ width:100%; height:auto; display:block; }
+  .ckNeon{ filter:drop-shadow(0 0 30px rgba(255,80,20,.45)); }
+  .ckNeon.on{ animation:ckOn 2.6s ease-out both, ckBuzz 3.4s steps(1) infinite 2.6s; }
+  @keyframes ckOn{ 0%{opacity:0} 6%{opacity:1} 8%{opacity:.1} 11%{opacity:1} 14%{opacity:.2} 16%{opacity:1} 22%{opacity:.5} 24%{opacity:1} 100%{opacity:1} }
+  @keyframes ckBuzz{ 0%,97%,100%{filter:none} 98%{filter:brightness(.78)} 99%{filter:brightness(1.12)} }
+  #tap{ position:fixed; left:0; right:0; bottom:7%; z-index:51; text-align:center; color:#ff7a1a; opacity:.78; font-weight:800;
+    letter-spacing:3px; font-size:clamp(13px,1.7vw,18px); animation:tapBlink 1.1s steps(2,jump-none) infinite; }
+  @keyframes tapBlink{ 50%{opacity:.18} }
+
+  /* ===== Ken Burns cab beauty-shot (post-coin) ===== */
+  #cabKB{ position:fixed; inset:0; z-index:48; background:#04060a; opacity:0; pointer-events:none; transition:opacity .55s ease; overflow:hidden; }
+  #cabKB.show{ opacity:1; } #cabKB.fade{ opacity:0; }
+  #cabKB .cabKBin{ position:absolute; left:50%; top:50%; height:112%; transform:translate(-50%,-50%) scale(1.02); transform-origin:50% 46%; }
+  #cabKB .cabPhoto{ height:100%; width:auto; display:block; filter:drop-shadow(0 26px 60px rgba(0,0,0,.6)); }
+  #cabKB.push .cabKBin{ animation:cabKenBurns 4.6s cubic-bezier(.33,0,.18,1) forwards; }
+  @keyframes cabKenBurns{ 0%{ transform:translate(-50%,-50%) scale(1.02); } 100%{ transform:translate(-50%,-52%) scale(1.18); } }
+  #cabKB::after{ content:""; position:absolute; inset:0; pointer-events:none; box-shadow:inset 0 0 200px 55px rgba(0,0,0,.72);
+    background:repeating-linear-gradient(0deg, rgba(0,0,0,0) 0 2px, rgba(0,0,0,.13) 2px 3px); mix-blend-mode:multiply; }
+  /* the CK glyph glowing over the cab as it pushes in */
+  #cabKB .cabCK{ position:absolute; left:50%; top:44%; transform:translate(-50%,-50%); width:min(26vw,230px); z-index:2;
+    animation:cabCKpulse 2.6s ease-in-out infinite; }
+  @keyframes cabCKpulse{ 0%,100%{ opacity:.85; filter:drop-shadow(0 0 5px #ff7a1a) drop-shadow(0 0 16px #ff3b0a) drop-shadow(0 0 30px #b00f00); }
+    50%{ opacity:1; filter:drop-shadow(0 0 9px #ffce5a) drop-shadow(0 0 22px #ff3b0a) drop-shadow(0 0 46px #e11500); } }
+</style>
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSczMicgaGVpZ2h0PSczMic+PGVsbGlwc2UgY3g9JzE2JyBjeT0nMjEnIHJ4PScxMicgcnk9JzYnIGZpbGw9JyMxNDE0MTknLz48cmVjdCB4PSc0JyB5PScxMycgd2lkdGg9JzI0JyBoZWlnaHQ9JzgnIGZpbGw9JyMxNDE0MTknLz48ZWxsaXBzZSBjeD0nMTYnIGN5PScxMycgcng9JzEyJyByeT0nNicgZmlsbD0nI2YwYjQyOScvPjxlbGxpcHNlIGN4PScxNicgY3k9JzEzJyByeD0nNycgcnk9JzMuMicgZmlsbD0nI2ZmZDc2YicvPjwvc3ZnPg==">   <!-- gold puck — inline so there is no favicon.ico request (every build was 404ing one) -->
+</head>
+<body>
+<div id="room"></div>
+<iframe id="game" scrolling="no" allow="gamepad; autoplay; fullscreen"></iframe>
+<div id="cabVig"></div>
+
+<div id="ckSplash"><div class="ckWrap"><div class="ckNeon" id="ckNeon">
+  <img class="ckLogoImg" src="sprites/brand/ck_logo.png" alt="CASTLE KILLSCREEN">
+</div><div id="marquee" style="margin-top:14px;color:#ffcf2a;letter-spacing:.34em;font-weight:800;font-size:clamp(11px,1.5vw,15px);text-shadow:0 0 16px rgba(255,174,0,.5)"></div></div></div>
+<div id="tap">INSERT COIN — PUSH BLAST</div>
+<div id="cabKB"><div class="cabKBin">
+  <img class="cabPhoto" id="cabPhoto" alt="">
+  <img class="cabCK" src="sprites/brand/ck_logo.png" alt="">
+</div></div>
+<audio id="ckCue" src="audio/killscreen.mp3" preload="auto"></audio>
+
+<script>
+(function(){
+  var Q=new URLSearchParams(location.search);
+  var cab=Q.get('cab')||'OTTHT_1 up HYSCORE color';
+  var game=Q.get('game')||'side.html?stick=8way';
+  var cabUrl='cab_final/'+encodeURIComponent(cab)+'.png';
+  document.getElementById('room').style.backgroundImage="url('"+cabUrl+"')";
+  {var _cp=document.getElementById('cabPhoto'); _cp.onerror=function(){this.style.opacity=0.12;}; _cp.src=cabUrl;}   // beauty-shot 404 → dim, not a broken glyph
+  if(Q.get('title')) document.getElementById('marquee').textContent=Q.get('title');
+  var gameEl=document.getElementById('game');
+  var _nb=(/side\.html|table_temp_engine/.test(game)&&!/2up\.html/.test(game))?'&noboot':'';   // the game supports ?noboot → skip its OWN boot ident so it doesn't stack on the cab Ken-Burns cold-open
+  gameEl.src=game+(game.indexOf('?')>=0?'&':'?')+'_cb='+Date.now()+_nb;   // load the game behind the intro (no-cache)
+
+  var ck=document.getElementById('ckSplash'), neon=document.getElementById('ckNeon'),
+      cue=document.getElementById('ckCue'), tap=document.getElementById('tap'), kb=document.getElementById('cabKB');
+  var started=false;
+  function start(){ if(started)return; started=true; if(tap) tap.style.display='none';
+    try{ cue.currentTime=0; cue.play(); }catch(e){}
+    neon.classList.add('on');
+    try{ gameEl && gameEl.contentWindow.postMessage({cabAudio:'arm'},'*'); }catch(e){}
+    setTimeout(function(){ ck.classList.add('gone'); if(kb){ kb.classList.add('show'); requestAnimationFrame(function(){ kb.classList.add('push'); }); } }, 2500);
+    setTimeout(function(){ if(ck&&ck.parentNode) ck.parentNode.removeChild(ck); }, 4000);
+    setTimeout(function(){ if(kb) kb.classList.add('fade'); }, 6300);
+    setTimeout(function(){ if(kb&&kb.parentNode) kb.parentNode.removeChild(kb); }, 7200);
+  }
+  // any input arms it (BLAST is a button/click/key — matches the in-game "PUSH BLAST TO START")
+  addEventListener('pointerdown',start);
+  addEventListener('keydown',function(e){ if(!started && e.key!=='Tab') start(); });
+  // a gamepad button also starts (cab has no mouse) — poll until the intro begins
+  (function pad(){ if(started)return; try{ var gp=(navigator.getGamepads?navigator.getGamepads():[]);
+    for(var i=0;i<gp.length;i++){ var p=gp[i]; if(p&&p.connected&&p.buttons){ for(var b=0;b<p.buttons.length;b++){ if(p.buttons[b]&&p.buttons[b].pressed){ start(); return; } } } } }catch(e){}
+    requestAnimationFrame(pad); })();
+})();
+</script>
+</body></html>

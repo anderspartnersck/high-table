@@ -40,6 +40,11 @@ puck, without touching your save.
 **[TOP-DOWN][todown]** is the to-go version, built for a phone or a quick game
 with a mouse.
 
+**[ATTRACT][attract]** is the cabinet's own arcade loop, if you just want to
+watch it run.
+
+**[THE GARAGE][garage]** is the cab collection.
+
 ## Using a pad
 
 Put it in X-input mode. On an 8BitDo also set the lever to D-pad. If left and
@@ -57,3 +62,5 @@ right work but up and down don't, that's the mode rather than the game.
 [jail]: https://anderspartnersck.github.io/high-table/?jail
 [twoup]: https://anderspartnersck.github.io/high-table/2up.html?solo
 [todown]: https://anderspartnersck.github.io/high-table/table_temp_engine.html
+[attract]: https://anderspartnersck.github.io/high-table/arcade.html
+[garage]: https://anderspartnersck.github.io/high-table/garage.html

@@ -1,0 +1,114 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ONE-TIMER: THE HIGH TABLE — THE GARAGE (cab collection)</title>
+<!--
+  THE GARAGE (2026-07-08) — the CONSOLE/COMPUTER edition's cab viewer. A gallery of the cabinets as
+  Ken Burns beauty-shots (icing, not a swap mechanic — you SEE them here). Cabs UNLOCK via the campaign
+  (localStorage 'htCampRung', 0..4); ?jail unlocks all. An unlocked cab's ▶ PLAY launches it through the
+  reusable cab_intro.html (Castle Killscreen power-on -> Ken Burns push-in -> full-bleed game). Locked cabs
+  show a grayscale silhouette + the unlock condition. Cabs are DESKTOP/console art appreciation; the arcade
+  1UP never shows this. Beauty-shots live in cab_final/. RIVALRY 2-up uses the typo-fixed 0709 render (live).
+-->
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+  html,body{margin:0;min-height:100%;background:#05030c;color:#e9e0ff;font-family:'Saira Condensed','Helvetica Neue',Arial,sans-serif;overflow-x:hidden}
+  body{background:radial-gradient(120% 90% at 50% -10%, #1a0f33 0%, #0a0618 45%, #05030c 100%)}
+  header{padding:26px 20px 10px;text-align:center}
+  h1{margin:0;font-weight:900;letter-spacing:.06em;font-size:clamp(26px,5vw,52px);
+     background:linear-gradient(90deg,#ffd23f,#fff,#b14cff);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 30px rgba(177,76,255,.25)}
+  .sub{margin:6px 0 2px;color:#9c89c4;font-weight:700;letter-spacing:.22em;font-size:12px}
+  .save{display:inline-flex;align-items:center;gap:7px;margin-top:10px;padding:5px 14px;border:1px solid #2a1750;border-radius:20px;
+        background:rgba(20,10,34,.6);color:#39ff14;font-weight:800;letter-spacing:.16em;font-size:11px}
+  .save::before{content:"";width:8px;height:8px;border-radius:50%;background:#39ff14;box-shadow:0 0 10px #39ff14}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:20px;max-width:1240px;margin:22px auto 40px;padding:0 22px}
+  .cab{position:relative;border-radius:16px;overflow:hidden;background:#0c0720;border:1px solid #241041;
+       aspect-ratio:3/4;box-shadow:0 12px 40px rgba(0,0,0,.5);transition:transform .18s,box-shadow .18s,border-color .18s}
+  .cab.open:hover{transform:translateY(-4px);box-shadow:0 18px 54px rgba(177,76,255,.35);border-color:#6a3aa0;cursor:pointer}
+  .cab .shot{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 42%;
+             animation:drift 13s ease-in-out infinite alternate;will-change:transform}
+  .cab:nth-child(2n) .shot{animation-duration:16s} .cab:nth-child(3n) .shot{animation-duration:11s;animation-direction:alternate-reverse}
+  @keyframes drift{0%{transform:scale(1.06) translate(0,0)}100%{transform:scale(1.16) translate(-1.5%,-2.5%)}}
+  .cab.locked .shot{filter:grayscale(1) brightness(.34) contrast(1.05);animation:none;transform:scale(1.04)}
+  .cab .grad{position:absolute;inset:0;background:linear-gradient(0deg,rgba(5,3,12,.92) 4%,rgba(5,3,12,.15) 40%,transparent 66%)}
+  .cab .meta{position:absolute;left:0;right:0;bottom:0;padding:16px 16px 15px}
+  .cab .nm{font-weight:900;font-size:22px;letter-spacing:.03em;line-height:1}
+  .cab .tag{margin-top:4px;color:#b7a6df;font-weight:700;letter-spacing:.14em;font-size:11px}
+  .cab .play{display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:8px 16px;border-radius:22px;
+             background:linear-gradient(90deg,#ffd23f,#ff9a3c);color:#1a0a02;font-weight:900;letter-spacing:.08em;font-size:13px;
+             box-shadow:0 4px 16px rgba(255,154,60,.35)}
+  .cab.q .play{background:linear-gradient(90deg,#c98bff,#8a4cff);color:#fff;box-shadow:0 4px 16px rgba(138,76,255,.4)}
+  .cab .lock{display:inline-flex;align-items:center;gap:8px;margin-top:12px;color:#8a7ab8;font-weight:800;letter-spacing:.06em;font-size:12px}
+  .cab .badge{position:absolute;top:12px;right:12px;padding:4px 10px;border-radius:14px;font-weight:900;letter-spacing:.1em;font-size:10px;
+              background:rgba(10,6,22,.7);border:1px solid #2a1750;color:#ffd23f}
+  .cab.wip .badge{color:#ff9a3c;border-color:#5a2a10}
+  footer{text-align:center;color:#6a5a90;font-size:12px;letter-spacing:.1em;padding:0 20px 40px}
+  footer a{color:#b388ff;text-decoration:none}
+  /* ===== CAB VIEWER — click a cab to ADMIRE it: Ken Burns push-in, then HOLD; B/GET BIG/click/Esc exits ===== */
+  #viewer{position:fixed;inset:0;z-index:90;display:none;background:#04030a;overflow:hidden;cursor:zoom-out}
+  #viewer.on{display:block}
+  #viewer .vshot{position:absolute;left:50%;top:50%;height:104%;transform:translate(-50%,-50%) scale(1);transform-origin:50% 44%;will-change:transform}
+  #viewer.on .vshot{animation:vKB 5s cubic-bezier(.33,0,.18,1) forwards}   /* push-in, then hold (stop at the end) */
+  @keyframes vKB{0%{transform:translate(-50%,-50%) scale(1)}100%{transform:translate(-50%,-53%) scale(1.16)}}
+  #viewer .vvig{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 200px 60px rgba(0,0,0,.55)}
+  #viewer .vexit{position:fixed;top:22px;left:0;right:0;text-align:center;color:#ffd23f;font-weight:800;letter-spacing:.2em;font-size:13px;text-shadow:0 0 16px rgba(255,210,63,.55);pointer-events:none;opacity:.92}
+  #viewer .vname{position:fixed;bottom:26px;left:0;right:0;text-align:center;color:#fff;font-weight:900;font-size:clamp(20px,3vw,34px);letter-spacing:.04em;text-shadow:0 3px 20px #000;pointer-events:none}
+</style><link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSczMicgaGVpZ2h0PSczMic+PGVsbGlwc2UgY3g9JzE2JyBjeT0nMjEnIHJ4PScxMicgcnk9JzYnIGZpbGw9JyMxNDE0MTknLz48cmVjdCB4PSc0JyB5PScxMycgd2lkdGg9JzI0JyBoZWlnaHQ9JzgnIGZpbGw9JyMxNDE0MTknLz48ZWxsaXBzZSBjeD0nMTYnIGN5PScxMycgcng9JzEyJyByeT0nNicgZmlsbD0nI2YwYjQyOScvPjxlbGxpcHNlIGN4PScxNicgY3k9JzEzJyByeD0nNycgcnk9JzMuMicgZmlsbD0nI2ZmZDc2YicvPjwvc3ZnPg==">   <!-- gold puck — inline so there is no favicon.ico request (every build was 404ing one) -->
+</head><body>
+<header>
+  <h1>THE GARAGE</h1>
+  <div class="sub">ONE-TIMER · THE HIGH TABLE — CAB COLLECTION</div>
+  <div class="save" id="saveBadge">CONSOLE EDITION · PROGRESS SAVED</div>
+</header>
+<div class="grid" id="grid"></div>
+<footer>Cabs unlock as you climb the <b>OLD-TYME CAMPAIGN</b>. <span id="rung"></span> &nbsp;·&nbsp; <a href="side.html?camp">▶ PLAY THE CAMPAIGN</a></footer>
+<div id="viewer"><img class="vshot" id="vshot" alt="" onerror="this.style.opacity=.12"><div class="vvig"></div><div class="vexit">▶ B · GET BIG — or click — to exit</div><div class="vname" id="vname"></div></div>
+<script>
+const Q=new URLSearchParams(location.search);
+const JAIL=Q.has('jail');
+// campaign progress = the console save (0..4 rungs cleared). ?jail unlocks everything.
+let RUNG=0; try{ RUNG=Math.max(0,Math.min(4,+(localStorage.getItem('htCampRung')||0))); }catch(e){}
+// cab registry — beauty-shot (cab_final/, no ext), the game it launches, and the campaign rung that frees it.
+//   unlock:0 = free from the start. RIVALRY 2-up (typo-fixed 0709 art) unlocks at campaign-complete (rung 4).
+const CABS=[
+  {key:'hyscore',  nm:'HYSCORE · 1UP',   tag:'THE HOUSE CAB',        art:'OTTHT_1 up HYSCORE color', game:'side.html?stick=8way&go',     unlock:0},
+  {key:'hivemind', nm:'HIVEMIND · 1UP',  tag:'BEES',        team:'bees',  art:'1up HIVEMIND color',       game:'side.html?stick=8way&go&table=bees&knocker=bees', unlock:0},
+  {key:'queens2up',nm:'QUEENS · 2-UP',   tag:'2 PLAYERS · CROWN',    team:'q', art:'OTTHT_2 up QUEENS color', game:'2up.html?solo&table=throne', unlock:2},
+  {key:'rivalry',  nm:'RIVALRY · 2-UP',  tag:'BEES vs QUEENS · THE APEX', team:'q', art:'RIVALRY A color',      game:'2up.html?solo',           unlock:4},
+];
+const RUNGNAMES=['THE RIVALRY TABLE','THE THRONE ROOM','THE HONEY HOLE','PENALTY BOX · THE HIGH TABLE'];
+function rungLabel(n){ return RUNGNAMES[Math.min(3,n)]||''; }
+const grid=document.getElementById('grid');
+CABS.forEach(function(c){
+  const open = JAIL || RUNG>=c.unlock;
+  const div=document.createElement('div');
+  div.className='cab'+(open?' open':' locked')+(c.team==='q'?' q':'')+(c.wip?' wip':'');
+  const img=document.createElement('img'); img.className='shot'; img.alt=c.nm; img.onerror=function(){this.style.opacity=0.12;}; img.src='cab_final/'+encodeURIComponent(c.art)+'.png';
+  const grad=document.createElement('div'); grad.className='grad';
+  const meta=document.createElement('div'); meta.className='meta';
+  let cta;
+  if(c.wip){ cta='<span class="lock">🛠 COMING SOON</span>'; }
+  else if(open){ cta='<span class="play">▶ PLAY</span>'; }
+  else { cta='<span class="lock">🔒 CLEAR '+rungLabel(c.unlock-1)+'</span>'; }
+  meta.innerHTML='<div class="nm">'+c.nm+'</div><div class="tag">'+c.tag+'</div>'+cta;
+  if(c.wip){ const b=document.createElement('div'); b.className='badge'; b.textContent='WIP'; div.appendChild(b); }
+  else if(!open){ const b=document.createElement('div'); b.className='badge'; b.textContent='LOCKED'; div.appendChild(b); }
+  div.appendChild(img); div.appendChild(grad); div.appendChild(meta); grid.appendChild(div);
+  if(open && !c.wip){
+    div.addEventListener('click',function(){ openViewer(c); });   // click the cab = ADMIRE it (Ken Burns view; console/freedom edition only)
+    var pb=meta.querySelector('.play'); if(pb) pb.addEventListener('click',function(ev){ ev.stopPropagation();   // ▶ PLAY = launch the cab (cab_intro power-on → push-in → game)
+      location.href='cab_intro.html?cab='+encodeURIComponent(c.art)+'&game='+encodeURIComponent(c.game)+'&title='+encodeURIComponent(c.nm); });
+  }
+});
+// ===== CAB VIEWER (admire): Ken Burns push-in -> HOLD; exit on B / GET BIG (any pad button) / click / Esc =====
+const viewer=document.getElementById('viewer'), vshot=document.getElementById('vshot'), vname=document.getElementById('vname');
+function openViewer(c){ vshot.src='cab_final/'+encodeURIComponent(c.art)+'.png'; vname.textContent=c.nm;
+  vshot.style.animation='none'; void vshot.offsetWidth; vshot.style.animation='';   // restart the push each open
+  viewer.classList.add('on'); }
+function closeViewer(){ viewer.classList.remove('on'); }
+viewer.addEventListener('click',closeViewer);
+addEventListener('keydown',function(e){ if(viewer.classList.contains('on') && (e.key==='Escape'||e.key===' '||e.key.toLowerCase()==='b')){ e.preventDefault(); closeViewer(); } });   // only when the admire view is open (Space no longer scrolls the grid under a closed viewer)
+(function(){ var prev={}; function poll(){ if(viewer.classList.contains('on')){ var pads=navigator.getGamepads?navigator.getGamepads():[];
+    for(var i=0;i<pads.length;i++){ var gp=pads[i]; if(!gp||!gp.buttons)continue; for(var b=0;b<gp.buttons.length;b++){ var p=!!gp.buttons[b].pressed,k=i+'_'+b; if(p&&!prev[k])closeViewer(); prev[k]=p; } } } else prev={}; requestAnimationFrame(poll); } poll(); })();
+document.getElementById('rung').textContent = JAIL ? 'JAILBREAK · all cabs unlocked' : (RUNG>=4?'Campaign complete — every cab unlocked.':('Cleared '+RUNG+'/4 rungs.'));
+if(JAIL) document.getElementById('saveBadge').textContent='JAILBREAK · ALL UNLOCKED';
+</script></body></html>
