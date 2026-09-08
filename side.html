@@ -356,6 +356,16 @@ try{ const _c=JSON.parse(localStorage.getItem('htCtrl')); if(_c)Object.assign(CT
     if(q==='all'){CTRL.mouse=CTRL.keyboard=CTRL.stick=true;}   // explicit opt-in to the old coexist-everything mode
     else { CTRL.mouse=/mouse/.test(q); CTRL.keyboard=/key|kbd/.test(q); CTRL.stick=/stick|pad|joy/.test(q); } }
   else if(Q.has('stick')){ CTRL.stick=true; CTRL.mouse=false; }   // ?stick=8way|analog = an ARCADE / STICK cab launch → stick + keyboard(buttons), mouse OFF so a stray desktop pointer can't fight the stick (this is the completely-separate stick build). ?ctrl= still overrides.
+  // NEVER LEAVE A BUILD WITH NO WAY TO STEER. htCtrl is applied above, BEFORE this, so one toggle in
+  // the pause menu ("mouse off") persists into every later visit -- and a stick-only build with no
+  // stick plugged in is simply unplayable, with the pause key the only way back if you know it exists.
+  // If nothing can steer, hand the mouse back. A real cab is unaffected: it has a pad, and the
+  // gamepadconnected auto-gate silences the mouse again the moment one appears.
+  if(!CTRL.mouse && !CTRL.keyboard){
+    var _pads=[]; try{ _pads=(navigator.getGamepads&&navigator.getGamepads())||[]; }catch(e){}
+    var _live=false; for(var _i=0;_i<_pads.length;_i++) if(_pads[_i]) _live=true;
+    if(!_live) CTRL.mouse=true;
+  }
 })();
 // AUTO-GATE (Joe 2026-07-11): if this build allows the stick AND a real controller connects, silence mouse
 //   STEERING so a resting/ drifting cursor can't yank the knocker; restore it if every pad disconnects. A pure

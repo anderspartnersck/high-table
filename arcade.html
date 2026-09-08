@@ -492,7 +492,7 @@ seg(document.getElementById('pSeg'),['1 PLAYER','2 PLAYER'],function(){return pl
 updateModeUI();
 
 function go(){ var v=VEN[venI], cup=mode===1; flashCut();   // black-flash wipe smooths the menu→game cut
-  gameEl.src='side.html?embed=1&go=1&stick=8way&table='+v.key+'&diff='+diff+(cup?'&cup=1':'')+((players===2&&!cup)?'&p2=1':'')+'&_cb='+Date.now();
+  gameEl.src='side.html?embed=1&go=1&ctrl=all&stick=8way&table='+v.key+'&diff='+diff+(cup?'&cup=1':'')+((players===2&&!cup)?'&p2=1':'')+'&_cb='+Date.now();
   show('game'); try{music.pause();}catch(e){} }
 document.getElementById('go').addEventListener('click',go);
 function toBack(){ flashCut(); gameEl.src='about:blank'; show('menu'); startMusic(); musicTarget=0.5; }   // smooth game→menu

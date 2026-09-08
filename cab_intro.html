@@ -6,7 +6,7 @@
   killscreen cue) -> Ken Burns push-in on the cab beauty-shot -> reveal the FULL-BLEED game (NOT
   superimposed into a tiny monitor rect). Modeled on ONE TIMER/cab_1up_desktop.html.
     ?cab=<name>   cab art file in cab_final/ (no extension), e.g. ?cab=OTTHT_1 up HYSCORE color
-    ?game=<url>   the game to reveal, e.g. ?game=side.html?stick=8way   (default: side.html?stick=8way)
+    ?game=<url>   the game to reveal, e.g. ?game=side.html?ctrl=all&stick=8way   (default: side.html?ctrl=all&stick=8way)
     ?title=<txt>  optional marquee label under the logo
 -->
 <style>
@@ -74,7 +74,7 @@
 (function(){
   var Q=new URLSearchParams(location.search);
   var cab=Q.get('cab')||'OTTHT_1 up HYSCORE color';
-  var game=Q.get('game')||'side.html?stick=8way';
+  var game=Q.get('game')||'side.html?ctrl=all&stick=8way';
   var cabUrl='cab_final/'+encodeURIComponent(cab)+'.png';
   document.getElementById('room').style.backgroundImage="url('"+cabUrl+"')";
   {var _cp=document.getElementById('cabPhoto'); _cp.onerror=function(){this.style.opacity=0.12;}; _cp.src=cabUrl;}   // beauty-shot 404 → dim, not a broken glyph

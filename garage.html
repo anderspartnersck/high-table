@@ -60,7 +60,7 @@
   <div class="save" id="saveBadge">CONSOLE EDITION · PROGRESS SAVED</div>
 </header>
 <div class="grid" id="grid"></div>
-<footer>Cabs unlock as you climb the <b>OLD-TYME CAMPAIGN</b>. <span id="rung"></span> &nbsp;·&nbsp; <a href="side.html?camp">▶ PLAY THE CAMPAIGN</a></footer>
+<footer>Cabs unlock as you climb the <b>OLD-TYME CAMPAIGN</b>. <span id="rung"></span> &nbsp;·&nbsp; <a href="side.html?camp&ctrl=all">▶ PLAY THE CAMPAIGN</a></footer>
 <div id="viewer"><img class="vshot" id="vshot" alt="" onerror="this.style.opacity=.12"><div class="vvig"></div><div class="vexit">▶ B · GET BIG — or click — to exit</div><div class="vname" id="vname"></div></div>
 <script>
 const Q=new URLSearchParams(location.search);
@@ -70,8 +70,8 @@ let RUNG=0; try{ RUNG=Math.max(0,Math.min(4,+(localStorage.getItem('htCampRung')
 // cab registry — beauty-shot (cab_final/, no ext), the game it launches, and the campaign rung that frees it.
 //   unlock:0 = free from the start. RIVALRY 2-up (typo-fixed 0709 art) unlocks at campaign-complete (rung 4).
 const CABS=[
-  {key:'hyscore',  nm:'HYSCORE · 1UP',   tag:'THE HOUSE CAB',        art:'OTTHT_1 up HYSCORE color', game:'side.html?ctrl=all&stick=8way&go',     unlock:0},
-  {key:'hivemind', nm:'HIVEMIND · 1UP',  tag:'BEES',        team:'bees',  art:'1up HIVEMIND color',       game:'side.html?ctrl=all&stick=8way&go&table=bees&knocker=bees', unlock:0},
+  {key:'hyscore',  nm:'HYSCORE · 1UP',   tag:'THE HOUSE CAB',        art:'OTTHT_1 up HYSCORE color', game:'side.html?camp&ctrl=all',     unlock:0},
+  {key:'hivemind', nm:'HIVEMIND · 1UP',  tag:'BEES',        team:'bees',  art:'1up HIVEMIND color',       game:'side.html?camp&ctrl=all', unlock:0},
   {key:'queens2up',nm:'QUEENS · 2-UP',   tag:'2 PLAYERS · CROWN',    team:'q', art:'OTTHT_2 up QUEENS color', game:'2up.html?solo&table=throne', unlock:2},
   {key:'rivalry',  nm:'RIVALRY · 2-UP',  tag:'BEES vs QUEENS · THE APEX', team:'q', art:'RIVALRY A color',      game:'2up.html?solo',           unlock:4},
 ];
