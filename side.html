@@ -96,7 +96,7 @@
 </head>
 <body>
 <canvas id="c"></canvas>
-<div id="hint">move your knocker · GET BIG when charged · TRAP to catch · BLAST to fire · score in the far goal</div>
+<div id="hint">move to steer · <b>LEFT-CLICK</b> BLAST · hold to TRAP · <b>RIGHT-CLICK</b> GET BIG when charged · score in the far goal</div>
 
 <!-- FRONT-END: title -> knocker select -> rink select -->
 <div id="menu">
@@ -880,7 +880,12 @@ function step(dt){
   else glideKnocker(near, near.TX, Math.max(KR,Math.min(1.0,near.TY)), dt);            // mass on the cushion — carries + overshoots; clamp to near half
   // CPU: guard far goal, pounce when the puck is on its half
   if(CAB2==='p1'){ // 2-UP HOST: far is P2, gliding toward the target sent from the other screen
-    far.TX=Math.max(KR,Math.min(1-KR,p2in.tx)); far.TY=Math.max(AR*0.5,Math.min(AR-KR,p2in.ty));
+    // Same committed-BLAST rule as the near knocker, applied HOST-side because the lunge lives here:
+    // SIDE 2's pointer keeps streaming tx/ty during the lunge, and if we took ty the client would drag
+    // its own target up-ice chasing the knocker and park it at the tip. The client has no lungeT to
+    // gate on, so the host is the right place. X still tracks, so the lunge stays aimable.
+    far.TX=Math.max(KR,Math.min(1-KR,p2in.tx));
+    if(!(far.lungeT>0)) far.TY=Math.max(AR*0.5,Math.min(AR-KR,p2in.ty));
     if(p2in.blast && !p2blastPrev) triggerFarLunge(); p2blastPrev=!!p2in.blast;   // SIDE 2's BLAST → far lunge
     if(far.lungeT>0) farLungeMove(dt); else glideFar(far.TX, far.TY, dt);
     if(p2in.big && far.sup>=1) bigUp(far,OTEAM);
@@ -2072,8 +2077,17 @@ function begin(){
 function pointer(px,py){ SFX.resume();
   if(CAB2==='p2'){ const u=unproject(px,py); p2local.tx=Math.max(0,Math.min(1,1-u[0])); p2local.ty=Math.max(AR*0.5,Math.min(AR-KR,AR*(1-u[1]))); return; }   // CLIENT: unproject (already mirrored) -> host's FAR target
   if(!CTRL.mouse) return;                     // mouse steering toggled off in the pause menu (stick/keyboard cab)
+  // BLAST is a COMMITTED move: while it is out, the mouse may steer it sideways but may NOT rewrite
+  // the up-ice target. The lunge drives near.Y forward, away from your cursor; you instinctively chase
+  // the knocker, every mousemove wrote near.TY to where the lunge had already got to, and when the
+  // lunge ended the glide had nothing to pull back to -- so the knocker parked at the tip. With the
+  // cursor hidden there is no way to see that your hand was never really up there.
+  // Freezing TY (not TX) for the ~0.18s of the lunge fixes the stick and keeps the lunge aimable,
+  // and the knocker glides back to where your hand actually is.
+  const lunging = (typeof near!=='undefined') && near && near.lungeT>0;
   const u=unproject(px,py); if(u[1]<0.55){   // MOUSE SENS amplifies the TARGET around centre (less mouse travel, snappier) — the glide spring is untouched, so glide feel stays
-    const s=GLIDE.sens||1; near.TX=Math.max(0,Math.min(1, 0.5+(u[0]-0.5)*s)); near.TY=Math.max(KR,Math.min(1.0, 0.5+(u[1]*AR-0.5)*s)); } }
+    const s=GLIDE.sens||1; near.TX=Math.max(0,Math.min(1, 0.5+(u[0]-0.5)*s));
+    if(!lunging) near.TY=Math.max(KR,Math.min(1.0, 0.5+(u[1]*AR-0.5)*s)); } }
 if(CAB2==='p2'){ addEventListener('keydown',e=>{ if(e.key===' '||e.key.toLowerCase()==='f'){ p2local.big=true; } if(e.key==='.'||e.key.toLowerCase()==='v'){ p2local.blast=true; } if(e.key==='Enter'||e.key===' '){ if(LINK2)LINK2.postMessage({t:'start'}); } });   // P2 GET BIG + BLAST (client keyboard) + start/rematch the host
   addEventListener('keyup',e=>{ if(e.key===' '||e.key.toLowerCase()==='f') p2local.big=false; if(e.key==='.'||e.key.toLowerCase()==='v') p2local.blast=false; }); }
 // FULLSCREEN (Joe 2026-06-19): mousing off the window gets you stuck — grab fullscreen on the first click so the
@@ -2084,7 +2098,18 @@ function toggleFullscreen(){ try{ if(document.fullscreenElement){ document.exitF
 cv.addEventListener('mousedown',e=>{if(REG){regDown(e.clientX,e.clientY);return;} if(AUTOFS&&!_fsTried){_fsTried=true;goFullscreen();}
   if(state==='select'){ if(e.clientX<innerWidth*0.30){selCycle(-1);} else if(e.clientX>innerWidth*0.70){selCycle(1);} else begin(); return; }   // SELECT: click ◄/► to cycle, centre to play
   if(state==='config'){ if(e.clientY>innerHeight*0.86){ begin(); return; } const ry=Math.max(0,Math.min(2,Math.floor((e.clientY/innerHeight-0.24)/0.125))); cfgRow=ry; if(e.clientX<innerWidth*0.5)cfgCycle(-1); else cfgCycle(1); return; }   // CONFIG: click a row L/R to change it; bottom = PLAY
-  mouseDown=true; var _wasLive=(state==='play'); begin(); if(_wasLive) pointer(e.clientX,e.clientY);});   // the click that STARTS a match must not set the play target (clicking a corner to begin used to zip the knocker there past faceoff's re-center); only steer on clicks during live play
+  // MOUSE WEAPONS (Joe): LEFT = BLAST, RIGHT = GET BIG. Left still TRAPS, because the two never
+  // collide -- BLAST is a TAP and is gated on puckHeld!=='near', TRAP is a HOLD and only engages once
+  // you actually have the puck. So a click in open play lunges; a click on a loose puck catches and
+  // holds it; a click while holding fires it. Right-click is a pure one-shot and must not set
+  // mouseDown, or it would arm TRAP as a side effect.
+  if(e.button===2){
+    if(CTRL.mouse && state==='play' && near && near.sup>=1) bigUp(near,PTEAM);
+    e.preventDefault(); return; }
+  mouseDown=true; var _wasLive=(state==='play');
+  if(_wasLive && CTRL.mouse && e.button===0) deckBlast=true;                 // tap = BLAST (one-shot pulse, same path as the deck/pad)
+  begin(); if(_wasLive) pointer(e.clientX,e.clientY);});   // the click that STARTS a match must not set the play target (clicking a corner to begin used to zip the knocker there past faceoff's re-center); only steer on clicks during live play
+cv.addEventListener('contextmenu',e=>e.preventDefault());   // right-click is GET BIG, not the OS menu
 cv.addEventListener('mouseup',()=>dragC=-1); addEventListener('mouseup',()=>{mouseDown=false;});
 cv.addEventListener('mousemove',e=>{if(REG){if(e.buttons)regMove(e.clientX,e.clientY);return;}pointer(e.clientX,e.clientY);});
 cv.addEventListener('touchstart',e=>{e.preventDefault();if(AUTOFS&&!_fsTried){_fsTried=true;goFullscreen();}begin();const t=e.changedTouches[0];pointer(t.clientX,t.clientY);},{passive:false});
