@@ -11,7 +11,7 @@ to blast. Get it in the far goal.
 ## Modes
 
 [1UP arcade][play] · [Campaign][camp] · [Castle rules][castle] ·
-[Jailbreak][jail] · [2 players][twoup] · [Top-down][todown] ·
+[Jailbreak][jail] · [2 players][twoup] *(work in progress)* · [Top-down][todown] ·
 [Table picker][picker] · [The garage][garage]
 
 The campaign is the one that saves. Clearing its tables unlocks the cabs in the
