@@ -12,7 +12,10 @@ to blast. Get it in the far goal.
 
 [1UP arcade][play] · [Campaign][camp] · [Castle rules][castle] ·
 [Jailbreak][jail] · [2 players][twoup] · [Top-down][todown] ·
-[Attract][attract] · [The garage][garage]
+[Table picker][picker] · [The garage][garage]
+
+The campaign is the one that saves. Clearing its tables unlocks the cabs in the
+garage.
 
 ## Controllers
 
@@ -31,5 +34,5 @@ B is blast, RT is get big.
 [jail]: https://anderspartnersck.github.io/high-table/?jail
 [twoup]: https://anderspartnersck.github.io/high-table/2up.html?solo
 [todown]: https://anderspartnersck.github.io/high-table/table_temp_engine.html
-[attract]: https://anderspartnersck.github.io/high-table/arcade.html
+[picker]: https://anderspartnersck.github.io/high-table/arcade.html
 [garage]: https://anderspartnersck.github.io/high-table/garage.html
