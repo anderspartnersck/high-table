@@ -2178,7 +2178,7 @@ function cabReport(){ try{ if(parent===window) return; }catch(_){ return; }   //
   if(Q.get('stick')==='4way') WAYS=4; else if(Q.get('stick')==='8way') WAYS=8;
   function only4(dx,dy,ax,ay){ if(WAYS===4 && dx && dy){ if(Math.abs(ax)>=Math.abs(ay)) dy=0; else dx=0; } return [dx,dy]; }
   // 3-BUTTON CAB defaults — A=TRAP (catch/hold) · B=BLAST (fire) · RT=GET BIG (team power). Overridable by the saved map (highTableGamepad).
-  var BTN={trap:(M&&M.buttons&&M.buttons.trap!=null)?M.buttons.trap:0, big:(M&&M.buttons&&M.buttons.big!=null)?M.buttons.big:7, blast:(M&&M.buttons&&M.buttons.blast!=null)?M.buttons.blast:1, start:(M&&M.buttons&&M.buttons.start!=null)?M.buttons.start:9};   // A=TRAP · B=GET BIG · RT=BLAST (Joe's cab layout, F300 + 8BitDo)
+  var BTN={trap:(M&&M.buttons&&M.buttons.trap!=null)?M.buttons.trap:0, big:(M&&M.buttons&&M.buttons.big!=null)?M.buttons.big:1, blast:(M&&M.buttons&&M.buttons.blast!=null)?M.buttons.blast:7, start:(M&&M.buttons&&M.buttons.start!=null)?M.buttons.start:9};   // A=TRAP · B=GET BIG · RT=BLAST (Joe's cab layout, F300 + 8BitDo)
   var prevBlast=false, prevBig2=false, prevFarBig=false, prevFarBlast=false, prevAnyC=false, prevStart=false;
   // CONTROLLER PAIRING (KILLBOX → localStorage 'ckPads'): resolve P1/P2 by DEVICE id, so plug order
   // and right-stick mode never matter. Cached + refreshed on 'storage' — NEVER read per frame (chugs).
