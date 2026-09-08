@@ -96,7 +96,7 @@
 </head>
 <body>
 <canvas id="c"></canvas>
-<div id="hint">move to steer · hold <b>LEFT-CLICK</b> to TRAP · <b>RIGHT-CLICK</b> to BLAST · score in the far goal</div>
+<div id="hint"><b>P1</b> mouse or <kbd>WASD</kbd> · <kbd>Z</kbd> BIG · <kbd>X</kbd> BLAST · <kbd>C</kbd> TRAP &nbsp;·&nbsp; <b>P2</b> <kbd>OKL;</kbd> · <kbd>M</kbd> BIG · <kbd>,</kbd> BLAST &nbsp;·&nbsp; score in the far goal</div>
 
 <!-- FRONT-END: title -> knocker select -> rink select -->
 <div id="menu">
@@ -564,7 +564,7 @@ function seriesTable(){ const v=RAISE[CUP.variant];
 let CUP={ on:Q.has('cup')||Q.has('raiseit'), variant:(Q.get('raiseit')||'standard'), win:0, loss:0, inPlayoff:false, playoff:null };
 if(!RAISE[CUP.variant]) CUP.variant='standard';
 let TARGET=7, champT=0;              // TARGET = goals to win this match (the series sets it per game); champT = trophy-cinematic clock
-let mouseDown=false, puckHeld=null, grabT=0, grabCool=0, grabPrev=false, blastPrev=false, deckGrab=false, deckBlast=false;   // TRAP = hold (mouse / C / deck) to catch+charge · BLAST = tap (V / X / deck) to fire / lunge
+let mouseDown=false, puckHeld=null, grabT=0, grabCool=0, grabPrev=false, blastPrev=false, bigPrev1=false, farBigPrev=false, deckGrab=false, deckBlast=false;   // TRAP = hold (mouse / C / deck) to catch+charge · BLAST = tap (V / X / deck) to fire / lunge
 addEventListener('blur',function(){ mouseDown=false; if(typeof keys==='object')for(var k in keys)keys[k]=false; });   // clear stuck input on focus loss
 let DIFF=1; const DIFFS=[{n:'ROOKIE',spd:5.0,lead:0.0},{n:'PRO',spd:7.5,lead:0.06},{n:'ALL-STAR',spd:10.5,lead:0.14}];
 let twoP=false; const keys={};
@@ -881,7 +881,11 @@ function step(dt){
     if(keys['a']||keys['A'])kvx-=1; if(keys['d']||keys['D'])kvx+=1;
     if(keys['w']||keys['W'])kvy+=1; if(keys['s']||keys['S'])kvy-=1;
     if(!twoP){ if(keys['ArrowLeft'])kvx-=1; if(keys['ArrowRight'])kvx+=1; if(keys['ArrowUp'])kvy+=1; if(keys['ArrowDown'])kvy-=1; }
-    if(kvx||kvy){ var ksp=1.6; near.TX=Math.max(0,Math.min(1,near.TX+kvx*ksp*dt)); near.TY=Math.max(KR,Math.min(1.0,near.TY-kvy*ksp*dt)); } }
+    // DIAGONALS already worked -- the axes accumulate independently, so A+W moves both. What did not
+    // work is the SPEED: full rate on both axes makes a diagonal sqrt(2) = 1.41x faster than a
+    // straight line, so the quickest route anywhere was a zig-zag. Normalise when both are pressed.
+    if(kvx||kvy){ var ksp=1.6, kn=(kvx&&kvy)?0.7071:1;
+      near.TX=Math.max(0,Math.min(1,near.TX+kvx*ksp*kn*dt)); near.TY=Math.max(KR,Math.min(1.0,near.TY-kvy*ksp*kn*dt)); } }
   // player control: BLAST LUNGE = a forward dash across centre · else GLIDE to the hand
   if(near.lungeT>0){ const oxx=near.X, oyy=near.Y;
     near.Y=Math.min(blastTipNear(), near.Y+BLAST.lungeV*dt);                       // drive forward (clamp to the PAINTED centre + reach, not flat AR*0.5)
@@ -900,9 +904,22 @@ function step(dt){
     if(far.lungeT>0) farLungeMove(dt); else glideFar(far.TX, far.TY, dt);
     if(p2in.big && far.sup>=1) bigUp(far,OTEAM);
   } else if(twoP){ const ps=1.5;
-    if(keys['ArrowLeft'])far.TX-=ps*dt; if(keys['ArrowRight'])far.TX+=ps*dt;
-    if(keys['ArrowUp'])far.TY-=ps*dt;   if(keys['ArrowDown'])far.TY+=ps*dt;
+    // P2 on a SHARED keyboard: O/K/L/; to steer (the right-hand mirror of WASD) with N/M/, under it
+    // for GET BIG / BLAST / TRAP -- positionally the same row P1 has as Z/X/C. Arrows still work.
+    var fvx=0, fvy=0;
+    if(keys['ArrowLeft']||keys['k'])fvx-=1;  if(keys['ArrowRight']||keys[';'])fvx+=1;
+    if(keys['ArrowUp']||keys['o'])fvy-=1;    if(keys['ArrowDown']||keys['l'])fvy+=1;
+    var fn=(fvx&&fvy)?0.7071:1;                       // same diagonal normalisation as P1
+    far.TX+=fvx*ps*fn*dt; far.TY+=fvy*ps*fn*dt;
     far.TX=Math.max(KR,Math.min(1-KR,far.TX)); far.TY=Math.max(AR*0.5,Math.min(AR-KR,far.TY));
+    // P2 had no GET BIG either -- steer and blast only, against a P1 who has everything. N fixes that.
+    // TRAP is NOT bound for P2 on purpose: the far side has no trap machinery in the engine at all
+    // (puckHeld only ever becomes 'near'), so ',' would have been a button that does nothing. It is
+    // left free for whenever far-trap is actually built.
+    // Button row mirrors P1's exactly: Z X C sit under A S D, so M , . sit under K L ;.
+    // GET BIG = M (mirror of Z), N kept as an alias. BLAST = , (mirror of X), . kept.
+    var fBig=(!!keys['m']||!!keys['M']||!!keys['n']||!!keys['N']);
+    if(fBig && !farBigPrev && state==='play' && !PAUSED && far.sup>=1) bigUp(far,OTEAM); farBigPrev=fBig;
     if(farBlastReq){ triggerFarLunge(); farBlastReq=false; }                         // P2 BLAST ('.' key or 2nd pad) → far lunge
     if(far.lungeT>0) farLungeMove(dt); else moveKnocker(far, far.TX, far.TY, 24, dt);
   } else {
@@ -956,6 +973,11 @@ function step(dt){
   if(grabCool>0) grabCool-=dt;
   var grabN = (mouseDown || !!keys['c'] || deckGrab);
   var blastRaw = (!!keys['v'] || !!keys['x']);
+  // P1 BUTTON ROW: Z / X / C under WASD -- GET BIG / BLAST / TRAP. C and X already existed; Z is new,
+  // because GET BIG had NO 1P key at all and was reachable only from a pad or the deck.
+  var bigRaw1 = (!!keys['z'] || !!keys['Z']);
+  if(bigRaw1 && !bigPrev1 && state==='play' && !PAUSED && near.sup>=1) bigUp(near,PTEAM);
+  bigPrev1 = bigRaw1;
   var blastEdge = (blastRaw && !blastPrev) || deckBlast; deckBlast=false; blastPrev=blastRaw;   // a TAP (or the one-shot deck pulse)
   var blastN = blastRaw || blastEdge;                                                           // level — used to fire a held puck
   if(puckHeld!=='near' && grabN && !grabPrev && grabCool<=0 && state==='play'){   // RISING EDGE only — must release before re-trapping (no stuck-hold loop)
@@ -2138,7 +2160,7 @@ function openPause(){ PAUSED=true; for(var k in keys)keys[k]=false; mouseDown=fa
 function closePause(){ PAUSED=false; pauseEl.classList.add('hidden'); }
 function togglePause(){ if(pauseEl.classList.contains('hidden'))openPause(); else closePause(); }
 pauseEl.querySelectorAll('.ctog').forEach(t=>{ t.addEventListener('click',()=>{ const k=t.getAttribute('data-ctrl'); CTRL[k]=!CTRL[k]; saveCtrl(); syncPauseToggles(); banner((CTRL[k]?'':'NO ')+k.toUpperCase(),0.7); }); });
-addEventListener('keydown',e=>{ if(twoP && !CAB2 && state==='play' && e.key==='.') farBlastReq=true; });   // single-screen P2 BLAST ('.') → far lunge
+addEventListener('keydown',e=>{ if(twoP && !CAB2 && state==='play' && (e.key===','||e.key==='.')) farBlastReq=true; });   // BLAST = , (mirror of P1's X), . kept as the old alias   // single-screen P2 BLAST ('.') → far lunge
 document.getElementById('presume').addEventListener('click',closePause);
 pauseEl.addEventListener('click',e=>{ if(e.target===pauseEl)closePause(); });   // click the dim backdrop to resume
 // cab/deck wrapper talks to the game over postMessage: START, and the GET BIG deck button.
