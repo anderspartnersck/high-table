@@ -10,13 +10,20 @@ to blast. Get it in the far goal.
 
 ## Modes
 
-[1UP arcade][play] · [Campaign][camp] · [Castle rules][castle] ·
-[Jailbreak][jail] · [2 players][twoup] *(work in progress)* · [Top-down][todown] ·
+[HYSCORE][play] is the 1UP arcade cab and the default.
+
+[OLD-TYME CAMPAIGN][camp] is the one that keeps progress: clear its tables and
+the cabs in the garage unlock.
+
+[CASTLE RULES][castle] plays to a clock, three periods.
+
+[JAILBREAK][jail] opens every table, knocker and puck at once.
+
+Also: [2 players][twoup] *(work in progress)* · [Top-down][todown] ·
 [Table picker][picker] · [The garage][garage]
 
-The campaign is the one that keeps progress: clear its tables and the cabs in the
-garage unlock. That progress, and your control and sound settings, are kept in
-your own browser and never sent anywhere.
+Progress and your control and sound settings are kept in your own browser and
+never sent anywhere.
 
 ## Controllers
 
