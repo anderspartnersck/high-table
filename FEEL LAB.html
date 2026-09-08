@@ -1,0 +1,204 @@
+<!doctype html><html><head><meta charset="utf-8"><title>ONE-TIMER · FEEL LAB</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root{--ink:#cfe6ff;--dim:#7f97a8;--gold:#ffe23a;--purp:#b14cff;--cyan:#27f6ff;}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:#06070d;color:var(--ink);font:13px/1.45 ui-monospace,Menlo,monospace;overflow:hidden}
+  #wrap{display:flex;height:100%}
+  #stage{flex:1;min-width:0;position:relative;background:#000}
+  #stage iframe{width:100%;height:100%;border:0;display:block}
+  #panel{width:330px;flex:none;background:#0a0c14;border-left:1px solid #1c2740;padding:14px 14px 60px;overflow-y:auto}
+  h1{font:800 15px/1 'Helvetica Neue',Arial;letter-spacing:.16em;margin:2px 0 2px;color:#fff}
+  .sub{color:var(--dim);font-size:11px;letter-spacing:.06em;margin-bottom:14px}
+  .grp{border:1px solid #1c2740;border-radius:9px;padding:10px 11px;margin-bottom:11px;background:rgba(255,255,255,.015)}
+  .grp h2{font:800 11px/1 'Helvetica Neue',Arial;letter-spacing:.18em;margin:0 0 9px;color:var(--cyan)}
+  .row{display:grid;grid-template-columns:74px 1fr 52px;align-items:center;gap:8px;margin:7px 0}
+  .row label{color:var(--dim);font-size:11px;letter-spacing:.04em}
+  .row input[type=range]{width:100%;accent-color:var(--gold)}
+  .row .val{text-align:right;color:#fff;font-size:12px}
+  .toggle{display:flex;align-items:center;gap:8px;margin:7px 0;cursor:pointer}
+  .toggle .box{width:34px;height:18px;border-radius:10px;background:#26324c;position:relative;transition:.15s}
+  .toggle .box i{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#7f97a8;transition:.15s}
+  .toggle.on .box{background:var(--gold)} .toggle.on .box i{left:18px;background:#06070d}
+  .btns{display:flex;gap:7px;margin-top:6px}
+  button{flex:1;padding:9px 0;border:1px solid #2a3550;border-radius:7px;background:#121828;color:var(--ink);font:700 11px/1 ui-monospace,monospace;letter-spacing:.08em;cursor:pointer}
+  button:hover{border-color:var(--gold);color:#fff}
+  button.primary{background:#1a2236;border-color:var(--gold);color:var(--gold)}
+  .hint{color:var(--dim);font-size:10.5px;margin:9px 2px 0;line-height:1.5}
+  #dump{width:100%;height:96px;margin-top:9px;background:#06070d;color:#8fd0a0;border:1px solid #1c2740;border-radius:7px;font:11px/1.45 ui-monospace,monospace;padding:8px;resize:vertical;white-space:pre}
+</style><link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSczMicgaGVpZ2h0PSczMic+PGVsbGlwc2UgY3g9JzE2JyBjeT0nMjEnIHJ4PScxMicgcnk9JzYnIGZpbGw9JyMxNDE0MTknLz48cmVjdCB4PSc0JyB5PScxMycgd2lkdGg9JzI0JyBoZWlnaHQ9JzgnIGZpbGw9JyMxNDE0MTknLz48ZWxsaXBzZSBjeD0nMTYnIGN5PScxMycgcng9JzEyJyByeT0nNicgZmlsbD0nI2YwYjQyOScvPjxlbGxpcHNlIGN4PScxNicgY3k9JzEzJyByeD0nNycgcnk9JzMuMicgZmlsbD0nI2ZmZDc2YicvPjwvc3ZnPg==">   <!-- gold puck — inline so there is no favicon.ico request (every build was 404ing one) -->
+</head>
+<body>
+<div id="wrap">
+  <div id="stage"><iframe id="game" allow="gamepad; autoplay"></iframe></div>
+  <div id="panel">
+    <h1>STICK TESTER</h1>
+    <div class="sub">ONE-TIMER · THE HIGH TABLE — F300 / 8BitDo / any HID · push the stick, watch the knocker move</div>
+    <div style="margin:0 0 12px;display:flex;gap:8px;align-items:center">
+      <span class="sub" style="margin:0">TEST</span>
+      <select id="testsel" style="flex:1;background:#121828;color:#cfe6ff;border:1px solid #2a3550;border-radius:7px;padding:7px;font:700 11px ui-monospace;cursor:pointer"></select>
+      <button id="reloadtest" style="border:1px solid #2a3550;border-radius:7px;background:#121828;color:#cfe6ff;font:700 11px ui-monospace;padding:7px 10px;cursor:pointer" title="reload fresh (no cache)">↻</button>
+    </div>
+    <div style="margin:0 0 12px;display:flex;gap:8px;align-items:center">
+      <span class="sub" style="margin:0">STICK</span>
+      <select id="stickmode" title="A/B the restrictor — does this game want diagonals?" style="flex:1;background:#121828;color:#ffe23a;border:1px solid #2a3550;border-radius:7px;padding:7px;font:700 11px ui-monospace;cursor:pointer">
+        <option value="8way">8-WAY (diagonals — game default)</option>
+        <option value="4way">4-WAY (no diagonals — cleaner cardinal)</option>
+        <option value="analog">ANALOG (absolute position)</option>
+      </select>
+    </div>
+    <div style="margin:0 0 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <label class="tog" id="proptog" style="display:flex;align-items:center;gap:6px;cursor:pointer;color:#cfe6ff;font:700 11px ui-monospace"><input type="checkbox" id="propbox" checked> PROPORTIONAL (feather = slow, like the mouse)</label>
+      <span style="color:var(--dim);font:700 11px ui-monospace">EASE <input id="easerng" type="range" min="4" max="40" step="1" value="14" style="vertical-align:middle"><span id="easev">14</span></span>
+      <span style="color:var(--dim);font-size:10px">low = floaty accel · high = snappy</span>
+    </div>
+    <div id="tester"></div>
+    <details style="margin-top:14px"><summary style="cursor:pointer;color:var(--cyan);font:800 11px/1 'Helvetica Neue',Arial;letter-spacing:.16em;padding:4px 0">▸ FEEL KNOBS (live tuning)</summary>
+    <div id="groups" style="margin-top:8px"></div>
+    <div class="grp">
+      <div class="btns"><button id="pause">⏸ PAUSE</button><button id="reset">RESET</button><button id="reload">RE-DROP</button></div>
+      <div class="btns" style="margin-top:7px"><button class="primary" id="save" style="flex:2">SAVE + BAKE</button></div>
+      <textarea id="dump" readonly placeholder="SAVE prints the bake-ready values here…"></textarea>
+      <div class="hint">Tweaks drive the running game instantly. SAVE persists to localStorage (the game re-applies them on boot) and prints the source lines to paste into side.html. RESET restores the shipped defaults.</div>
+    </div>
+    </details>
+  </div>
+</div>
+<script src="lib/stick.js"></script>
+<script src="lib/stick-tester.js"></script>
+<script>
+// ---- comprehensive STICK TESTER (shared component) — HIGH TABLE action map ----
+(function(){
+  function htHeld(name,dflt){ try{ var m=JSON.parse(localStorage.getItem('highTableGamepad')); var i=(m&&m.buttons&&m.buttons[name]!=null)?m.buttons[name]:dflt; return Stick.held(i); }catch(e){ return Stick.held(dflt); } }
+  StickTester.mount(document.getElementById('tester'),{ actions:[
+    {label:'TRAP',   hint:'A · hold',  on:function(S){ return htHeld('trap',0); }},
+    {label:'BLAST',  hint:'B · tap',   on:function(S){ return htHeld('blast',1); }},
+    {label:'GET BIG',hint:'RT · power',on:function(S){ return htHeld('big',7); }},
+    {label:'START',  hint:'any btn',   on:function(S){ return S.held('start')||S.held(8); }},
+  ]});
+})();
+</script>
+<script>
+// Each knob: which HT_FEEL object, the prop, range + step, and how to label it.
+const KNOBS=[
+  {grp:'GLIDE — knocker weight', items:[
+    {o:'GLIDE',k:'accel',min:40,max:420,step:5,d:200,t:'accel',h:'snap toward your hand'},
+    {o:'GLIDE',k:'damp', min:6, max:34, step:1,d:17, t:'damp', h:'lower = more carry/float'},
+    {o:'GLIDE',k:'sens', min:0.8,max:1.8,step:0.02,d:1.0,t:'mouse',h:'mouse target amplifier — >1 = less travel, snappier (glide spring unchanged)'},
+  ]},
+  {grp:'REACH — stretch & scuff', items:[
+    {o:'REACH',k:'peak',min:0.7,max:1.3,step:0.02,d:1.0,t:'peak', h:'forward reach up the middle'},
+    {o:'REACH',k:'pull',min:0,  max:0.6,step:0.02,d:0.28,t:'pull', h:'how far it curves back at the rails'},
+  ]},
+  {grp:'AIR — table cushion / drag', items:[
+    {o:'AIR',k:'push',min:0,max:1.3,step:0.05,d:0.55,t:'push', h:'current strength'},
+    {o:'AIR',k:'roll',min:0,max:1.3,step:0.05,d:0.55,t:'roll', h:'how fast it breathes'},
+  ]},
+  {grp:'CONTACT — shot punch & rails', items:[
+    {o:'CONTACT',k:'rest',     min:0.7,max:1.1,step:0.01,d:0.96,t:'rest',    h:'bounce off a normal hit'},
+    {o:'CONTACT',k:'restBig',  min:0.9,max:1.4,step:0.01,d:1.10,t:'big rest',h:'GET BIG power shot'},
+    {o:'CONTACT',k:'railRest', min:0.6,max:1.0,step:0.01,d:0.96,t:'rail',    h:'open-rail bounce liveliness'},
+    {o:'CONTACT',k:'cornerRest',min:0.3,max:0.95,step:0.01,d:0.55,t:'corner',h:'low = corners absorb, high = pinball'},
+    {o:'CONTACT',k:'cornerHit',min:0.0,max:1.0,step:0.05,d:0.35,t:'cnr hit',h:'knocker contact softness in a corner (low = trap-friendly)'},
+  ]},
+  {grp:'GEOM — knocker size (TEST)', items:[
+    {o:'GEOM',k:'krMul',min:0.7,max:1.3,step:0.02,d:1.0,t:'size ×',h:'scales the knocker reach + draw (per-table KRTBL otherwise)'},
+  ]},
+  {grp:'KNOCKER DEPTH — toward/away the camera', items:[
+    {o:'KDEPTH',k:'near',min:0.9,max:1.6,step:0.02,d:1.15,t:'near ×',h:'knocker size at the camera end (forward / close)'},
+    {o:'KDEPTH',k:'far', min:0.25,max:0.9,step:0.02,d:0.42,t:'far ×', h:'knocker size at the back wall (away / small) — wider gap = stronger perspective'},
+  ]},
+  {grp:'BLAST — the lunge weapon (experiment)', items:[
+    {o:'BLAST',k:'cd',     min:0.5,max:5,  step:0.1, d:2.2, t:'cooldown',h:'regenerate seconds between lunges — the anti-instagoal gate'},
+    {o:'BLAST',k:'lungeV', min:3,  max:10, step:0.2, d:6.2, t:'lunge v', h:'forward dash speed'},
+    {o:'BLAST',k:'lungeT', min:0.08,max:0.4,step:0.02,d:0.18,t:'lunge t',h:'how long the dash drives forward'},
+    {o:'BLAST',k:'reach',  min:0.2,max:1.0,step:0.02,d:0.78,t:'reach',   h:'how far past centre the lunge may cross'},
+    {o:'BLAST',k:'clankSpd',min:1,max:5,  step:0.1, d:2.6, t:'clank @',  h:'relative speed needed to count as a HARD hit (clank)'},
+    {o:'BLAST',k:'flip',   min:0.3,max:1.5,step:0.05,d:0.72,t:'flip',    h:'victory-jump flip duration on a head-on clank'},
+    {o:'BLAST',k:'knockBack',min:0.2,max:2,step:0.05,d:0.85,t:'knockbk', h:'how hard the clank shoves'},
+  ]},
+  {grp:'KNOCK — mallet-vs-mallet body', items:[
+    {o:'KNOCK',k:'rest',min:0.1,max:1.2,step:0.05,d:0.55,t:'bounce',h:'mallet-on-mallet restitution on a hard clank (low=thuddy, high=billiard)'},
+  ]},
+  {grp:'TRAP — catch & shoot', items:[
+    {o:'TRAP',k:'catch', min:0.9,max:2.0,step:0.05,d:1.25,t:'catch r',h:'grab radius leniency'},
+    {o:'TRAP',k:'charge',min:0.3,max:2.0,step:0.05,d:0.9, t:'charge', h:'seconds to a full-power shot'},
+    {o:'TRAP',k:'powMin',min:0.6,max:1.6,step:0.05,d:1.0, t:'pow min',h:'shot power at no charge'},
+    {o:'TRAP',k:'powMax',min:1.2,max:3.0,step:0.05,d:1.9, t:'pow max',h:'shot power at full charge'},
+    {o:'TRAP',k:'aim',   min:0,  max:1,  step:0.05,d:0.35,t:'aim',    h:'pull the fired puck toward the far goal (0=straight off the knocker, 1=dead at net) — kills own-goal dribbles'},
+  ]},
+];
+const DEFAULTS={}; KNOBS.forEach(g=>g.items.forEach(it=>{DEFAULTS[it.o]=DEFAULTS[it.o]||{};DEFAULTS[it.o][it.k]=it.d;}));
+const game=document.getElementById('game'), groups=document.getElementById('groups');
+// WHAT TO TEST — pick the live build/table; ALWAYS cache-busted so it loads the CURRENT side.html
+// (not a stale cached one with the old grayscale-crash bloom).
+const TESTS=[
+  {nm:'RIVALRY — Queens end', q:'table=queens&knocker=queens&puck=royal'},
+  {nm:'RIVALRY — Bee end',    q:'table=bee&knocker=bees&puck=hive'},
+  {nm:'THE THRONE ROOM',      q:'table=throne&knocker=queens&puck=royal'},
+  {nm:'THE HONEY HOLE',       q:'table=bees&knocker=bees&puck=hive'},
+  {nm:'PENALTY BOX (nachos)', q:'table=nachos&knocker=white&puck=lit'},
+];
+const testsel=document.getElementById('testsel'), stickmode=document.getElementById('stickmode');
+const propbox=document.getElementById('propbox'), easerng=document.getElementById('easerng'), easev=document.getElementById('easev');
+testsel.innerHTML=TESTS.map((t,i)=>'<option value="'+i+'">'+t.nm+'</option>').join('');
+function loadTest(){ var t=TESTS[testsel.selectedIndex]||TESTS[0]; F=null;
+  game.src='side.html?go&tune&clean&stick='+(stickmode.value||'8way')+'&padprop='+(propbox.checked?'1':'0')+'&padease='+(easerng.value||14)+'&'+t.q+'&_cb='+Date.now(); }
+testsel.onchange=loadTest; stickmode.onchange=loadTest; propbox.onchange=loadTest;
+easerng.oninput=function(){ easev.textContent=easerng.value; }; easerng.onchange=loadTest;
+document.getElementById('reloadtest').onclick=loadTest;
+let F=null;                                  // the live HT_FEEL of the iframe
+function feel(){ try{ return game.contentWindow.HT_FEEL; }catch(e){ return null; } }
+
+const rows={};
+KNOBS.forEach(g=>{
+  const box=document.createElement('div'); box.className='grp';
+  box.innerHTML='<h2>'+g.grp+'</h2>'; groups.appendChild(box);
+  g.items.forEach(it=>{
+    const row=document.createElement('div'); row.className='row';
+    row.innerHTML='<label title="'+it.h+'">'+it.t+'</label>'+
+      '<input type="range" min="'+it.min+'" max="'+it.max+'" step="'+it.step+'" value="'+it.d+'">'+
+      '<span class="val">'+it.d+'</span>';
+    const slider=row.querySelector('input'), val=row.querySelector('.val');
+    slider.addEventListener('input',()=>{ const v=parseFloat(slider.value); val.textContent=v; if(F&&F[it.o])F[it.o][it.k]=v; });
+    box.appendChild(row); rows[it.o+'.'+it.k]={slider,val,it};
+  });
+});
+
+// AIR on/off toggle (drag switch)
+const tog=document.createElement('div'); tog.className='grp';
+tog.innerHTML='<h2>TABLE BLOWER</h2><div class="toggle on" id="airtog"><div class="box"><i></i></div><span>AIR ON · frictionless cushion</span></div>';
+groups.appendChild(tog);
+const airtog=document.getElementById('airtog');
+airtog.onclick=()=>{ if(!F)return; F.AIR.on=!F.AIR.on; airtog.classList.toggle('on',F.AIR.on); airtog.querySelector('span').textContent=F.AIR.on?'AIR ON · frictionless cushion':'AIR OFF · grippy / heavy drag'; };
+
+function pull(){ // sync sliders from the live engine (after load / reset)
+  if(!F)return;
+  for(const key in rows){ const {slider,val,it}=rows[key]; if(F[it.o]){ const v=F[it.o][it.k]; slider.value=v; val.textContent=(Math.round(v*1000)/1000); } }
+  airtog.classList.toggle('on',F.AIR.on);
+}
+function push(){ // shove all current slider values into the engine
+  if(!F)return;
+  for(const key in rows){ const {slider,it}=rows[key]; if(F[it.o])F[it.o][it.k]=parseFloat(slider.value); }
+}
+
+const pauseBtn=document.getElementById('pause');
+pauseBtn.onclick=()=>{ const a=api(); if(!a||!a.pause)return; const p=a.pause(); pauseBtn.textContent=p?'▶ RESUME':'⏸ PAUSE'; pauseBtn.style.color=p?'#ffe23a':''; pauseBtn.style.borderColor=p?'#ffe23a':''; };
+document.getElementById('reset').onclick=()=>{ if(!F)return;
+  for(const o in DEFAULTS)Object.assign(F[o],DEFAULTS[o]); F.AIR.on=true; pull(); };
+document.getElementById('reload').onclick=()=>loadTest();
+document.getElementById('save').onclick=()=>{ if(!F)return; F.save&&F.save();
+  document.getElementById('dump').value=
+    'const GLIDE={ accel:'+F.GLIDE.accel+', damp:'+F.GLIDE.damp+', sens:'+F.GLIDE.sens+' };\n'+
+    'const REACH={ peak:'+F.REACH.peak+', pull:'+F.REACH.pull+' };\n'+
+    'const AIR={ on:true, push:'+F.AIR.push+', roll:'+F.AIR.roll+' };\n'+
+    'const CONTACT={ rest:'+F.CONTACT.rest+', restBig:'+F.CONTACT.restBig+', railRest:'+F.CONTACT.railRest+', cornerRest:'+F.CONTACT.cornerRest+' };\n'+
+    (F.KDEPTH?'const KDEPTH={ near:'+F.KDEPTH.near+', far:'+F.KDEPTH.far+' };':''); };
+
+game.addEventListener('load',()=>{ // wait for HT_FEEL to exist, then sync sliders to it
+  pauseBtn.textContent='⏸ PAUSE'; pauseBtn.style.color=''; pauseBtn.style.borderColor='';
+  let tries=0; (function wait(){ F=feel(); if(F){ pull(); } else if(tries++<60){ setTimeout(wait,50); } })();
+});
+loadTest();   // initial load — fresh, cache-busted (never the stale crashing build)
+</script>
+</body></html>

@@ -136,9 +136,9 @@
     <div class="psub">THE HIGH TABLE</div>
     <div class="seclbl">CONTROLS — toggle what's live</div>
     <div class="ctog" data-ctrl="mouse"><div class="box"><i></i></div><div class="txt"><div class="nm">MOUSE</div><div class="hk">move the cursor to steer · click TRAP</div></div></div>
-    <div class="ctog" data-ctrl="keyboard"><div class="box"><i></i></div><div class="txt"><div class="nm">KEYBOARD</div><div class="hk">WASD / arrows to steer · C TRAP · V BLAST · SPACE GET BIG</div></div></div>
+    <div class="ctog" data-ctrl="keyboard"><div class="box"><i></i></div><div class="txt"><div class="nm">KEYBOARD</div><div class="hk">WASD / arrows to steer · Z TRAP · X GET BIG · C BLAST</div></div></div>
     <div class="ctog" data-ctrl="stick"><div class="box"><i></i></div><div class="txt"><div class="nm">STICK (F300 / pad)</div><div class="hk">left stick / d-pad · A TRAP · B BLAST · RT GET BIG</div></div></div>
-    <div class="pbtns"><button class="primary" id="presume">▶ RESUME</button></div>
+    <div class="pbtns"><button class="primary" id="presume">▶ RESUME</button><button id="pmenu">↩ BACK TO MENU</button></div>
   </div>
 </div>
 
@@ -1867,7 +1867,10 @@ function draw(){
     let sub='tap / space to play again';
     if(CUP.inPlayoff){ sub = won?'tap to claim the unlock':'tap — no unlock'; }
     else if(CUP.on){ const w=CUP.win+(won?1:0), l=CUP.loss+(won?0:1); sub = (w>=SERIES_WINS||l>=SERIES_WINS)?(twoP?'tap to play again':(w>=SERIES_WINS?(nextLocked()?'tap → UNLOCK PLAYOFF':'tap to RAISE IT'):'tap — series over')):'tap for the next game'; }
-    ctx.shadowBlur=0;ctx.fillStyle='#9fb6c8';ctx.font=`700 ${Math.round(VH*0.038)}px "Helvetica Neue",Arial`;ctx.fillText(sub,VW/2,VH*0.62);ctx.restore();}
+    ctx.shadowBlur=0;ctx.fillStyle='#9fb6c8';ctx.font=`700 ${Math.round(VH*0.038)}px "Helvetica Neue",Arial`;ctx.fillText(sub,VW/2,VH*0.62);
+    // an exit has to be VISIBLE or it may as well not exist -- this screen used to offer only a rematch
+    ctx.fillStyle='#6f8496';ctx.font=`700 ${Math.round(VH*0.028)}px "Helvetica Neue",Arial`;ctx.fillText('ESC — back to the menu',VW/2,VH*0.69);
+    ctx.restore();}
   if(state==='select'){ if(selPhase==='puck') drawPuck(); else drawSelect(); }
   if(state==='champion') drawChampion();
   if(celebCard) drawCelebCard();
@@ -2072,6 +2075,7 @@ function begin(){
   if(state==='champion'){ const aw=champUnlockKey, bonus=champBonus; resetSeries(); state='title'; if(aw) startAwayEngine(aw); else if(bonus==='killscreen') startBonusEngine(); return; }   // dismiss the trophy; victory-lap into a just-unlocked away-game (or the CASTLE KILLSCREEN bonus table)
   if(state==='win'){ winPress(); return; }
   if(state==='config'){ cfgStart(); return; }                    // JAILBREAK custom match -> play the chosen venue/puck/knocker
+
   if(state==='select'){ selConfirm(); return; }                  // SELECT -> drop into the game
   if(state==='title'){ if(CAMP) campBegin(); else if(DIRECT) startMatch(); else goSelect(); } }   // CAMPAIGN climbs; cab/shell boots straight in; otherwise -> the in-game SELECT
 // shell hand-off (index.html): ?go auto-starts; ?diff=0..2 sets level; ?p2=1 = 2-player; ?demo=1 = CPU-vs-CPU attract.
@@ -2140,6 +2144,9 @@ addEventListener('keydown',e=>{if(e.key==='Shift')keyShift=true;keys[e.key]=true
     else if(e.key==='\\'){ try{localStorage.setItem('sideGlide',JSON.stringify({accel:GLIDE.accel,damp:GLIDE.damp}));}catch(_){} console.log('const GLIDE={ accel:'+GLIDE.accel+', damp:'+GLIDE.damp+' };'); banner('SAVED GLIDE',1.0); }
     else t=false;
     if(t){ tuneHUD(); return; } }
+  // ESC on the WIN / CHAMPION screens leaves to the menu. Without this the only action there was a
+  // rematch of the same venue, so a jailbreak session could never get back to the table picker.
+  if(e.key==='Escape' && (state==='win'||state==='champion')){ e.preventDefault(); backToMenu(); return; }
   if((e.key==='Escape'||e.key.toLowerCase()==='p') && ((state==='play'||state==='faceoff'||state==='serve') || !pauseEl.classList.contains('hidden'))){ e.preventDefault(); togglePause(); return; }   // PAUSE MENU (active match only, so 'win' rematch + title 2P toggle below are untouched)
   if((state==='title')&&e.key.toLowerCase()==='p'){twoP=!twoP;return;}if(state==='select'&&e.key==='ArrowLeft'){selCycle(-1);return;}if(state==='select'&&e.key==='ArrowRight'){selCycle(1);return;}if(state==='config'&&e.key==='ArrowLeft'){cfgCycle(-1);return;}if(state==='config'&&e.key==='ArrowRight'){cfgCycle(1);return;}if(state==='config'&&e.key==='ArrowUp'){cfgRowMove(-1);return;}if(state==='config'&&e.key==='ArrowDown'){cfgRowMove(1);return;}if(state==='select'&&(e.key==='ArrowUp'||e.key==='ArrowDown')){selBack();return;}if((state==='title'||(state==='select'&&selPhase!=='puck'))&&e.key.toLowerCase()==='c'){engineCycleMode();return;}if((state==='title')&&e.key.toLowerCase()==='t'){setTable(TKEYS[(TKEYS.indexOf(tbl)+1)%TKEYS.length]);return;}if(e.key.toLowerCase()==='m'){MONO=!MONO;banner(MONO?'MONOCHROME':'COLOR',0.8);return;}if(e.key.toLowerCase()==='y'){WAYS=WAYS===4?8:4;try{localStorage.setItem('sideStickWays',String(WAYS));}catch(_){}banner(WAYS+'-WAY STICK',1.0);return;}if(state==='play'&&near.sup>=1&&(e.key===' '||e.key.toLowerCase()==='f')){e.preventDefault();bigUp(near,PTEAM);return;}if(state==='play'&&twoP&&!CAB2&&far.sup>=1&&(e.key==='Enter'||e.key==='/')){e.preventDefault();bigUp(far,OTEAM);return;}if(REG&&e.key.toLowerCase()==='s'){try{localStorage.setItem('sideRink.'+tbl,JSON.stringify(RINK));}catch(_){}const j=JSON.stringify({nearY:+RINK.nearY.toFixed(3),farY:+RINK.farY.toFixed(3),nearHalf:+RINK.nearHalf.toFixed(3),farHalf:+RINK.farHalf.toFixed(3),cx:+RINK.cx.toFixed(3)});console.log('RINKPRESET '+tbl+':  '+j);banner('SAVED '+(TNAME[tbl]||tbl),1.2);return;}if(REG&&e.key.toLowerCase()==='r'){try{localStorage.removeItem('sideRink.'+tbl);}catch(_){}location.reload();return;}if(e.key>='1'&&e.key<='3'&&(state==='title'||state==='win'))DIFF=+e.key-1;if(e.key===' '||e.key==='Enter'){e.preventDefault();if(AUTOFS&&!_fsTried){_fsTried=true;goFullscreen();}begin();}});
 addEventListener('keyup',e=>{if(e.key==='Shift')keyShift=false;keys[e.key]=false;});
@@ -2149,6 +2156,13 @@ function syncPauseToggles(){ pauseEl.querySelectorAll('.ctog').forEach(t=>{ t.cl
 function openPause(){ PAUSED=true; for(var k in keys)keys[k]=false; mouseDown=false; deckGrab=false; syncPauseToggles(); pauseEl.classList.remove('hidden'); }   // clear held input so nothing sticks across the pause
 function closePause(){ PAUSED=false; pauseEl.classList.add('hidden'); }
 function togglePause(){ if(pauseEl.classList.contains('hidden'))openPause(); else closePause(); }
+// LEAVING A MATCH. There was no way out of one: the pause menu only toggled control schemes, and the
+// win screen's only action was winPress() -> startMatch(), an endless rematch of the same venue. In
+// JAILBREAK especially that is a dead end -- you pick a table and then you are on it until you
+// reload the page. goSelect() is the existing route back (it rebuilds the list and lands on the
+// jailbreak picker when ?jail, the venue select otherwise), so both exits just call it.
+function backToMenu(){ closePause(); try{ resetSeries(); }catch(e){} goSelect(); }
+(function(){ var b=document.getElementById('pmenu'); if(b) b.addEventListener('click',backToMenu); })();
 pauseEl.querySelectorAll('.ctog').forEach(t=>{ t.addEventListener('click',()=>{ const k=t.getAttribute('data-ctrl'); CTRL[k]=!CTRL[k]; saveCtrl(); syncPauseToggles(); banner((CTRL[k]?'':'NO ')+k.toUpperCase(),0.7); }); });
 addEventListener('keydown',e=>{ if(twoP && !CAB2 && state==='play' && e.key==='.') farBlastReq=true; });   // BLAST = . (mirror of P1's C)   // single-screen P2 BLAST ('.') → far lunge
 document.getElementById('presume').addEventListener('click',closePause);

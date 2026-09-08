@@ -1,0 +1,86 @@
+<!doctype html><html><head><meta charset="utf-8"><title>ONE-TIMER · PUCK LAB</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root{--ink:#cfe6ff;--dim:#7f97a8;--gold:#ffe23a;--cyan:#27f6ff;}
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%;background:#06070d;color:var(--ink);font:13px/1.45 ui-monospace,Menlo,monospace}
+  header{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:12px 18px;border-bottom:1px solid #1c2740;background:#0a0c14;position:sticky;top:0;z-index:5}
+  h1{font:800 15px/1 'Helvetica Neue',Arial;letter-spacing:.18em;margin:0;color:#fff}
+  .ctl{display:flex;align-items:center;gap:8px;color:var(--dim);font-size:11px;letter-spacing:.06em}
+  .ctl input[type=range]{accent-color:var(--gold)}
+  .tog{display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none}
+  .tog .box{width:34px;height:18px;border-radius:10px;background:#26324c;position:relative;transition:.15s}
+  .tog .box i{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#7f97a8;transition:.15s}
+  .tog.on .box{background:var(--cyan)} .tog.on .box i{left:18px;background:#06070d}
+  main{padding:18px}
+  .sect{font:800 11px/1 'Helvetica Neue',Arial;letter-spacing:.22em;color:var(--cyan);margin:20px 4px 10px;border-bottom:1px solid #18233b;padding-bottom:6px}
+  .grid{display:flex;flex-wrap:wrap;gap:14px}
+  .tile{width:190px;border:1px solid #1c2740;border-radius:11px;overflow:hidden;background:#0a0c14}
+  .tile canvas{width:100%;display:block}
+  .tile .meta{padding:7px 10px}
+  .tile .nm{color:#fff;font-weight:800;letter-spacing:.05em;font-size:12px}
+  .tile .dt{color:var(--dim);font-size:10.5px;margin-top:2px}
+  .badge{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:8px;font-size:9.5px;background:#1a2236;color:var(--gold)}
+  .hint{color:var(--dim);font-size:11px;margin:2px 4px 0;max-width:560px}
+</style><link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSczMicgaGVpZ2h0PSczMic+PGVsbGlwc2UgY3g9JzE2JyBjeT0nMjEnIHJ4PScxMicgcnk9JzYnIGZpbGw9JyMxNDE0MTknLz48cmVjdCB4PSc0JyB5PScxMycgd2lkdGg9JzI0JyBoZWlnaHQ9JzgnIGZpbGw9JyMxNDE0MTknLz48ZWxsaXBzZSBjeD0nMTYnIGN5PScxMycgcng9JzEyJyByeT0nNicgZmlsbD0nI2YwYjQyOScvPjxlbGxpcHNlIGN4PScxNicgY3k9JzEzJyByeD0nNycgcnk9JzMuMicgZmlsbD0nI2ZmZDc2YicvPjwvc3ZnPg==">   <!-- gold puck — inline so there is no favicon.ico request (every build was 404ing one) -->
+</head>
+<body>
+<header>
+  <h1>PUCK LAB</h1>
+  <div class="ctl">SPEED <input id="spd" type="range" min="0" max="1" step="0.01" value="0.4"><span id="spdv">0.40</span></div>
+  <div class="tog" id="mono"><div class="box"><i></i></div><span>MONO</span></div>
+  <div class="tog" id="line"><div class="box"><i></i></div><span>LINE</span></div>
+  <div class="tog on" id="blk"><div class="box"><i></i></div><span>BLACKLIGHT</span></div>
+  <div class="hint">Procedural pucks: one source, drawn in COLOUR · MONO · LINE, animated + speed-reactive, always side-shaped for our geometry. The raster originals below are the old art for comparison.</div>
+</header>
+<main id="main"></main>
+<script src="lib/pucks.js?v=noglow1"></script>
+<script>
+const opt={ speed:0.4, mono:false, line:false, blk:true };
+const main=document.getElementById('main');
+const procTiles=[], rasterTiles=[];
+
+function section(title){ const h=document.createElement('div'); h.className='sect'; h.textContent=title; main.appendChild(h);
+  const g=document.createElement('div'); g.className='grid'; main.appendChild(g); return g; }
+function tile(grid,name,sub){ const t=document.createElement('div'); t.className='tile';
+  const cv=document.createElement('canvas'); cv.width=380; cv.height=300;
+  const m=document.createElement('div'); m.className='meta'; m.innerHTML='<div class="nm">'+name+'</div><div class="dt">'+(sub||'')+'</div>';
+  t.appendChild(cv); t.appendChild(m); grid.appendChild(t); return cv.getContext('2d'); }
+
+// ---- procedural pucks (the new pass) ----
+const PROC=[
+  {s:'lit',n:'LIT · white'},{s:'classic',n:'CLASSIC'},{s:'zebra',n:'ZEBRA'},{s:'flame',n:'FLAME'},
+  {s:'energy',n:'ENERGY'},{s:'hive',n:'HIVE'},{s:'royal',n:'ROYAL'},{s:'contested',n:'CONTESTED'},
+];
+{ const g=section('PROCEDURAL PUCKS · side geometry · colour / mono / line');
+  PROC.forEach(p=>{ const ctx=tile(g,p.n,'procedural'); procTiles.push({ctx,style:p.s}); }); }
+
+// ---- raster originals (old art) ----
+const RAST=[
+  'puck_lit','puck_neutral','puck_bees','puck_queens','puck_zebra','puck_flame','puck_energy','puck_spin','puck_contested','puck_goal'
+];
+{ const g=section('RASTER ORIGINALS · for comparison');
+  RAST.forEach(f=>{ const ctx=tile(g,f.replace('puck_',''),'loading…'); const img=new Image();
+    const T={ctx,img,n:1,dt:ctx.canvas.parentNode.querySelector('.dt')};
+    img.onload=()=>{ T.n=Math.max(1,Math.round(img.naturalWidth/img.naturalHeight)); T.dt.innerHTML=img.naturalWidth+'×'+img.naturalHeight+(T.n>1?'<span class="badge">'+T.n+'f</span>':''); };
+    img.onerror=()=>{T.dt.textContent='—';}; img.src='sprites/'+f+'.png'; rasterTiles.push(T); }); }
+
+function felt(ctx){ const W=ctx.canvas.width,H=ctx.canvas.height; const g=ctx.createRadialGradient(W/2,H*0.4,10,W/2,H/2,H*0.75);
+  g.addColorStop(0,opt.blk?'#0c1424':(opt.line?'#11131a':'#1a2030')); g.addColorStop(1,'#05060c'); ctx.fillStyle=g; ctx.fillRect(0,0,W,H); }
+
+let t0=null;
+function frame(ts){ if(t0==null)t0=ts; const t=(ts-t0)/1000, sp=opt.speed, spin=t*(6+sp*40);
+  procTiles.forEach(T=>{ const ctx=T.ctx,W=ctx.canvas.width,H=ctx.canvas.height; ctx.clearRect(0,0,W,H); felt(ctx);
+    PuckArt.draw(ctx,W/2,H*0.52,Math.min(W,H)*0.30,{style:T.style,mono:opt.mono,line:opt.line,blk:opt.blk,t,spin}); });
+  rasterTiles.forEach(T=>{ const ctx=T.ctx,W=ctx.canvas.width,H=ctx.canvas.height,cx=W/2,cy=H*0.5,R=Math.min(W,H)*0.3; ctx.clearRect(0,0,W,H); felt(ctx);
+    if(!T.img.naturalWidth)return; const fps=6+sp*26, fr=T.n>1?Math.floor(t*fps)%T.n:0, ih=T.img.naturalHeight, d=R*2;
+    ctx.save(); if(opt.blk)ctx.filter='saturate(1.2) contrast(1.06)'; else if(opt.mono)ctx.filter='grayscale(1)';
+    if(T.n>1)ctx.drawImage(T.img,fr*ih,0,ih,ih,cx-d/2,cy-d/2,d,d); else ctx.drawImage(T.img,cx-d/2,cy-d/2,d,d); ctx.filter='none'; ctx.restore(); });
+  requestAnimationFrame(frame); }
+requestAnimationFrame(frame);
+
+document.getElementById('spd').oninput=e=>{ opt.speed=parseFloat(e.target.value); document.getElementById('spdv').textContent=opt.speed.toFixed(2); };
+function tog(id,key){ const el=document.getElementById(id); el.classList.toggle('on',opt[key]); el.onclick=()=>{ opt[key]=!opt[key]; el.classList.toggle('on',opt[key]); }; }
+tog('mono','mono'); tog('line','line'); tog('blk','blk');
+</script>
+</body></html>

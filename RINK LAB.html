@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>RINK LAB 2.0 — table geometry · ONE-TIMER: THE HIGH TABLE</title>
+<!--
+  RINK LAB 2.0 — fine-tune the per-table homography. Loads the CURRENT baked corners from
+  lib/rink-geo.js. Drag the 4 corners (red = off-frame) AND the 2 goal posts (sets the goal mouth).
+  Goals sit on the correct SHORT ends per table: side views = near/far (v), top views = left/right (u);
+  press X to flip the goal axis if it's on the wrong side. Test puck scores through the mouth.
+  S = export THIS table, A = export ALL in one blob (paste once → Claude bakes the whole set).
+-->
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:#05030c;overflow:hidden;font:13px/1.5 ui-monospace,Menlo,Consolas,monospace;color:#e9e0ff;-webkit-user-select:none;user-select:none}
+  #c{position:fixed;inset:0;display:block}
+  #hud{position:fixed;top:12px;left:12px;max-width:370px;background:rgba(10,6,24,.84);border:1px solid #2c1850;border-radius:12px;padding:12px 14px;backdrop-filter:blur(4px);z-index:5;pointer-events:none;text-shadow:0 0 6px #0008}
+  #hud h1{font:800 14px/1.1 system-ui;letter-spacing:.05em;color:#fff;text-shadow:0 0 16px #b14cff;margin-bottom:6px}
+  #hud h1 b{color:#27f6ff}
+  #hud .row{margin:2px 0}
+  #hud b{color:#ffe23a} #hud .q{color:#27f6ff} #hud .warn{color:#ff5d6c}
+  .keys{margin-top:8px;color:#9c89c4;font-size:11.5px;line-height:1.7}
+  .keys kbd{background:#2a1750;border:1px solid #46297e;border-radius:4px;padding:0 5px;color:#cdb6ff}
+  #out{position:fixed;bottom:12px;right:12px;width:360px;max-height:46vh;overflow:auto;background:rgba(10,6,24,.92);border:1px solid #2c1850;border-radius:12px;padding:10px 12px;font-size:10.5px;white-space:pre;color:#7fe9ff;z-index:5;display:none}
+</style>
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSczMicgaGVpZ2h0PSczMic+PGVsbGlwc2UgY3g9JzE2JyBjeT0nMjEnIHJ4PScxMicgcnk9JzYnIGZpbGw9JyMxNDE0MTknLz48cmVjdCB4PSc0JyB5PScxMycgd2lkdGg9JzI0JyBoZWlnaHQ9JzgnIGZpbGw9JyMxNDE0MTknLz48ZWxsaXBzZSBjeD0nMTYnIGN5PScxMycgcng9JzEyJyByeT0nNicgZmlsbD0nI2YwYjQyOScvPjxlbGxpcHNlIGN4PScxNicgY3k9JzEzJyByeD0nNycgcnk9JzMuMicgZmlsbD0nI2ZmZDc2YicvPjwvc3ZnPg==">   <!-- gold puck — inline so there is no favicon.ico request (every build was 404ing one) -->
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud">
+  <h1>RINK LAB <b>2.0</b></h1>
+  <div class="row">table <b id="hPreset">—</b> <span id="hView"></span></div>
+  <div class="row">corner <b id="hCorner">tl</b> <span id="hCornerVal"></span></div>
+  <div class="row">goal: half = <b id="hGoal">0.13</b> · axis <b id="hAxis">v</b> <span style="color:#7c6ba0">(X flips · drag cyan posts)</span></div>
+  <div class="row">crop <b id="hCrop">full</b> <span id="hCropMode" style="color:#27f6ff"></span></div>
+  <div class="row q" id="hQ">drag the 4 dots onto the rink corners · red = off-frame</div>
+  <div class="keys">
+    <kbd>T</kbd>/<kbd>[</kbd> table · <kbd>1-4</kbd> corner · <kbd>← ↑ → ↓</kbd> nudge (<kbd>shift</kbd>×10) ·
+    <kbd>X</kbd> flip goal side · <kbd>P</kbd> puck · <kbd>G</kbd> grid · <kbd>R</kbd> reset · <kbd>H</kbd> hide ·
+    <kbd>C</kbd> crop · <kbd>F</kbd> full · <kbd>D</kbd> download crop ·
+    <kbd>S</kbd> export · <kbd>A</kbd> export ALL
+  </div>
+  <div style="margin-top:9px;pointer-events:auto;display:flex;align-items:center;gap:8px">
+    <span style="color:#27f6ff;font-size:11.5px;letter-spacing:.04em">center ice</span>
+    <input id="centerSlider" type="range" min="0.30" max="0.70" step="0.005" value="0.5" style="flex:1;accent-color:#27f6ff">
+    <b id="hCenter" style="color:#ffe23a;min-width:40px;text-align:right">0.500</b>
+  </div>
+</div>
+<pre id="out"></pre>
+
+<script src="lib/rink-geo.js"></script>
+<script>
+(function(){
+"use strict";
+var G = window.RinkGeo;
+var keys = ['rivalry_top','honey_top','throne_top','penalty_box_top','rivalry_bee','rivalry_queens','honey_side_1','throne_side_1','throne_side_2','nachos_side_1','nachos_side_2',
+            'killscreen_side_1','killscreen_side_2',
+            'nachos_mouse','throneuv_mouse',
+            'generica_garden','generica_box','generica_prime'];
+var GOALH_DEFAULT = 0.13;
+function defAxis(p){ return p.view==='top' ? 'u' : 'v'; }   // tops: goals L/R · sides: goals near/far
+var baked = {};
+keys.forEach(function(k){ var p=G.ALL_PRESETS[k]; if(p.goalHalf==null)p.goalHalf=GOALH_DEFAULT; if(p.goalAxis==null)p.goalAxis=defAxis(p); if(p.centerV==null)p.centerV=0.5; baked[k]=JSON.stringify({corners:p.corners,goalHalf:p.goalHalf,goalAxis:p.goalAxis,centerV:p.centerV}); });
+var centerSlider=null, hCenter=null;
+function syncCenter(){ if(!centerSlider)return; var v=(preset.centerV==null?0.5:preset.centerV); centerSlider.value=v; hCenter.textContent=(+v).toFixed(3); }
+
+var ki=0, preset=G.ALL_PRESETS[keys[0]], sel='tl', showPuck=true, showGrid=true, dragging=null;
+var mouse={x:0,y:0,inside:false}, rect={ix:0,iy:0,iw:1,ih:1};
+var puck={u:0.5,v:0.5,vu:0.42,vv:0.55}, flash=0;
+// CROP: a sub-rectangle of the source art (fractions of the full image). Toggle with C, drag the
+// 4 handles or the interior to move, F = full frame, D = download the cropped PNG. Crop is carried
+// in the export so the new framing is recorded; corner mapping is unchanged (re-map after a re-crop).
+var cropMode=false, cropDrag=null, cropStart=null;
+function ensureCrop(p){ if(!p.crop) p.crop={x:0,y:0,w:1,h:1}; return p.crop; }
+keys.forEach(function(k){ ensureCrop(G.ALL_PRESETS[k]); });
+var IMG={};
+keys.forEach(function(k){ var p=G.ALL_PRESETS[k]; if(IMG[p.image])return; var im=new Image(); im.onload=function(){IMG[p.image]=im;}; im.onerror=function(){IMG[p.image]='ERR';}; im.src=p.image; });
+
+var cv=document.getElementById('c'), ctx=cv.getContext('2d');
+function resize(){cv.width=innerWidth;cv.height=innerHeight;} addEventListener('resize',resize); resize();
+function fit(){
+  var im=IMG[preset.image],W=cv.width,H=cv.height,pad=0.80;
+  if(!im||im==='ERR'){rect={ix:W*0.1,iy:H*0.1,iw:W*0.8,ih:H*0.8};return;}
+  var ir=im.naturalWidth/im.naturalHeight,iw=W*pad,ih=iw/ir;
+  if(ih>H*pad){ih=H*pad;iw=ih*ir;}
+  rect={ix:(W-iw)/2,iy:(H-ih)/2,iw:iw,ih:ih};
+}
+function toImg(fx,fy){return [rect.ix+fx*rect.iw, rect.iy+fy*rect.ih];}
+function fromCanvas(px,py){return [(px-rect.ix)/rect.iw,(py-rect.iy)/rect.ih];}
+function R2(u,v){return toImg.apply(null,G.rinkToScreen(preset,u,v));}
+function mouseRink(e){return G.screenToRink(preset,(e.clientX-rect.ix)/rect.iw,(e.clientY-rect.iy)/rect.ih);}
+function offFrame(c){return c[0]<-0.12||c[0]>1.12||c[1]<-0.12||c[1]>1.12;}
+// the two ends of the goal mouth at a given end (0 or 1), respecting goalAxis → [[u,v],[u,v]]
+function goalEnd(end){var gh=preset.goalHalf;return preset.goalAxis==='u'?[[end,0.5-gh],[end,0.5+gh]]:[[0.5-gh,end],[0.5+gh,end]];}
+// crop rect in canvas pixels, from the image fractions held on preset.crop
+function cropRectCanvas(){var c=ensureCrop(preset);return {x:rect.ix+c.x*rect.iw,y:rect.iy+c.y*rect.ih,w:c.w*rect.iw,h:c.h*rect.ih};}
+function downloadCrop(){
+  var im=IMG[preset.image]; if(!im||im==='ERR')return;
+  var c=ensureCrop(preset),sw=im.naturalWidth,sh=im.naturalHeight;
+  var sx=Math.max(0,Math.round(c.x*sw)),sy=Math.max(0,Math.round(c.y*sh)),cw=Math.round(c.w*sw),ch=Math.round(c.h*sh);
+  var oc=document.createElement('canvas');oc.width=cw;oc.height=ch;
+  oc.getContext('2d').drawImage(im,sx,sy,cw,ch,0,0,cw,ch);
+  var a=document.createElement('a');a.download=preset.id+'_crop.png';a.href=oc.toDataURL('image/png');a.click();
+}
+
+function setPreset(i){ki=(i+keys.length)%keys.length;preset=G.ALL_PRESETS[keys[ki]];if(preset.goalHalf==null)preset.goalHalf=GOALH_DEFAULT;if(preset.goalAxis==null)preset.goalAxis=defAxis(preset);if(preset.centerV==null)preset.centerV=0.5;ensureCrop(preset);sel='tl';puck={u:0.5,v:0.5,vu:0.42,vv:0.55};syncCenter();}
+
+/* ---- input ---- */
+var CORNERS=['tl','tr','br','bl'];
+addEventListener('keydown',function(e){
+  var k=e.key.toLowerCase(),step=(e.shiftKey?0.01:0.001);
+  if(k==='t'){setPreset(ki+1);return;} if(k==='['){setPreset(ki-1);return;}
+  if(e.key>='1'&&e.key<='4'){sel=CORNERS[+e.key-1];return;}
+  if(k==='x'){preset.goalAxis=preset.goalAxis==='u'?'v':'u';return;}
+  if(k==='c'){cropMode=!cropMode;return;}
+  if(k==='f'){ensureCrop(preset);preset.crop={x:0,y:0,w:1,h:1};return;}
+  if(k==='d'){downloadCrop();return;}
+  if(k==='p'){showPuck=!showPuck;return;} if(k==='g'){showGrid=!showGrid;return;}
+  if(k==='h'){var hud=document.getElementById('hud'),out=document.getElementById('out');var hide=hud.style.display!=='none';hud.style.display=hide?'none':'';if(hide)out.style.display='none';return;}
+  if(k==='r'){var b=JSON.parse(baked[preset.id]);preset.corners=b.corners;preset.goalHalf=b.goalHalf;preset.goalAxis=b.goalAxis;G.rebuildPreset(preset);return;}
+  if(k==='s'){var o=document.getElementById('out');o.textContent=exportOne(preset);o.style.display='block';copy(o.textContent);return;}
+  if(k==='a'){var o2=document.getElementById('out');o2.textContent=exportAll();o2.style.display='block';copy(o2.textContent);return;}
+  if(e.key==='ArrowLeft'){G.nudgeCorner(preset,sel,-step,0);e.preventDefault();}
+  else if(e.key==='ArrowRight'){G.nudgeCorner(preset,sel,step,0);e.preventDefault();}
+  else if(e.key==='ArrowUp'){G.nudgeCorner(preset,sel,0,-step);e.preventDefault();}
+  else if(e.key==='ArrowDown'){G.nudgeCorner(preset,sel,0,step);e.preventDefault();}
+});
+cv.addEventListener('mousedown',function(e){
+  if(cropMode){
+    var cr=cropRectCanvas(), H={tl:[cr.x,cr.y],tr:[cr.x+cr.w,cr.y],br:[cr.x+cr.w,cr.y+cr.h],bl:[cr.x,cr.y+cr.h]};
+    for(var hn in H){ if(Math.hypot(H[hn][0]-e.clientX,H[hn][1]-e.clientY)<16){cropDrag=hn;return;} }
+    if(e.clientX>cr.x&&e.clientX<cr.x+cr.w&&e.clientY>cr.y&&e.clientY<cr.y+cr.h){cropDrag='move';cropStart={mx:e.clientX,my:e.clientY,cx:preset.crop.x,cy:preset.crop.y};}
+    return;
+  }
+  var gp=goalEnd(1),gl=R2(gp[0][0],gp[0][1]),gr=R2(gp[1][0],gp[1][1]);
+  if(Math.hypot(gl[0]-e.clientX,gl[1]-e.clientY)<18){dragging='goalL';return;}
+  if(Math.hypot(gr[0]-e.clientX,gr[1]-e.clientY)<18){dragging='goalR';return;}
+  var best=18,bi=null;
+  for(var i=0;i<4;i++){var P=toImg(preset.corners[CORNERS[i]][0],preset.corners[CORNERS[i]][1]);var d=Math.hypot(P[0]-e.clientX,P[1]-e.clientY);if(d<best){best=d;bi=CORNERS[i];}}
+  if(bi){dragging=bi;sel=bi;}
+  else{var uv=mouseRink(e);puck.u=uv[0];puck.v=uv[1];puck.vu=0.42;puck.vv=0.55;}
+});
+addEventListener('mousemove',function(e){
+  mouse.x=e.clientX;mouse.y=e.clientY;mouse.inside=true;
+  if(cropDrag){
+    var c=preset.crop, f=fromCanvas(e.clientX,e.clientY), MIN=0.03;
+    var x0=c.x,y0=c.y,x1=c.x+c.w,y1=c.y+c.h;
+    if(cropDrag==='move'){var dx=(e.clientX-cropStart.mx)/rect.iw,dy=(e.clientY-cropStart.my)/rect.ih;
+      c.x=Math.max(0,Math.min(1-c.w,cropStart.cx+dx));c.y=Math.max(0,Math.min(1-c.h,cropStart.cy+dy));return;}
+    var fx=Math.max(0,Math.min(1,f[0])),fy=Math.max(0,Math.min(1,f[1]));
+    if(cropDrag==='tl'){x0=Math.min(fx,x1-MIN);y0=Math.min(fy,y1-MIN);}
+    else if(cropDrag==='tr'){x1=Math.max(fx,x0+MIN);y0=Math.min(fy,y1-MIN);}
+    else if(cropDrag==='br'){x1=Math.max(fx,x0+MIN);y1=Math.max(fy,y0+MIN);}
+    else if(cropDrag==='bl'){x0=Math.min(fx,x1-MIN);y1=Math.max(fy,y0+MIN);}
+    c.x=x0;c.y=y0;c.w=x1-x0;c.h=y1-y0;return;
+  }
+  if(!dragging)return;
+  if(dragging==='goalL'||dragging==='goalR'){var uv=mouseRink(e);var d=preset.goalAxis==='u'?Math.abs(uv[1]-0.5):Math.abs(uv[0]-0.5);preset.goalHalf=Math.max(0.04,Math.min(0.45,d));return;}
+  var f=fromCanvas(e.clientX,e.clientY);preset.corners[dragging]=[f[0],f[1]];G.rebuildPreset(preset);
+});
+addEventListener('mouseup',function(){dragging=null;cropDrag=null;});
+
+function copy(t){try{navigator.clipboard&&navigator.clipboard.writeText(t);}catch(_){}console.log(t);}
+function r4(n){return +n.toFixed(4);}
+function rc(o){return {tl:o.tl.map(r4),tr:o.tr.map(r4),br:o.br.map(r4),bl:o.bl.map(r4)};}
+function cropOut(p){var c=p.crop;if(!c)return undefined;if(c.x===0&&c.y===0&&c.w===1&&c.h===1)return undefined;return {x:r4(c.x),y:r4(c.y),w:r4(c.w),h:r4(c.h)};}
+function exportOne(p){return JSON.stringify({id:p.id,image:p.image,view:p.view,corners:rc(p.corners),goalHalf:+p.goalHalf.toFixed(3),goalAxis:p.goalAxis,centerV:+(p.centerV==null?0.5:p.centerV).toFixed(3),crop:cropOut(p)},null,2);}
+function exportAll(){var a=keys.map(function(k){var p=G.ALL_PRESETS[k];return {id:p.id,corners:rc(p.corners),goalHalf:+(p.goalHalf||GOALH_DEFAULT).toFixed(3),goalAxis:p.goalAxis||defAxis(p),centerV:+(p.centerV==null?0.5:p.centerV).toFixed(3),crop:cropOut(p)};});return JSON.stringify(a,null,1);}
+
+/* ---- test puck (normalized space; goals on the goal axis) ---- */
+function goalReset(){flash=1;puck.u=0.5;puck.v=0.5;puck.vu=(Math.random()-.5)*0.9;puck.vv=(Math.random()<.5?1:-1)*0.55;}
+function stepPuck(dt){
+  if(!showPuck)return; var r=G.PUCK_RADIUS, gh=preset.goalHalf;
+  puck.u+=puck.vu*dt;puck.v+=puck.vv*dt;
+  if(preset.goalAxis==='u'){
+    if((puck.u<=r||puck.u>=1-r)&&Math.abs(puck.v-0.5)<gh){return goalReset();}
+    if(puck.u<r){puck.u=r;puck.vu=Math.abs(puck.vu);} if(puck.u>1-r){puck.u=1-r;puck.vu=-Math.abs(puck.vu);}
+    if(puck.v<r){puck.v=r;puck.vv=Math.abs(puck.vv);} if(puck.v>1-r){puck.v=1-r;puck.vv=-Math.abs(puck.vv);}
+  } else {
+    if((puck.v<=r||puck.v>=1-r)&&Math.abs(puck.u-0.5)<gh){return goalReset();}
+    if(puck.v<r){puck.v=r;puck.vv=Math.abs(puck.vv);} if(puck.v>1-r){puck.v=1-r;puck.vv=-Math.abs(puck.vv);}
+    if(puck.u<r){puck.u=r;puck.vu=Math.abs(puck.vu);} if(puck.u>1-r){puck.u=1-r;puck.vu=-Math.abs(puck.vu);}
+  }
+}
+
+/* ---- render ---- */
+function gline(a,b,col,w){var A=R2(a[0],a[1]),B=R2(b[0],b[1]);ctx.strokeStyle=col;ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(A[0],A[1]);ctx.lineTo(B[0],B[1]);ctx.stroke();}
+var last=0;
+function frame(t){
+  var dt=last?Math.min(0.033,(t-last)/1000):0.016;last=t;
+  stepPuck(dt); if(flash>0)flash-=dt*2;
+  fit(); ctx.clearRect(0,0,cv.width,cv.height);
+  var im=IMG[preset.image];
+  if(im&&im!=='ERR')ctx.drawImage(im,rect.ix,rect.iy,rect.iw,rect.ih);
+  else{ctx.fillStyle='#140a26';ctx.fillRect(rect.ix,rect.iy,rect.iw,rect.ih);ctx.fillStyle='#ff5d6c';ctx.textAlign='center';ctx.fillText((im==='ERR'?'missing: ':'loading: ')+preset.image,cv.width/2,cv.height/2);}
+
+  if(showGrid){for(var i=0;i<=10;i++){var u=i/10;gline([u,0],[u,1],'rgba(39,246,255,0.42)',1);gline([0,u],[1,u],'rgba(39,246,255,0.42)',1);}
+    gline([0,0.5],[1,0.5],'rgba(255,255,255,0.5)',2);gline([0.5,0],[0.5,1],'rgba(255,255,255,0.5)',2);}
+
+  // GOAL SLOT BUFFER — the scoring lane just inside each net, shaded a distinct colour so the SLOT reads vs
+  //   the play area. The goal scores at the rail / play edge (the real air-hockey goal line you traced); this
+  //   is the danger lane in front of it (where own goals live). Depth = SLOTD into the rink.
+  var SLOTD=0.12;
+  function slotZone(end,col){ var gh=preset.goalHalf, inn=end===1?end-SLOTD:end+SLOTD, pts;
+    if(preset.goalAxis==='u') pts=[[end,0.5-gh],[end,0.5+gh],[inn,0.5+gh],[inn,0.5-gh]];
+    else pts=[[0.5-gh,end],[0.5+gh,end],[0.5+gh,inn],[0.5-gh,inn]];
+    ctx.save(); ctx.beginPath(); pts.forEach(function(p,i){ var P=R2(p[0],p[1]); i?ctx.lineTo(P[0],P[1]):ctx.moveTo(P[0],P[1]); }); ctx.closePath();
+    ctx.fillStyle=col; ctx.fill(); ctx.restore(); }
+  slotZone(1,'rgba(255,226,58,0.20)'); slotZone(0,'rgba(177,76,255,0.20)');
+  // GOAL MOUTHS on the goal axis (the two short ends): gold + purple
+  var g1=goalEnd(1),g0=goalEnd(0);
+  gline(g1[0],g1[1],'#ffe23a',8);
+  gline(g0[0],g0[1],'#b14cff',8);
+  // CENTER ICE line (centerV slider) — the drop / half-court line, alignable to the painted centre circle
+  var cV=(preset.centerV==null?0.5:preset.centerV);
+  if(preset.goalAxis==='u'){ gline([cV,0],[cV,1],'rgba(39,246,255,0.95)',3); } else { gline([0,cV],[1,cV],'rgba(39,246,255,0.95)',3); }
+
+  // faceoff dots
+  ctx.fillStyle='rgba(255,255,255,0.9)';[[0.25,0.25],[0.75,0.25],[0.25,0.75],[0.75,0.75],[0.5,0.5]].forEach(function(p){var P=R2(p[0],p[1]);ctx.beginPath();ctx.arc(P[0],P[1],6,0,6.28);ctx.fill();});
+
+  // goal posts (cyan, draggable — on the near goal end=1)
+  [[g1[0],'goalL'],[g1[1],'goalR']].forEach(function(g){var P=R2(g[0][0],g[0][1]);ctx.beginPath();ctx.arc(P[0],P[1],8,0,6.28);ctx.fillStyle=dragging===g[1]?'#fff':'#27f6ff';ctx.shadowColor='#27f6ff';ctx.shadowBlur=12;ctx.fill();ctx.shadowBlur=0;});
+
+  // corner handles (red if off-frame)
+  for(var c=0;c<4;c++){var nm=CORNERS[c],cc=preset.corners[nm],P=toImg(cc[0],cc[1]);
+    ctx.beginPath();ctx.arc(P[0],P[1],nm===sel?9:7,0,6.28);ctx.fillStyle=offFrame(cc)?'#ff3b3b':(nm===sel?'#ffe23a':'#ff37c7');ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=12;ctx.fill();ctx.shadowBlur=0;
+    ctx.fillStyle='#0008';ctx.font='10px ui-monospace';ctx.textAlign='center';ctx.fillText(nm.toUpperCase(),P[0],P[1]-12);}
+
+  if(showPuck){var pp=R2(puck.u,puck.v),sc=preset.view==='side'?G.puckScaleFromV(puck.v):1,pr=Math.max(3,G.PUCK_RADIUS*rect.iw*sc);
+    ctx.beginPath();ctx.arc(pp[0],pp[1],pr,0,6.28);ctx.fillStyle='#fff';ctx.shadowColor='#27f6ff';ctx.shadowBlur=16;ctx.fill();ctx.shadowBlur=0;}
+  if(flash>0){ctx.save();ctx.globalAlpha=flash*0.3;ctx.fillStyle='#27f6ff';ctx.fillRect(0,0,cv.width,cv.height);ctx.restore();}
+
+  // CROP overlay — darken outside the crop, dashed box + draggable corner handles
+  if(cropMode){
+    var cr=cropRectCanvas();
+    ctx.save();ctx.fillStyle='rgba(3,1,10,0.66)';
+    ctx.fillRect(rect.ix,rect.iy,rect.iw,cr.y-rect.iy);                                 // top band
+    ctx.fillRect(rect.ix,cr.y+cr.h,rect.iw,(rect.iy+rect.ih)-(cr.y+cr.h));               // bottom band
+    ctx.fillRect(rect.ix,cr.y,cr.x-rect.ix,cr.h);                                        // left band
+    ctx.fillRect(cr.x+cr.w,cr.y,(rect.ix+rect.iw)-(cr.x+cr.w),cr.h);                      // right band
+    ctx.strokeStyle='#27f6ff';ctx.lineWidth=2;ctx.setLineDash([9,6]);ctx.strokeRect(cr.x,cr.y,cr.w,cr.h);ctx.setLineDash([]);
+    [[cr.x,cr.y],[cr.x+cr.w,cr.y],[cr.x+cr.w,cr.y+cr.h],[cr.x,cr.y+cr.h]].forEach(function(p){ctx.beginPath();ctx.arc(p[0],p[1],8,0,6.28);ctx.fillStyle='#fff';ctx.shadowColor='#27f6ff';ctx.shadowBlur=12;ctx.fill();ctx.shadowBlur=0;});
+    ctx.restore();
+  }
+
+  var anyOff=CORNERS.some(function(n){return offFrame(preset.corners[n]);});
+  document.getElementById('hPreset').textContent=preset.id;
+  document.getElementById('hView').textContent='('+preset.view+')';
+  document.getElementById('hCorner').textContent=sel.toUpperCase();
+  document.getElementById('hCornerVal').textContent='['+preset.corners[sel][0].toFixed(3)+', '+preset.corners[sel][1].toFixed(3)+']';
+  document.getElementById('hGoal').textContent=preset.goalHalf.toFixed(3);
+  document.getElementById('hAxis').textContent=preset.goalAxis+(preset.goalAxis==='u'?' (L/R)':' (near/far)');
+  var cc=preset.crop;var cFull=!cc||(cc.x===0&&cc.y===0&&cc.w===1&&cc.h===1);
+  document.getElementById('hCrop').textContent=cFull?'full':(Math.round(cc.w*100)+'%×'+Math.round(cc.h*100)+'% @ '+cc.x.toFixed(2)+','+cc.y.toFixed(2));
+  document.getElementById('hCropMode').textContent=cropMode?'◀ CROP MODE (drag handles · F full · D download)':'';
+  document.getElementById('hQ').innerHTML = anyOff ? '<span class="warn">⚠ a corner is off-frame — pull it back onto the rink</span>' : (preset.notes||'looks good · X if goal is on wrong side · S / A to export');
+  requestAnimationFrame(frame);
+}
+centerSlider=document.getElementById('centerSlider'); hCenter=document.getElementById('hCenter');
+centerSlider.addEventListener('input',function(){ preset.centerV=parseFloat(centerSlider.value); hCenter.textContent=preset.centerV.toFixed(3); });
+syncCenter();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
