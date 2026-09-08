@@ -22,6 +22,12 @@ garage.
 Set the pad to X-input. On an 8BitDo, also set the lever to D-pad. A is trap,
 B is blast, RT is get big.
 
+## Credits
+
+An **Anders & Partners** production. A Castle Killscreen game.
+
+Music by **Taylor Lyons** and **Joseph Coleman**.
+
 ---
 
 <sub>Generated from the private Castle Killscreen tree. Edit there, not here.</sub>
