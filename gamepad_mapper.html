@@ -1,0 +1,235 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>THE HIGH TABLE — Controller Mapper</title>
+<!--
+  In-cab gamepad remapper for ONE TIMER: THE HIGH TABLE.
+  Reads/writes ONE localStorage key — `highTableGamepad` — that all three engines honor at load:
+    breakaway.html (Rivalry)  ·  side.html (Side mode)  ·  table_temp_engine.html (Penalty Box Nachos)
+  Bind a physical button by pressing it; bind an aim/steer axis by pushing the stick. SAVE, then
+  RE-LAUNCH the games to apply (they read the map once at startup).
+  IMPORTANT: localStorage is per-origin. Open this page the SAME way you launch the games (via the
+  server at http://localhost:…). Saved bindings only carry across pages on the same origin.
+-->
+<style>
+  :root{ --uv:#b388ff; --bee:#ffd23f; --queen:#b14cff; --hot:#39ff14; --bg:#0a0512; --pan:#160a28; }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:radial-gradient(120% 80% at 50% -10%,#1b0c33,#06030d 70%);color:#e9e0ff;
+    font:14px/1.45 ui-monospace,Menlo,Consolas,monospace;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:880px;margin:0 auto;padding:22px 18px 60px}
+  h1{font:800 22px/1.1 system-ui;letter-spacing:.04em;margin:0 0 2px;color:#fff;
+    text-shadow:0 0 18px var(--queen),0 0 6px var(--uv)}
+  .sub{color:#a896c8;margin:0 0 18px;font-size:12px}
+  .card{background:linear-gradient(180deg,var(--pan),#0d0620);border:1px solid #2c1850;border-radius:14px;
+    padding:14px 16px;margin:0 0 16px;box-shadow:0 0 0 1px #000 inset,0 10px 30px #0008}
+  .card h2{font:700 12px/1 system-ui;letter-spacing:.18em;text-transform:uppercase;color:#cdb6ff;margin:0 0 12px}
+  #status{font-weight:700}
+  #status.on{color:var(--hot);text-shadow:0 0 10px var(--hot)}
+  #status.off{color:#ff5d6c}
+  .pad{font-size:12px;color:#a896c8;margin-top:4px}
+  .diag{font-size:11px;color:#7fd6ff;margin-top:6px;font-family:ui-monospace,monospace}
+  .trouble{display:none;margin-top:12px;background:#190a2c;border:1px solid #3a2060;border-radius:9px;padding:10px 14px;font-size:12px;color:#cdb6ff}
+  .trouble.show{display:block}
+  .trouble ol{margin:8px 0 0;padding-left:18px} .trouble li{margin:5px 0} .trouble b{color:#fff}
+
+  .btns{display:flex;flex-wrap:wrap;gap:6px}
+  .b{min-width:34px;height:30px;padding:0 7px;display:flex;align-items:center;justify-content:center;gap:4px;
+    border:1px solid #36205e;border-radius:7px;background:#10081f;color:#7c6aa0;font-size:11px;transition:.05s}
+  .b.lit{background:var(--bee);color:#1a1200;border-color:#fff7d6;box-shadow:0 0 14px var(--bee);font-weight:700}
+  .axwrap{display:grid;grid-template-columns:64px 1fr 54px;gap:8px 10px;align-items:center;margin-top:2px}
+  .axlab{font-size:11px;color:#a896c8}
+  .bar{height:12px;border-radius:6px;background:#0c0720;border:1px solid #2a1850;position:relative;overflow:hidden}
+  .fill{position:absolute;top:0;bottom:0;left:50%;background:var(--uv);width:1px;box-shadow:0 0 10px var(--uv)}
+  .axval{font-size:11px;color:#cdb6ff;text-align:right}
+
+  table{width:100%;border-collapse:collapse}
+  td{padding:7px 6px;border-bottom:1px solid #221241;vertical-align:middle}
+  tr:last-child td{border-bottom:0}
+  .alab{font-weight:700;color:#fff}
+  .agame{font-size:10px;color:#8a76b0;letter-spacing:.1em}
+  .cur{font-size:12px;color:var(--bee);min-width:96px;display:inline-block}
+  .cur.axis{color:var(--uv)}
+  button{font:700 12px system-ui;letter-spacing:.04em;border:0;border-radius:9px;padding:8px 13px;cursor:pointer}
+  .bind{background:#2a1750;color:#d8c6ff;border:1px solid #46297e}
+  .bind.armed{background:var(--hot);color:#03210a;box-shadow:0 0 18px var(--hot);animation:pulse .6s infinite alternate}
+  @keyframes pulse{to{filter:brightness(1.35)}}
+  .inv{font-size:11px;color:#a896c8;display:inline-flex;align-items:center;gap:5px;cursor:pointer;user-select:none}
+  .row-foot{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px}
+  #save{background:var(--hot);color:#03210a;box-shadow:0 0 16px #39ff1466}
+  #reset{background:#3a1430;color:#ffd0e0;border:1px solid #6a2350}
+  .saved{color:var(--hot);font-weight:700;opacity:0;transition:opacity .2s}
+  .saved.show{opacity:1}
+  .dz{display:flex;align-items:center;gap:10px;margin-top:4px}
+  input[type=range]{accent-color:var(--queen);flex:1}
+  textarea{width:100%;height:120px;background:#08040f;color:#9fd6b0;border:1px solid #2a1850;border-radius:9px;
+    padding:8px;font:11px/1.4 ui-monospace,monospace;resize:vertical}
+  .warn{background:#2a0c0c;border:1px solid #6a2020;color:#ffb4b4;padding:9px 12px;border-radius:9px;font-size:12px;margin:0 0 14px;display:none}
+  .warn.show{display:block}
+  a{color:var(--uv)}
+</style><link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSczMicgaGVpZ2h0PSczMic+PGVsbGlwc2UgY3g9JzE2JyBjeT0nMjEnIHJ4PScxMicgcnk9JzYnIGZpbGw9JyMxNDE0MTknLz48cmVjdCB4PSc0JyB5PScxMycgd2lkdGg9JzI0JyBoZWlnaHQ9JzgnIGZpbGw9JyMxNDE0MTknLz48ZWxsaXBzZSBjeD0nMTYnIGN5PScxMycgcng9JzEyJyByeT0nNicgZmlsbD0nI2YwYjQyOScvPjxlbGxpcHNlIGN4PScxNicgY3k9JzEzJyByeD0nNycgcnk9JzMuMicgZmlsbD0nI2ZmZDc2YicvPjwvc3ZnPg==">   <!-- gold puck — inline so there is no favicon.ico request (every build was 404ing one) -->
+</head><body><div class="wrap">
+
+  <h1>CONTROLLER MAPPER</h1>
+  <p class="sub">ONE TIMER: THE HIGH TABLE — bind your panel once, all three games read it. <b>Press a button to wake the pad.</b></p>
+
+  <div class="warn" id="fileWarn">⚠ You opened this as a <b>file://</b> page. Saved bindings may not reach games launched a different way.
+    Open the mapper and the games the <b>same</b> way (via your <code>server/</code> at http://localhost) so they share storage.</div>
+
+  <div class="card">
+    <h2>Controller</h2>
+    <div id="status" class="off">No pad — click this page, then press a button on your controller…</div>
+    <div class="pad" id="padname"></div>
+    <div class="diag" id="diag"></div>
+    <div class="trouble" id="trouble">
+      <b>Still nothing after pressing a button?</b>
+      <ol>
+        <li><b>Click this page first</b> (the browser only sees a pad while the tab is focused), then press a face button.</li>
+        <li>Use <b>Chrome</b> — it has the widest controller support on macOS. (Safari/Firefox can be flaky.)</li>
+        <li>Put the pad in a mode macOS recognizes: <b>8BitDo → any of X-input (START+X), D-input (START+B), or Switch (START+Y)</b> — the mapper works in <b>any</b> of them. <b>Mayflash F300 → an X-input PC mode.</b> Re-plug after switching.</li>
+        <li>Wired USB is the surest; for Bluetooth, re-pair so macOS lists it under <i>Game Controllers</i>.</li>
+        <li>The DIAGNOSTICS line above shows what the browser reports — if it stays "0 slots seen" after a press, the browser isn't getting the pad (mode/cable/browser), not a mapper bug.</li>
+      </ol>
+    </div>
+    <div class="btns" id="btns" style="margin-top:10px"></div>
+    <div id="axes" style="margin-top:12px"></div>
+  </div>
+
+  <div class="card">
+    <h2>Bindings — press the control you want for each action</h2>
+    <table id="map"></table>
+    <div class="dz"><span class="axlab" style="min-width:110px">Stick deadzone</span>
+      <input type="range" id="dz" min="0.05" max="0.5" step="0.01"><span class="axval" id="dzv" style="width:48px"></span></div>
+    <div class="row-foot">
+      <button id="save">💾 SAVE</button>
+      <button id="reset">RESET TO DEFAULTS</button>
+      <span class="saved" id="savedMsg">SAVED ✓ — relaunch the games to apply</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Saved profile (back-up / copy)</h2>
+    <textarea id="json" readonly></textarea>
+  </div>
+
+</div><script>
+const KEY='highTableGamepad';
+const DEFAULTS={ v:1, deadzone:0.18, axisX:0, axisY:1, invertX:false, invertY:false,
+  buttons:{ snap:0, carom:1, blast:2, confirm:9, getbig:0, tableUp:12, cupDown:13 } };
+const ACTIONS=[
+  {k:'snap',   lab:'SNAP',            game:'RIVALRY'},
+  {k:'carom',  lab:'CAROM',           game:'RIVALRY'},
+  {k:'blast',  lab:'BLAST',           game:'RIVALRY'},
+  {k:'confirm',lab:'START / CONFIRM', game:'ALL · any button also works on menus'},
+  {k:'getbig', lab:'GET BIG',         game:'SIDE'},
+  {k:'tableUp',lab:'TABLE ▲',         game:'RIVALRY · select screen'},
+  {k:'cupDown',lab:'CUP ▼',           game:'RIVALRY · select screen'},
+];
+const AXES=[
+  {k:'axisX', inv:'invertX', lab:'AIM / STEER ◄ ►'},
+  {k:'axisY', inv:'invertY', lab:'STEER ▲ ▼ (side / nachos)'},
+];
+
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+let map = load();
+function load(){ try{ const m=JSON.parse(localStorage.getItem(KEY)); if(m&&m.v){ const d=clone(DEFAULTS); d.buttons=Object.assign({},DEFAULTS.buttons,m.buttons||{}); return Object.assign(d,m,{buttons:d.buttons}); } }catch(e){} return clone(DEFAULTS); }
+
+if(location.protocol==='file:') document.getElementById('fileWarn').classList.add('show');
+
+/* ---- binding capture state ---- */
+let arming=null;                 // {kind:'btn'|'axis', k} while waiting for input
+let prevBtn=[];                  // edge tracking for the live grid + capture
+
+/* ---- build the bindings table ---- */
+const mapTbl=document.getElementById('map');
+function curLabel(a){ const v=map.buttons[a.k]; return v==null?'—':('BTN '+v); }
+ACTIONS.forEach(a=>{
+  const tr=document.createElement('tr');
+  tr.innerHTML=`<td><span class="alab">${a.lab}</span><br><span class="agame">${a.game}</span></td>`+
+    `<td><span class="cur" id="cur_${a.k}">${curLabel(a)}</span></td>`+
+    `<td style="text-align:right"><button class="bind" data-kind="btn" data-k="${a.k}">Bind</button></td>`;
+  mapTbl.appendChild(tr);
+});
+AXES.forEach(a=>{
+  const tr=document.createElement('tr');
+  tr.innerHTML=`<td><span class="alab">${a.lab}</span><br><span class="agame">stick axis</span></td>`+
+    `<td><span class="cur axis" id="cur_${a.k}">AXIS ${map[a.k]}</span>`+
+       `<label class="inv" style="margin-left:10px"><input type="checkbox" id="inv_${a.k}" ${map[a.inv]?'checked':''}> invert</label></td>`+
+    `<td style="text-align:right"><button class="bind" data-kind="axis" data-k="${a.k}">Bind</button></td>`;
+  mapTbl.appendChild(tr);
+  tr.querySelector('#inv_'+a.k).addEventListener('change',e=>{ map[a.inv]=e.target.checked; refreshJSON(); });
+});
+document.querySelectorAll('.bind').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.bind').forEach(x=>x.classList.remove('armed'));
+  if(arming&&arming.el===b){ arming=null; return; }     // toggle off
+  b.classList.add('armed'); b.textContent='press…';
+  arming={ kind:b.dataset.kind, k:b.dataset.k, el:b };
+}));
+function disarm(){ if(arming){ arming.el.classList.remove('armed'); arming.el.textContent='Bind'; arming=null; } }
+
+/* ---- deadzone ---- */
+const dz=document.getElementById('dz'), dzv=document.getElementById('dzv');
+dz.value=map.deadzone; dzv.textContent=(+map.deadzone).toFixed(2);
+dz.addEventListener('input',()=>{ map.deadzone=+dz.value; dzv.textContent=(+dz.value).toFixed(2); refreshJSON(); });
+
+/* ---- save / reset ---- */
+document.getElementById('save').addEventListener('click',()=>{
+  map.v=1; localStorage.setItem(KEY,JSON.stringify(map));
+  const m=document.getElementById('savedMsg'); m.classList.add('show'); setTimeout(()=>m.classList.remove('show'),2200);
+  refreshJSON();
+});
+document.getElementById('reset').addEventListener('click',()=>{
+  map=clone(DEFAULTS); disarm();
+  ACTIONS.forEach(a=>document.getElementById('cur_'+a.k).textContent=curLabel(a));
+  AXES.forEach(a=>{ document.getElementById('cur_'+a.k).textContent='AXIS '+map[a.k]; document.getElementById('inv_'+a.k).checked=map[a.inv]; });
+  dz.value=map.deadzone; dzv.textContent=(+map.deadzone).toFixed(2); refreshJSON();
+});
+function refreshJSON(){ document.getElementById('json').value=JSON.stringify(map,null,2); }
+refreshJSON();
+
+/* ---- live poll: grid, axes, capture + diagnostics ---- */
+const elBtns=document.getElementById('btns'), elAxes=document.getElementById('axes'),
+      elStatus=document.getElementById('status'), elName=document.getElementById('padname'),
+      elDiag=document.getElementById('diag'), elTrouble=document.getElementById('trouble');
+let everSeen=false, started=performance.now()|0, ticks=0;
+
+// The Gamepad API only reveals a pad after a real button press while the page is focused, and only
+// fires `gamepadconnected` then — so grab focus on load and surface the events.
+window.addEventListener('gamepadconnected', e=>{ everSeen=true; });
+window.addEventListener('gamepaddisconnected', e=>{});
+window.focus();
+document.body.addEventListener('pointerdown',()=>window.focus(),{passive:true});
+
+function browserName(){ const u=navigator.userAgent; if(/Edg\//.test(u))return'Edge'; if(/Chrome\//.test(u)&&!/Chromium/.test(u))return'Chrome'; if(/Firefox\//.test(u))return'Firefox'; if(/Safari\//.test(u))return'Safari'; return'browser'; }
+function allPads(){ return navigator.getGamepads?Array.prototype.slice.call(navigator.getGamepads()):[]; }
+// accept a pad even if `connected` is undefined (some engines) — only reject explicit false
+function firstPad(){ for(const p of allPads()) if(p && p.connected!==false) return p; return null; }
+function renderDiag(gp){
+  const slots=allPads(), live=slots.filter(p=>p).length;
+  let s = browserName()+' · getGamepads(): '+(navigator.getGamepads?'yes':'NO') +' · '+live+' slot'+(live===1?'':'s')+' seen';
+  if(!live) s += everSeen ? ' (pad seen earlier — press a button to wake it)' : ' — press a button while this page is focused';
+  if(gp) s += ' · "'+gp.id.slice(0,42)+'" · mapping:'+(gp.mapping||'non-standard')+' · '+gp.buttons.length+'btn/'+gp.axes.length+'ax';
+  elDiag.textContent = s;
+  // After ~4s with nothing ever detected, reveal the troubleshooting steps.
+  elTrouble.classList.toggle('show', !gp && !everSeen && (ticks>240));
+}
+function poll(){
+  ticks++;
+  const gp=firstPad(); renderDiag(gp);
+  if(!gp){ elStatus.className='off'; elStatus.textContent='No pad — click this page, then press a button on your controller…'; elName.textContent=''; elBtns.innerHTML=''; elAxes.innerHTML=''; prevBtn=[]; }
+  else{
+    everSeen=true; elStatus.className='on'; elStatus.textContent='● CONNECTED'; elName.textContent=gp.id+'  ·  mapping: '+(gp.mapping||'(non-standard)');
+    // button grid
+    if(elBtns.children.length!==gp.buttons.length){ elBtns.innerHTML=''; for(let i=0;i<gp.buttons.length;i++){ const d=document.createElement('div'); d.className='b'; d.id='gb'+i; elBtns.appendChild(d); } }
+    for(let i=0;i<gp.buttons.length;i++){ const b=gp.buttons[i], down=!!(b&&(b.pressed||b.value>0.5)); const el=document.getElementById('gb'+i); el.textContent=i; el.classList.toggle('lit',down);
+      const was=prevBtn[i]; prevBtn[i]=down;
+      if(down&&!was&&arming&&arming.kind==='btn'){ map.buttons[arming.k]=i; document.getElementById('cur_'+arming.k).textContent='BTN '+i; disarm(); refreshJSON(); }
+    }
+    // axes
+    if(elAxes.children.length!==gp.axes.length){ elAxes.innerHTML=''; for(let i=0;i<gp.axes.length;i++){ const w=document.createElement('div'); w.className='axwrap'; w.innerHTML=`<span class="axlab">axis ${i}</span><div class="bar"><div class="fill" id="af${i}"></div></div><span class="axval" id="av${i}"></span>`; elAxes.appendChild(w);} }
+    for(let i=0;i<gp.axes.length;i++){ const v=gp.axes[i]||0; const f=document.getElementById('af'+i); const w=Math.abs(v)*50; f.style.width=Math.max(1,w)+'%'; f.style.left=(v<0?50-w:50)+'%'; document.getElementById('av'+i).textContent=v.toFixed(2);
+      if(arming&&arming.kind==='axis'&&Math.abs(v)>0.45){ map[arming.k]=i; document.getElementById('cur_'+arming.k).textContent='AXIS '+i; disarm(); refreshJSON(); }
+    }
+  }
+  requestAnimationFrame(poll);
+}
+requestAnimationFrame(poll);
+</script></body></html>

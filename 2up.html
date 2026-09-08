@@ -1,0 +1,259 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ONE-TIMER: THE HIGH TABLE — 2-UP (two screens)</title>
+<!-- HIGH TABLE 2-UP (generic): ONE machine, TWO players, simultaneous SIDE mode (both side angles).
+     P1 (host) runs the sim + owns near; P2 (client) renders flipped + owns far. Synced over a local
+     BroadcastChannel (no network). Two ways to run:
+       · WINDOW mode (default)  — opens two windows; drag each to its monitor + fullscreen (real cab).
+       · ?solo                  — one window, split into two iframes (KILLBOX-testable: one focused
+                                  window can read BOTH paired sticks via ckPads device pairing).
+     ?table= picks the venue (default = the RIVALRY SPLIT: P1 queens end / P2 bee end). Any other
+     table (nachos/throne/bees/…) uses the SAME table on both screens (opposite ends via homography).
+     ?knocker= ?puck= ?team= ?room= pass through. -->
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:radial-gradient(120% 90% at 50% -10%,rgba(200,160,255,.16),transparent 55%),#07050e;
+    color:#fff;font-family:"Saira Condensed","Helvetica Neue",Arial,sans-serif}
+  body{display:flex;align-items:center;justify-content:center}
+  .card{width:min(94vw,620px);text-align:center;padding:30px 26px 34px}
+  h1{font-size:clamp(24px,5vw,42px);font-weight:800;letter-spacing:.04em}
+  h1 .w{color:#fff;text-shadow:0 0 16px rgba(255,255,255,.5)} h1 .p{color:#ffd23f;text-shadow:0 0 18px rgba(255,174,0,.5)}
+  .s{margin-top:6px;color:#a98fd0;letter-spacing:.26em;text-transform:uppercase;font-size:12px}
+  .seclbl{margin:24px 2px 10px;color:#27f6ff;font-weight:800;letter-spacing:.18em;font-size:11px;text-transform:uppercase}
+  .vrow{display:flex;flex-wrap:wrap;gap:9px;justify-content:center}
+  .ven{padding:11px 15px;border-radius:11px;border:1px solid rgba(190,160,255,.3);cursor:pointer;background:rgba(20,10,36,.6);
+    color:#cbb8ee;font:800 12px/1.1 "Saira Condensed",Arial;letter-spacing:.06em;transition:.14s}
+  .ven:hover{border-color:#c79bff;color:#fff}
+  .ven.sel{border-color:#ffd23f;color:#ffd23f;box-shadow:0 0 18px rgba(255,210,63,.4);background:rgba(40,28,12,.6)}
+  .ven.high.sel{border-color:#ff7a1a;color:#ff7a1a;box-shadow:0 0 18px rgba(255,122,26,.5)}
+  .row{display:flex;gap:14px;margin-top:22px}
+  button{flex:1;padding:18px 0;border-radius:12px;border:1px solid rgba(190,160,255,.35);cursor:pointer;
+    background:rgba(20,10,36,.7);color:#e8def8;font:800 15px/1.2 "Saira Condensed",Arial;letter-spacing:.06em;transition:.15s}
+  button:hover{background:rgba(50,24,80,.95);color:#fff;box-shadow:0 0 22px rgba(177,76,255,.4)}
+  button .sub{display:block;margin-top:5px;font-weight:600;font-size:11px;color:#b6a6d8;letter-spacing:.04em}
+  .big{margin-top:16px;background:linear-gradient(90deg,rgba(255,174,0,.28),rgba(255,255,255,.12));border-color:#ffd23f}
+  .note{margin-top:20px;color:#8a7caa;font-size:11.5px;line-height:1.6;letter-spacing:.02em}
+  .note b{color:#cbb8ee}
+  /* ?solo split */
+  #split{position:fixed;inset:0;display:none;flex-direction:column;background:#04040a}
+  #split.on{display:flex}
+  #sbar{flex:none;display:flex;align-items:center;gap:8px;padding:6px 10px;background:#0a0c14;border-bottom:1px solid #1c2740;overflow-x:auto;white-space:nowrap;
+    font:800 11px/1 "Helvetica Neue",Arial;letter-spacing:.12em;color:#7f97a8;overflow-x:auto;white-space:nowrap}
+  #sbar .ven{padding:7px 11px}
+  #sframes{flex:1;display:flex;min-height:0}
+  #sframes .half{flex:1;width:50%;min-width:0;display:flex;flex-direction:column;border-left:1px solid #1c2740}
+  #sframes .half:first-child{border-left:0}
+  #sframes .half iframe{flex:1;width:100%;border:0;background:#04040a}
+  #sframes .half .deckwrap{height:17vh;min-height:84px;position:relative;display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(ellipse at 50% 0%,#140a22 0%,#05030c 70%);border-top:1px solid #1c1030}
+  #sframes .half .deck{height:100%;width:auto;display:block;filter:drop-shadow(0 -5px 16px rgba(0,0,0,.6))}
+  #sframes .half .gbig{position:absolute;width:11%;aspect-ratio:1/1;border-radius:50%;transform:translate(-50%,-50%);cursor:pointer;
+    background:rgba(255,210,63,0);transition:filter .12s,background .12s}
+  #sframes .half .gbig.ready{background:radial-gradient(circle,rgba(255,210,63,.45),rgba(255,210,63,0) 70%);box-shadow:0 0 22px 5px rgba(255,210,63,.55);animation:gbpulse .7s infinite alternate}
+  #sframes .half.q .gbig.ready{background:radial-gradient(circle,rgba(177,76,255,.45),rgba(177,76,255,0) 70%);box-shadow:0 0 22px 5px rgba(177,76,255,.55)}
+  @keyframes gbpulse{to{filter:brightness(1.4)}}
+  #sframes .half .pscore{position:absolute;transform:translate(-50%,-50%);font:900 16px/1 "Helvetica Neue",Arial;pointer-events:none;text-shadow:0 1px 0 rgba(255,255,255,.25);transition:transform .08s}
+</style><link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSczMicgaGVpZ2h0PSczMic+PGVsbGlwc2UgY3g9JzE2JyBjeT0nMjEnIHJ4PScxMicgcnk9JzYnIGZpbGw9JyMxNDE0MTknLz48cmVjdCB4PSc0JyB5PScxMycgd2lkdGg9JzI0JyBoZWlnaHQ9JzgnIGZpbGw9JyMxNDE0MTknLz48ZWxsaXBzZSBjeD0nMTYnIGN5PScxMycgcng9JzEyJyByeT0nNicgZmlsbD0nI2YwYjQyOScvPjxlbGxpcHNlIGN4PScxNicgY3k9JzEzJyByeD0nNycgcnk9JzMuMicgZmlsbD0nI2ZmZDc2YicvPjwvc3ZnPg==">   <!-- gold puck — inline so there is no favicon.ico request (every build was 404ing one) -->
+</head>
+<body>
+<div class="card" id="launch">
+  <h1><span class="w">2-UP</span> <span class="p">THE HIGH TABLE</span></h1>
+  <div class="s">two players · two side screens, live</div>
+  <div class="seclbl">VENUE</div>
+  <div class="vrow" id="vrow"></div>
+  <div class="seclbl">MODE</div>
+  <div class="vrow" id="mrow"></div>
+  <div class="seclbl" id="flbl" style="display:none">GAME FORMAT</div>
+  <div class="vrow" id="frow" style="display:none"></div>
+  <div class="seclbl" id="slbl" style="display:none">SIDES · SIDE OUT</div>
+  <div class="vrow" id="srow" style="display:none"></div>
+  <div class="seclbl">PUCK</div>
+  <div class="vrow" id="prow"></div>
+  <div class="seclbl" id="k1lbl">P1 KNOCKER</div>
+  <div class="vrow" id="k1row"></div>
+  <div class="seclbl" id="k2lbl">P2 KNOCKER</div>
+  <div class="vrow" id="k2row"></div>
+  <button class="big" onclick="openBoth()">▶ OPEN BOTH SCREENS<span class="sub">two windows — drag each to its monitor &amp; fullscreen</span></button>
+  <div class="row">
+    <button onclick="openOne('p1')">SCREEN 1 · P1<span class="sub">host · near · pad 0</span></button>
+    <button onclick="openOne('p2')">SCREEN 2 · P2<span class="sub">client · far (flipped) · pad 1</span></button>
+  </div>
+  <button class="big" onclick="openOneScreen()">▶ ONE SCREEN · 2 PLAYERS<span class="sub">both players share THIS monitor — 8BitDo P1 (near) · F300 P2 (far)</span></button>
+  <div class="note">Each screen runs <b>side.html</b> in side mode, synced on this machine over a local channel
+    (no network). <b>P1</b> hosts; <b>P2</b>'s screen is flipped so their goal is at the bottom. 8-way stick +
+    3 buttons per side (or mouse to test).<br>
+    <b style="color:#ffd23f">For the KILLBOX:</b> use <b>?solo</b> — one window split in two, so a single focused
+    window reads both paired sticks (pair P1/P2 in the KILLBOX first).</div>
+</div>
+
+<div id="split"><div id="sbar"></div><div id="sframes"></div></div>
+
+<script src="lib/catalog.js"></script>
+<script>
+(function(){
+  var Q=new URLSearchParams(location.search);
+  var ROOM=Q.get('room')||'q', SOLO=Q.has('solo');
+  var PANELOFF=(Q.get('panel')==='off');   // PANEL VIEW toggle: ?panel=off hides the control-deck art so the split is a bare two-screen (deck ON by default)
+  var C=window.HTCatalog;
+  // selected venue: '' = the RIVALRY SPLIT (P1 queens end / P2 bee end). Otherwise both screens share the key.
+  var VEN=Q.get('table')||'';
+  var KNOCK=Q.get('knocker'), PUCK=Q.get('puck'), TEAM=Q.get('team');
+  var MODE=(Q.has('raiseit')||Q.has('cup')||Q.has('vs'))?'vs':'';   // '' = EXHIBITION (single game) · 'vs' = VS · BEST OF 7 head-to-head series → winner hoists the CUP
+  var MODES=[{key:'',name:'EXHIBITION'},{key:'vs',name:'VS · BEST OF 7'}];
+  // VS games can be played in either format: OLD-TYME (first-to-N goals) or TIMED (Castle Rules clock, 3×75s).
+  var FORMAT=Q.has('castlerules')?'timed':'', FORMATS=[{key:'',name:'OLD-TYME'},{key:'timed',name:'TIMED · CASTLE RULES'}];
+
+  // venues offered (skip the generica test tables in this launcher)
+  var VENUES=[{key:'',name:'RIVALRY SPLIT',team:'none'}].concat(
+    (C?C.RINKS_SIDE:[]).filter(function(R){return !R.generica;}).map(function(R){return {key:R.key,name:R.name,team:R.team,high:R.high};}));
+  // OPEN-MODE pickers: any puck, any per-player knocker. The RIVALRY SPLIT brand-locks knockers to its ends.
+  var PUCKLBL={lit:'CLASSIC',neutral:'NEON'};   // the white 'lit' puck IS the CLASSIC; the pink one is NEON (match the jailbreak picker)
+  var PUCKS=(C&&C.PUCKS?C.PUCKS:[]).map(function(p){return {key:p.key,name:PUCKLBL[p.key]||p.name};});
+  var KNOCKS=(C&&C.KNOCKERS?C.KNOCKERS:[]).map(function(k){return {key:k.key,name:k.name};});
+  var SELPUCK=PUCK||'lit', P1KN=null, P2KN=null;   // null = default to the table's team knocker
+  // SIDE OUT (rivalry split only): which END each player takes. The brand stays locked to the END (bees on the bee
+  // end, queens on the queen end) — this just chooses who sits where. '' = P1 queens / P2 bees · '1' = swapped.
+  var SIDESEL=Q.has('swap')?'1':'', SIDES=[{key:'',name:'P1 QUEENS · P2 BEES'},{key:'1',name:'P1 BEES · P2 QUEENS'}];
+  // the two teams for a venue key: rivalry split = queens(P1)/bees(P2); a named table = home team + the rival.
+  function teamsForKey(key){ if(!key) return ['queens','bees']; var R=(C&&C.RINKS_SIDE)?C.RINKS_SIDE.filter(function(x){return x.key===key;})[0]:null; var ht=(R&&R.team==='bees')?'bees':'queens'; return [ht, ht==='queens'?'bees':'queens']; }
+  function defKn(role){ var t=teamsForKey(VEN); return role==='p1'?t[0]:t[1]; }   // a player's DEFAULT knocker = their end's team colour
+
+  function sideURL(role, table){
+    var pad=role==='p1'?0:1, go=role==='p1'?'&go':'';
+    var split = !table;                                            // empty venue => the RIVALRY SPLIT
+    // P1 / P2 teams — passed to BOTH screens so each loads IDENTICAL near=P1 / far=P2 knockers (net state P1=near, P2=far).
+    var tbl, p1team, p2team;
+    if(split){ var swap=(SIDESEL==='1');                           // SIDE OUT: flip which END each player takes (brand stays locked to the end)
+      var p1end=swap?'bee':'queens', p2end=swap?'queens':'bee';
+      tbl=(role==='p1'?p1end:p2end);                               // each screen shows its OWN end art
+      p1team=(p1end==='queens')?'queens':'bees'; p2team=(p2end==='queens')?'queens':'bees'; }
+    else { tbl=table; var tt=teamsForKey(table); p1team=tt[0]; p2team=tt[1]; }
+    // PER-PLAYER KNOCKER: free picks on any table; the RIVALRY SPLIT ignores picks and locks to its team ends.
+    var p1k = (split?null:P1KN) || p1team, p2k = (split?null:P2KN) || p2team;
+    var kn = KNOCK || (role==='p1'?p1k:p2k), tm = TEAM || (role==='p1'?p1team:p2team), pk = PUCK || SELPUCK || 'lit';
+    return 'side.html?cab2='+role+'&pad='+pad+'&table='+encodeURIComponent(tbl)+go
+      +'&knocker='+encodeURIComponent(kn)+'&team='+encodeURIComponent(tm)+'&puck='+encodeURIComponent(pk)
+      +'&p1team='+p1team+'&p2team='+p2team+'&p1knock='+encodeURIComponent(p1k)+'&p2knock='+encodeURIComponent(p2k)
+      +(MODE==='vs'?'&raiseit=standard'+(FORMAT==='timed'?'&castlerules=1':''):'')   // VS = best-of-7 series; host runs it, both screens show the series score. FORMAT=timed adds the Castle Rules clock; else OLD-TYME goal-target.
+      +(split?'':'&carpetintro=1')   // the RIVALRY SPLIT keeps its per-end team arenas (each player their own barn); every OTHER 2-up venue is shared/neutral → the powered CARPET intro (no "both teams" arena)
+      +'&stick=8way&room='+encodeURIComponent(ROOM)+'&_cb='+Date.now();
+  }
+
+  /* ---- WINDOW mode (real two-monitor cab) ---- */
+  function openOne(role){ var W=(screen&&screen.availWidth)||1280, H=(screen&&screen.availHeight)||800; return window.open(sideURL(role, VEN), 'ht_'+role, 'width='+W+',height='+H+',left=0,top=0,noopener=no'); }   // FILL the monitor (was a fixed 1280×800 that left desktop showing around it — the "black band" on a bigger screen). Drag one window to the 2nd monitor.
+  // BOTH windows must open INSIDE one click — a setTimeout escapes the gesture and Chrome blocks the 2nd popup.
+  function openBoth(){ var a=openOne('p1'), b=openOne('p2');
+    if(!a||!b){ alert('A window was blocked. Allow pop-ups, or use the SCREEN 1 / SCREEN 2 buttons (one click each).'); }
+    else { try{ b.focus(); }catch(e){} } }
+  window.openOne=openOne; window.openBoth=openBoth;
+
+  /* ---- ONE SCREEN · 2 PLAYERS (side-by-side on a single monitor) — same menu, one window, no mirror ---- */
+  function oneScreenURL(){
+    var tbl, p1team, p2team;
+    if(VEN===''){ var swap=(SIDESEL==='1'); var p1end=swap?'bee':'queens', p2end=swap?'queens':'bee';   // honor SIDE OUT on the rivalry split (single screen shows P1's end as the shared table)
+      tbl=p1end; p1team=(p1end==='queens')?'queens':'bees'; p2team=(p2end==='queens')?'queens':'bees'; }
+    else { tbl=VEN; var tt=teamsForKey(VEN); p1team=tt[0]; p2team=tt[1]; }
+    var p1k=(VEN===''?null:P1KN)||p1team, p2k=(VEN===''?null:P2KN)||p2team;
+    return 'side.html?go&p2=1&table='+encodeURIComponent(tbl)               // ?p2=1 = single-screen 2P (8BitDo near / F300 far); ?go boots straight in. (Was a valueless ?p2 → Q.get('p2')==="" is falsy → twoP never set → the mode booted 1P-vs-CPU.)
+      +'&knocker='+encodeURIComponent(p1k)+'&team='+encodeURIComponent(p1team)
+      +'&p1team='+p1team+'&p2team='+p2team+'&p1knock='+encodeURIComponent(p1k)+'&p2knock='+encodeURIComponent(p2k)
+      +'&puck='+encodeURIComponent(SELPUCK||'lit')
+      +(VEN===''?'':'&carpetintro=1')   // shared/neutral venue → powered CARPET intro; the rivalry split keeps its arena
+      +(MODE==='vs'?'&raiseit=standard'+(FORMAT==='timed'?'&castlerules=1':''):'')
+      +'&stick=8way&_cb='+Date.now();
+  }
+  function openOneScreen(){ location.href=oneScreenURL(); }        // same window — both players share THIS screen
+  window.openOneScreen=openOneScreen;
+
+  /* ---- pickers (venue + mode) ---- */
+  function btnRow(host, items, getSel, onPick){
+    host.innerHTML='';
+    items.forEach(function(it){
+      var b=document.createElement('div'); b.className='ven'+(it.high?' high':'')+(it.key===getSel()?' sel':'');
+      b.textContent=it.name; b.onclick=function(){ onPick(it.key); };
+      host.appendChild(b);
+    });
+  }
+
+  /* ---- launcher card (two-window) ---- */
+  function drawCard(){
+    btnRow(document.getElementById('vrow'), VENUES, function(){return VEN;}, function(k){ VEN=k; drawCard(); });
+    btnRow(document.getElementById('mrow'), MODES, function(){return MODE;}, function(k){ MODE=k; drawCard(); });
+    var fl=document.getElementById('flbl'), fr=document.getElementById('frow');   // GAME FORMAT only applies to VS (best-of-7) — hidden for a single Exhibition game
+    if(MODE==='vs'){ fl.style.display=fr.style.display=''; btnRow(fr, FORMATS, function(){return FORMAT;}, function(k){ FORMAT=k; drawCard(); }); }
+    else { fl.style.display=fr.style.display='none'; }
+    var sl=document.getElementById('slbl'), sr=document.getElementById('srow');   // SIDE OUT only on the rivalry split (brand-locked ends; choose who sits where)
+    if(VEN===''){ sl.style.display=sr.style.display=''; btnRow(sr, SIDES, function(){return SIDESEL;}, function(k){ SIDESEL=k; drawCard(); }); }
+    else { sl.style.display=sr.style.display='none'; }
+    btnRow(document.getElementById('prow'), PUCKS, function(){return SELPUCK;}, function(k){ SELPUCK=k; drawCard(); });
+    // PER-PLAYER KNOCKERS: free on any table; the RIVALRY SPLIT is brand-locked to its ends (pickers hidden).
+    var k1l=document.getElementById('k1lbl'),k1=document.getElementById('k1row'),k2l=document.getElementById('k2lbl'),k2=document.getElementById('k2row');
+    if(VEN===''){ k1l.style.display=k1.style.display=k2l.style.display=k2.style.display='none'; P1KN=null; P2KN=null; }
+    else { k1l.style.display=k1.style.display=k2l.style.display=k2.style.display='';
+      btnRow(k1, KNOCKS, function(){return P1KN||defKn('p1');}, function(k){ P1KN=k; drawCard(); });
+      btnRow(k2, KNOCKS, function(){return P2KN||defKn('p2');}, function(k){ P2KN=k; drawCard(); }); }
+  }
+
+  /* ---- ?solo single-window split (KILLBOX-testable) ---- */
+  function mountSolo(){
+    document.getElementById('launch').style.display='none';
+    var split=document.getElementById('split'); split.classList.add('on');
+    var frames=document.getElementById('sframes'), bar=document.getElementById('sbar');
+    function deckTeam(role){   // rivalry split = queens end (P1) / bee end (P2); a named venue = its home team
+      if(!VEN) return role==='p1'?'queens':'bees';
+      var R=(C&&C.RINKS_SIDE)?C.RINKS_SIDE.filter(function(x){return x.key===VEN;})[0]:null; return R?R.team:'none';
+    }
+    function deckFor(role){ var tm=deckTeam(role); return tm==='queens'?'panel_queens':tm==='bees'?'panel_bees':'panel_1up'; }
+    var BIGMAP={panel_1up:{x:0.60,y:0.26},panel_bees:{x:0.63,y:0.33},panel_queens:{x:0.74,y:0.49}};   // GET BIG = the MIDDLE button on each FINAL panel (estimated from the art)
+    var PSCORE={panel_1up:{L:0.447,R:0.579,cy:0.037,h:0.026,scr:'green'},panel_bees:{L:0.398,R:0.609,cy:0.072,h:0.045,scr:'yellow'},panel_queens:{L:0.448,R:0.564,cy:0.035,h:0.036,scr:'green'}};   // painted score windows per panel (matte the live score in)
+    function placeAll(){ frames.querySelectorAll('.half').forEach(function(h){ if(h._place)h._place(); }); }
+    function loadFrames(){
+      frames.innerHTML='';
+      ['p1','p2'].forEach(function(role){
+        var half=document.createElement('div'); half.className='half'+(deckTeam(role)==='queens'?' q':'');
+        var f=document.createElement('iframe'); f.setAttribute('allow','gamepad; autoplay; fullscreen'); f.src=sideURL(role, VEN);
+        var wrap=document.createElement('div'); wrap.className='deckwrap'; if(PANELOFF)wrap.style.display='none';   // deck hidden → the iframe (flex:1) fills the half = bare screen
+        var d=document.createElement('img'); d.className='deck'; d.alt=''; d.src='sprites/'+deckFor(role)+'.png';
+        var g=document.createElement('div'); g.className='gbig'; g.title='GET BIG';
+        var sL=document.createElement('div'); sL.className='pscore'; sL.textContent='0';
+        var sR=document.createElement('div'); sR.className='pscore'; sR.textContent='0';
+        wrap.appendChild(d); wrap.appendChild(g); wrap.appendChild(sL); wrap.appendChild(sR); half.appendChild(f); half.appendChild(wrap); frames.appendChild(half);
+        half._frame=f; half._g=g; half._sL=sL; half._sR=sR;
+        var bp=BIGMAP[deckFor(role)]||{x:0.60,y:0.26}, ps=PSCORE[deckFor(role)]||null;
+        if(ps){ var col=ps.scr==='yellow'?'rgba(40,18,0,.95)':'rgba(5,26,6,.95)'; sL.style.color=sR.style.color=col; } else { sL.style.display=sR.style.display='none'; }
+        half._place=function(){ var ir=d.getBoundingClientRect(), wr=wrap.getBoundingClientRect(); if(!ir.width)return; g.style.left=(ir.left-wr.left+ir.width*bp.x)+'px'; g.style.top=(ir.top-wr.top+ir.height*bp.y)+'px';
+          if(ps){ var fs=Math.max(8,ir.height*ps.h*0.92), ty=ir.top-wr.top+ir.height*ps.cy; sL.style.fontSize=sR.style.fontSize=fs+'px'; sL.style.left=(ir.left-wr.left+ir.width*ps.L)+'px'; sL.style.top=ty+'px'; sR.style.left=(ir.left-wr.left+ir.width*ps.R)+'px'; sR.style.top=ty+'px'; } };
+        d.addEventListener('load',half._place); setTimeout(half._place,90);
+        g.addEventListener('pointerdown',function(e){ e.preventDefault(); try{ f.contentWindow.postMessage({bk:'big'},'*'); }catch(_){ } });   // host -> near GET BIG · client -> far GET BIG (p2local)
+        g.addEventListener('pointerup',function(){ try{ f.contentWindow.postMessage({bk:'bigup'},'*'); }catch(_){ } });
+        g.addEventListener('pointerleave',function(){ try{ f.contentWindow.postMessage({bk:'bigup'},'*'); }catch(_){ } });
+      });
+    }
+    function popEl(el){ el.style.transform='translate(-50%,-50%) scale(1.35)'; setTimeout(function(){el.style.transform='translate(-50%,-50%)';},110); }
+    addEventListener('message',function(e){ var d=e.data; if(!d)return;   // each iframe reports ITS player's GET BIG readiness + the live score -> drive that deck
+      frames.querySelectorAll('.half').forEach(function(h){ if(!(h._frame&&h._frame.contentWindow===e.source))return;
+        if(d.ht==='ready') h._g.classList.toggle('ready',!!d.on);
+        else if(d.ht==='score'&&h._sL.style.display!=='none'){ if(h._sL.textContent!=String(d.n)){h._sL.textContent=d.n;popEl(h._sL);} if(h._sR.textContent!=String(d.f)){h._sR.textContent=d.f;popEl(h._sR);} } }); });
+    addEventListener('resize',placeAll);
+    function drawBar(){
+      bar.innerHTML='';
+      function sep(){ var s=document.createElement('div'); s.style.cssText='width:1px;align-self:stretch;background:#1c2740;margin:0 5px'; bar.appendChild(s); }
+      function lbl(t){ var s=document.createElement('div'); s.style.cssText='align-self:center;color:#5f6f8c;font:800 9px/1 Arial;letter-spacing:.1em;text-transform:uppercase;margin-right:1px'; s.textContent=t; bar.appendChild(s); }
+      function grp(items,getSel,onPick){ items.forEach(function(it){ var b=document.createElement('div'); b.className='ven'+(it.high?' high':'')+(it.key===getSel()?' sel':''); b.textContent=it.name; b.onclick=function(){ onPick(it.key); drawBar(); loadFrames(); }; bar.appendChild(b); }); }
+      lbl('TABLE'); grp(VENUES, function(){return VEN;}, function(k){ VEN=k; });
+      sep(); lbl('MODE'); grp(MODES, function(){return MODE;}, function(k){ MODE=k; });
+      if(MODE==='vs'){ sep(); lbl('FORMAT'); grp(FORMATS, function(){return FORMAT;}, function(k){ FORMAT=k; }); }
+      if(VEN===''){ sep(); lbl('SIDES'); grp(SIDES, function(){return SIDESEL;}, function(k){ SIDESEL=k; }); }
+      sep(); lbl('PUCK'); grp(PUCKS, function(){return SELPUCK;}, function(k){ SELPUCK=k; });
+      if(VEN!==''){ sep(); lbl('P1'); grp(KNOCKS, function(){return P1KN||defKn('p1');}, function(k){ P1KN=k; });
+        sep(); lbl('P2'); grp(KNOCKS, function(){return P2KN||defKn('p2');}, function(k){ P2KN=k; }); }
+      else { P1KN=null; P2KN=null; }
+    }
+    drawBar(); loadFrames();
+  }
+
+  if(SOLO){ mountSolo(); }
+  else { drawCard(); }
+})();
+</script>
+</body></html>

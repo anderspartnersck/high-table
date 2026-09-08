@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>THE HIGH TABLE — JUMBOTRON</title>
+<!--
+  ============================================================================
+  THE HIGH TABLE — stadium-center JUMBOTRON cinematics reel (interstitial library).
+  Cycles logo pulse-ins, BEE-AT DOWN / GO QUEENS GO chant cards, a stock-ticker
+  crawl -> wipe-to-black, the HT splash, and a wipe-to-side-angle.  Everything is
+  data-driven in CINE[] so it's a reusable library — add beats freely.
+  All art is the existing vector-traced logos + side renders (no new art).
+  ============================================================================ -->
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:#000;overflow:hidden;font-family:"Helvetica Neue",Arial,sans-serif;
+    -webkit-user-select:none;user-select:none;touch-action:none}
+  canvas{display:block;width:100%;height:100%}
+</style>
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSczMicgaGVpZ2h0PSczMic+PGVsbGlwc2UgY3g9JzE2JyBjeT0nMjEnIHJ4PScxMicgcnk9JzYnIGZpbGw9JyMxNDE0MTknLz48cmVjdCB4PSc0JyB5PScxMycgd2lkdGg9JzI0JyBoZWlnaHQ9JzgnIGZpbGw9JyMxNDE0MTknLz48ZWxsaXBzZSBjeD0nMTYnIGN5PScxMycgcng9JzEyJyByeT0nNicgZmlsbD0nI2YwYjQyOScvPjxlbGxpcHNlIGN4PScxNicgY3k9JzEzJyByeD0nNycgcnk9JzMuMicgZmlsbD0nI2ZmZDc2YicvPjwvc3ZnPg==">   <!-- gold puck — inline so there is no favicon.ico request (every build was 404ing one) -->
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+(()=>{
+"use strict";
+/* ---- assets (existing vector-traced logos + side renders) ---- */
+const SRC={
+  ck:'sprites/brand/ck_logo.png', hive:'sprites/logo_hivemind.png', ht:'sprites/logo_ht.png',
+  bee:'sprites/brand/bee_shield_color.png', bee2:'sprites/brand/bee_shield_color2.png',
+  queens:'sprites/logo_queens_table.png', beeatdown:'sprites/brand/_beeatdown_card.png',
+  sideN:'sprites/table_nachos_side.png', sideQ:'sprites/table_queens_side.png',
+  strikeB:'sprites/strike_bees.png', strikeQ:'sprites/strike_queens.png'
+};
+const IMG={}; for(const k in SRC){const im=new Image();im.onload=(kk=>()=>IMG[kk]=im)(k);im.src=SRC[k];}
+
+/* ---- music + sting (optional; arms on first interaction) ---- */
+const MUSIC=new Audio('audio/title.mp3'); MUSIC.loop=true; MUSIC.volume=0.30; let armed=false;
+const STING=(()=>{const lib={};['mode_confirm','select','center_countdown','bees_game_start'].forEach(n=>{const a=new Audio('audio/'+n+'.mp3');a.preload='auto';lib[n]=a;});
+  return n=>{const s=lib[n];if(!s)return;try{const c=s.cloneNode();c.volume=0.4;c.play();}catch(e){}};})();
+function arm(){ if(armed)return; armed=true; MUSIC.play().catch(()=>{}); }
+
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+let DPR=1,VW=0,VH=0;
+function layout(){DPR=Math.min(devicePixelRatio||1,2.5);VW=innerWidth;VH=innerHeight;cv.width=Math.round(VW*DPR);cv.height=Math.round(VH*DPR);ctx.setTransform(DPR,0,0,DPR,0,0);}
+addEventListener('resize',layout); layout();
+
+/* ---- the reel (data-driven — add beats freely) ---- */
+const CINE=[
+  {kind:'logo',  img:'ck',     sub:'CASTLE KILLSCREEN',          glow:'#ff7a1a', dur:3.0, sting:'mode_confirm'},
+  {kind:'logo',  img:'hive',   sub:'THE HIVEMIND',               glow:'#27f6ff', dur:3.2, sting:'select'},
+  {kind:'chant', img:'bee',    text:'BEE-AT DOWN',               glow:'#ffe23a', dur:2.8, sting:'bees_game_start'},
+  {kind:'chant', img:'queens', text:'GO QUEENS GO!',             glow:'#b14cff', dur:2.8, sting:'bees_game_start'},
+  {kind:'ticker',                                                 dur:4.2},
+  {kind:'logo',  img:'ht',     sub:'ONE-TIMER: THE HIGH TABLE',  glow:'#ff37c7', dur:3.4, big:true, sting:'center_countdown'},
+  {kind:'wipeside', img:'sideN', label:'TONIGHT · PENALTY BOX NACHOS', glow:'#ff7a1a', dur:3.2},
+];
+const TICKER='BEES 7   QUEENS 4   ·   TONIGHT AT THE HIGH TABLE   ·   COLD BEER · HOT NACHOS · BAD CALLS   ·   GO QUEENS GO   ·   LONG LIVE THE QUEENS   ·   BEE-AT DOWN   ·   ';
+
+let bi=0, t=0, clock=0, last=0, stungAt=-1;
+function fit(img,maxW,maxH){const ir=img.width/img.height;let w=maxW,h=w/ir;if(h>maxH){h=maxH;w=h*ir;}return [w,h];}
+function ease(x){return x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;}
+
+/* ---- jumbotron screen texture: LED dot-matrix + scanlines + vignette ---- */
+function jumbo(){
+  const step=Math.max(6,Math.round(VH/120));
+  ctx.save(); ctx.globalAlpha=0.05; ctx.fillStyle='#0a1530';
+  for(let y=0;y<VH;y+=step){ ctx.fillRect(0,y,VW,1); }      // scanlines
+  ctx.restore();
+  ctx.save(); ctx.globalAlpha=0.04; ctx.fillStyle='#000';
+  for(let x=0;x<VW;x+=step){ ctx.fillRect(x,0,1,VH); }      // LED column gaps
+  ctx.restore();
+  const g=ctx.createRadialGradient(VW/2,VH/2,VH*0.2,VW/2,VH/2,Math.max(VW,VH)*0.75);
+  g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,4,0.72)');
+  ctx.fillStyle=g; ctx.fillRect(0,0,VW,VH);
+}
+function drawLogo(b,p){                                       // pulse-in + glow throb
+  const eo=ease(Math.min(1,p*3)), out=p>0.85?ease((p-0.85)/0.15):0;
+  const a=eo*(1-out), pulse=0.9+0.1*Math.sin(clock*5);
+  const img=IMG[b.img];
+  ctx.save(); ctx.globalAlpha=a; ctx.translate(VW/2,VH*0.43);
+  const sc=(0.7+0.3*eo)*pulse*(b.big?1.15:1); ctx.scale(sc,sc);
+  if(img&&img.complete){const [w,h]=fit(img,VW*0.6,VH*0.42);ctx.shadowColor=b.glow;ctx.shadowBlur=46+18*Math.sin(clock*4);ctx.drawImage(img,-w/2,-h/2,w,h);}
+  else{ctx.fillStyle=b.glow;ctx.shadowColor=b.glow;ctx.shadowBlur=40;ctx.font=`800 ${Math.round(VH*0.1)}px "Helvetica Neue",Arial`;ctx.textAlign='center';ctx.fillText((b.sub||'').split('·')[0],0,0);}
+  ctx.restore();
+  if(b.sub){ctx.save();ctx.globalAlpha=a;ctx.textAlign='center';ctx.fillStyle='#cfe6ff';ctx.shadowColor=b.glow;ctx.shadowBlur=12;ctx.font=`700 ${Math.round(VH*0.038)}px "Helvetica Neue",Arial`;ctx.letterSpacing='0.18em';ctx.fillText(b.sub.toUpperCase(),VW/2,VH*0.74);ctx.restore();}
+}
+function drawChant(b,p){
+  const eo=ease(Math.min(1,p*3)), out=p>0.85?ease((p-0.85)/0.15):0, a=eo*(1-out);
+  const bob=Math.sin(clock*8)*VH*0.012;                      // crowd-chant bob
+  const img=IMG[b.img];
+  if(img&&img.complete){ctx.save();ctx.globalAlpha=a*0.95;const [w,h]=fit(img,VW*0.34,VH*0.34);ctx.translate(VW/2,VH*0.36+bob);const s=0.8+0.2*eo;ctx.scale(s,s);ctx.shadowColor=b.glow;ctx.shadowBlur=40;ctx.drawImage(img,-w/2,-h/2,w,h);ctx.restore();}
+  // big chant text, two-beat pop
+  const pop=1+0.06*Math.sin(clock*8);
+  ctx.save();ctx.globalAlpha=a;ctx.textAlign='center';ctx.translate(VW/2,VH*0.72);ctx.scale(pop,pop);
+  ctx.fillStyle='#fff';ctx.shadowColor=b.glow;ctx.shadowBlur=30;ctx.font=`900 ${Math.round(VH*0.11)}px "Helvetica Neue",Arial`;
+  ctx.fillText(b.text,0,0);ctx.restore();
+  // confetti sparks
+  if(Math.random()<0.4){spark(b.glow);}
+  drawSparks();
+}
+let sparks=[];
+function spark(col){sparks.push({x:Math.random()*VW,y:VH*0.2+Math.random()*VH*0.5,vy:-1-Math.random()*2,t:0,life:0.9,col});}
+function drawSparks(){ctx.save();ctx.globalCompositeOperation='lighter';for(let i=sparks.length-1;i>=0;i--){const s=sparks[i];s.t+=0.016;s.y+=s.vy;const k=s.t/s.life;if(k>=1){sparks.splice(i,1);continue;}ctx.globalAlpha=1-k;ctx.fillStyle=s.col;ctx.shadowColor=s.col;ctx.shadowBlur=14;ctx.beginPath();ctx.arc(s.x,s.y,3,0,6.28);ctx.fill();}ctx.restore();}
+function drawTicker(b,p){
+  // a stock-ticker crawl across, then a hard WIPE TO BLACK at the end
+  ctx.save();ctx.fillStyle='#05060c';ctx.fillRect(0,0,VW,VH);
+  ctx.fillStyle='#0c1024';ctx.fillRect(0,VH*0.42,VW,VH*0.16);
+  ctx.font=`800 ${Math.round(VH*0.085)}px "Helvetica Neue",Arial`;ctx.textBaseline='middle';
+  const text=(TICKER+TICKER+TICKER), w=ctx.measureText(TICKER).width, off=(clock*VH*0.42)%w;
+  ctx.fillStyle='#27f6ff';ctx.shadowColor='#27f6ff';ctx.shadowBlur=14;
+  for(let x=-off;x<VW;x+=w){ctx.fillText(TICKER,x,VH*0.5);}
+  // top mini-ticker (Queens chant), opposite direction
+  ctx.font=`700 ${Math.round(VH*0.04)}px "Helvetica Neue",Arial`;ctx.fillStyle='#b14cff';ctx.shadowColor='#b14cff';
+  const w2=ctx.measureText('GO QUEENS GO · ').width, off2=(clock*VH*0.26)%w2;
+  for(let x=off2-w2;x<VW;x+=w2){ctx.fillText('GO QUEENS GO · ',x,VH*0.12);}
+  ctx.restore();
+  if(p>0.82){const k=(p-0.82)/0.18;ctx.fillStyle='#000';ctx.fillRect(0,0,VW*ease(k),VH);}   // wipe to black L->R
+}
+function drawWipeSide(b,p){
+  ctx.fillStyle='#000';ctx.fillRect(0,0,VW,VH);
+  const img=IMG[b.img]; const k=ease(Math.min(1,p*1.6));       // diagonal wipe reveal
+  ctx.save();ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(VW*k*1.3,0);ctx.lineTo(VW*k*1.3-VW*0.3,VH);ctx.lineTo(0,VH);ctx.closePath();ctx.clip();
+  if(img&&img.complete){const ir=img.width/img.height,br=VW/VH;let dw,dh,dx,dy;if(ir>br){dh=VH;dw=VH*ir;dx=(VW-dw)/2;dy=0;}else{dw=VW;dh=VW/ir;dx=0;dy=(VH-dh)/2;}ctx.drawImage(img,dx,dy,dw,dh);}
+  ctx.restore();
+  if(p>0.5&&b.label){const a=Math.min(1,(p-0.5)*4);ctx.save();ctx.globalAlpha=a;ctx.textAlign='center';ctx.fillStyle='#fff';ctx.shadowColor=b.glow;ctx.shadowBlur=22;ctx.font=`900 ${Math.round(VH*0.06)}px "Helvetica Neue",Arial`;ctx.fillText(b.label,VW/2,VH*0.86);ctx.restore();}
+  // edge glow on the wipe seam
+  ctx.save();ctx.globalAlpha=0.8;ctx.strokeStyle=b.glow;ctx.shadowColor=b.glow;ctx.shadowBlur=24;ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(VW*k*1.3,0);ctx.lineTo(VW*k*1.3-VW*0.3,VH);ctx.stroke();ctx.restore();
+}
+
+function frame(ts){
+  const dt=last?Math.min(0.033,(ts-last)/1000):0.016; last=ts; clock+=dt; t+=dt;
+  const b=CINE[bi], p=Math.min(1,t/b.dur);
+  if(b.sting && stungAt!==bi && t>0.05){ STING(b.sting); stungAt=bi; }
+  ctx.clearRect(0,0,VW,VH); ctx.fillStyle='#04040a'; ctx.fillRect(0,0,VW,VH);
+  if(b.kind==='logo'){ drawLogo(b,p); jumbo(); }
+  else if(b.kind==='chant'){ drawChant(b,p); jumbo(); }
+  else if(b.kind==='ticker'){ drawTicker(b,p); }
+  else if(b.kind==='wipeside'){ drawWipeSide(b,p); jumbo(); }
+  if(p>=1){ bi=(bi+1)%CINE.length; t=0; }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+addEventListener('pointerdown',arm); addEventListener('keydown',arm);
+})();
+</script>
+</body>
+</html>

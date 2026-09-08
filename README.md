@@ -21,14 +21,24 @@ gamepad works if one is plugged in.
 
 On a pad that's A, B and right trigger, with START to pause.
 
-## What to play
+## The modes
 
-**The Breakaway Cup** is the main event. Beat each CPU, win the final, take the
-trophy. Five tables, two of them locked until you earn them, and a set of
-knockers and pucks to choose between.
+Each one is a link. They match the cabinet launchers exactly.
 
-**One-Timer To-Go** is the top-down version, made for a phone or a quick game
-with a mouse. It's on the menu.
+**[1UP ARCADE][play]** is the quarter-eater and the default. Just play.
+
+**[CAMPAIGN][camp]** saves your progress through the Breakaway Cup: beat each
+CPU, win the final, take the trophy.
+
+**[CASTLE RULES][castle]** is the timed variant.
+
+**[JAILBREAK][jail]** unlocks everything, all five tables and every knocker and
+puck, without touching your save.
+
+**[2UP SPLIT][twoup]** is two players on one machine.
+
+**[TOP-DOWN][todown]** is the to-go version, built for a phone or a quick game
+with a mouse.
 
 ## Using a pad
 
@@ -42,3 +52,8 @@ right work but up and down don't, that's the mode rather than the game.
 <sub>RESPEK LOGIC ART UREA</sub>
 
 [play]: https://anderspartnersck.github.io/high-table/
+[camp]: https://anderspartnersck.github.io/high-table/?camp
+[castle]: https://anderspartnersck.github.io/high-table/?castlerules
+[jail]: https://anderspartnersck.github.io/high-table/?jail
+[twoup]: https://anderspartnersck.github.io/high-table/2up.html?solo
+[todown]: https://anderspartnersck.github.io/high-table/table_temp_engine.html
