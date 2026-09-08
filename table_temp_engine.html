@@ -169,7 +169,16 @@ const TITLE=new Image(); TITLE.src='sprites/title_high_table.png';
 const SFX=(()=>{ const lib={}, names=['slap','bomb','wave_off','bees_goal','queens_goal','center_countdown','select','bees_game_start','killscreen','title_logo_drop'];
   for(const n of names){ const a=new Audio('audio/'+n+'.mp3'); a.preload='auto'; lib[n]=a; }
   const MASTER=0.5;   // MASTER gain — the To-Go build ran hot; every one-shot + bed is scaled by this
-  function play(n,v){ if(MUTE)return; const s=lib[n]; if(!s)return; try{ const c=s.cloneNode(); c.volume=Math.min(1,(v==null?0.7:v)*MASTER); c.play(); }catch(e){} }
+  // PER-CUE DEBOUNCE, ported from side.html. Lowering MASTER again was the wrong lever: the levels
+  // here already match the side game (0.5*0.7 vs 0.55*0.6). What made the To-Go build read HOT is
+  // that nothing stopped the SAME cue restacking -- a fast rally fires the puck hit many times in a
+  // few frames and the copies sum until they clip. side.html has always guarded this; this engine
+  // never did. Same 50ms window, so a real double-hit still reads as two.
+  const sfxLast={};
+  function play(n,v){ if(MUTE)return; const s=lib[n]; if(!s)return;
+    const now=(performance.now?performance.now():Date.now())/1000;
+    if(sfxLast[n]!=null && now-sfxLast[n]<0.05) return; sfxLast[n]=now;
+    try{ const c=s.cloneNode(); c.volume=Math.min(1,(v==null?0.7:v)*MASTER); c.play(); }catch(e){} }
   // ---- looping MUSIC BED: one <audio> loop=true, cross-swapped by menu/venue with a short fade so it
   //      never hard-cuts and never dies after one pass (loop=true = seamless repeat). ----
   let bedEl=null, bedName=null, fadeTimer=null;
@@ -203,6 +212,8 @@ const celes=[];
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 let DPR=1, VW=0, VH=0;
 let land=true, bx=0, by=0, bw=0, bh=0, shortPx=0, unit=0;
+let ax=0, ay=0, aw=0, ah=0;   // the TABLE ART rect (drawn whole); bx..bh is the play surface inside it
+const RIM=0.055;             // play surface inset from the art edge -- the table's physical rim
 const A_MAX=2.0, B_MAX=1.0;          // play-field units: long axis 0..2, short 0..1
 let GOAL=0.13;                        // half-width of the goal mouth (units of B). Set PER TABLE at launch from the RINK LAB locked presets (lib/rink-geo.js). Was a hardcoded 0.30 (a 60%-wide wall = "the whole side scores").
 // per-table goal-mouth half-width, exactly as LOCKED in RINK LAB (lib/rink-geo.js). Prefers the
@@ -225,12 +236,27 @@ function layout(){
   // long-axis ends. Driving orientation off the screen flipped the field portrait inside a tall
   // cab/iframe, so the knockers ended up on the long sides instead of across the short-end goals.
   // Falls back to screen aspect until the bg image has loaded its natural size.
-  land = (IMG.bg && IMG.bg.naturalWidth) ? (IMG.bg.naturalWidth >= IMG.bg.naturalHeight) : (VW >= VH);
+  // THE ART IS NOT 2:1. Every top-down table is authored 1.50 (a couple 1.63), and the field was
+  // hard-locked to 2:1 with coverDraw, so it cropped roughly a quarter off the table's height --
+  // which is why the surface stopped short of the frame and the pockets never lined up.
+  //
+  // Fixed WITHOUT touching the play space: the whole table is drawn at its own aspect (contain, no
+  // crop), and the 2:1 play rect is fitted INSIDE it. The logical field stays exactly 0..2 x 0..1,
+  // so every hardcoded coordinate in this engine -- the centre line at a=1, the knocker spawns at
+  // .45/1.55, the corner tests -- keeps meaning what it meant, and the feel is untouched. The neon
+  // border is drawn on the play rect, so the border IS the play boundary, sitting on a table you
+  // can now see all of.
   const pad = 0.94;
-  if (land){ let sp = Math.min(VH*pad, VW*pad/2); shortPx = sp; bw = sp*2; bh = sp; }
-  else      { let sp = Math.min(VW*pad, VH*pad/2); shortPx = sp; bw = sp;   bh = sp*2; }
-  unit = shortPx;
-  bx = (VW-bw)/2; by = (VH-bh)/2;
+  const iAR = (IMG.bg && IMG.bg.naturalWidth) ? (IMG.bg.naturalWidth / IMG.bg.naturalHeight) : 1.5;
+  land = (IMG.bg && IMG.bg.naturalWidth) ? (IMG.bg.naturalWidth >= IMG.bg.naturalHeight) : (VW >= VH);
+  aw = Math.min(VW*pad, VH*pad*iAR); ah = aw/iAR;          // CONTAIN: the whole table, never cropped
+  ax = (VW-aw)/2; ay = (VH-ah)/2;
+  const inset = Math.min(aw,ah)*RIM;                        // stay off the table's physical rim
+  const maxW = aw-inset*2, maxH = ah-inset*2;
+  if (land){ bw = Math.min(maxW, maxH*2); bh = bw/2; }
+  else      { bh = Math.min(maxH, maxW*2); bw = bh/2; }
+  bx = ax+(aw-bw)/2; by = ay+(ah-bh)/2;                     // centred on the table
+  shortPx = Math.min(bw,bh); unit = shortPx;
 }
 window.addEventListener('resize', layout);
 layout();
@@ -525,7 +551,8 @@ function draw(time){
 
   // ---- table surface ----
   ctx.save(); neonRoundRectPath(bx,by,bw,bh,u(.06)); ctx.clip();
-  if(IMG.bg){ coverDraw(IMG.bg,bx,by,bw,bh); ctx.fillStyle='rgba(3,2,12,.54)'; ctx.fillRect(bx,by,bw,bh); }   // darken the venue so the neon/team colour pops
+  if(IMG.bg){ ctx.drawImage(IMG.bg, ax, ay, aw, ah);   // the WHOLE table, at its own aspect -- no crop
+    ctx.fillStyle='rgba(3,2,12,.44)'; ctx.fillRect(bx,by,bw,bh); }   // darken only the play surface so the neon pops
   else {
     const fg=ctx.createRadialGradient(bx+bw/2,by+bh/2,0,bx+bw/2,by+bh/2,Math.max(bw,bh)*.6);
     fg.addColorStop(0,'#120a26'); fg.addColorStop(1,'#06030f'); ctx.fillStyle=fg; ctx.fillRect(bx,by,bw,bh);

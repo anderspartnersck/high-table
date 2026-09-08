@@ -1,9 +1,11 @@
 <img src="sprites/title_high_table.png" alt="ONE-TIMER: THE HIGH TABLE" width="560">
 
-### [Play it here][play]
+## ▶ [PLAY IT IN YOUR BROWSER][play]
+
+<sub>That link above is the game. Nothing to install.</sub>
 
 Side-view air hockey on a blacklight table. A Castle Killscreen game by Anders &
-Partners LLC. Runs in a browser, free, nothing to install.
+Partners LLC.
 
 You are the near knocker. Put the puck in the far goal. The table is fast and the
 CPU doesn't miss much.
