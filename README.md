@@ -24,7 +24,8 @@ B is blast, RT is get big.
 
 ## Credits
 
-An **Anders & Partners** production. A Castle Killscreen game.
+Created by **Joseph Coleman**, with Claude.
+A Castle Killscreen game by Anders & Partners.
 
 Music by **Taylor Lyons** and **Joseph Coleman**.
 
