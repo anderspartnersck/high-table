@@ -14,8 +14,9 @@ to blast. Get it in the far goal.
 [Jailbreak][jail] · [2 players][twoup] *(work in progress)* · [Top-down][todown] ·
 [Table picker][picker] · [The garage][garage]
 
-The campaign is the one that saves. Clearing its tables unlocks the cabs in the
-garage.
+The campaign is the one that keeps progress: clear its tables and the cabs in the
+garage unlock. That progress, and your control and sound settings, are kept in
+your own browser and never sent anywhere.
 
 ## Controllers
 
