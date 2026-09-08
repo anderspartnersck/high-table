@@ -27,7 +27,7 @@ B is blast, RT is get big.
 Created by **Joseph Coleman**, with Claude and ChatGPT.
 A Castle Killscreen game by Anders & Partners.
 
-Music by **Taylor Lyons** and **Joseph Coleman**.
+Music & SFX by **Taylor Lyons** and **Joseph Coleman**.
 
 ---
 
