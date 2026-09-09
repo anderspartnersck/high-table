@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ONE-TIMER: THE HIGH TABLE — LIVE (1UP)</title>
+<!--
+  ============================================================================================
+   THE HIGH TABLE — LIVE  ·  build tag: LIVE 1UP   (file: side_desktop.html)
+   The live free-flow air-hockey game (side.html) mounted in the DEEPWOOD HYSCORE 1UP cab with a
+   wired control deck (panel_1up). This is the NEW dedicated build — keep it separate in the
+   launcher from BREAKAWAY CLASSIC (breakaway_desktop.html, the overhead read-battle).
+
+   CONTROL: move the knocker with the MOUSE or a STICK (no setup for the mouse). GET BIG = the
+   deck button (lights when your team-power is charged) · SPACE/F on keyboard · any pad button.
+   Each knocker plays with the POWER OF ITS TEAM — Bees (gold) / Queens (purple).
+
+   PRESENTATION (Joe's broadcast model): cinematic only at the PUNCTUATION — the OPEN (here),
+   between periods, and big moments — then it's old-tyme table hockey with our twist. The open is
+   a broadcast pan-in (seed of the "players warming up → pan to the knocker" interstitial).
+   ============================================================================================
+-->
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;background:#04040a;overflow:hidden;font-family:"Helvetica Neue",Arial,sans-serif;-webkit-user-select:none;user-select:none;color:#e9e0ff;}
+  #wrap{position:fixed;inset:0;display:flex;flex-direction:column;}
+  #game{flex:1;border:0;width:100%;display:block;background:#04040a;}     /* mouse/stick controls the knocker directly */
+  #deck{height:30vh;min-height:170px;position:relative;display:flex;align-items:center;justify-content:center;
+        background:radial-gradient(ellipse at 50% 0%, #140a22 0%, #05030c 70%);border-top:1px solid #1c1030;}
+  #panel{height:100%;width:auto;display:block;image-rendering:auto;filter:drop-shadow(0 -6px 20px rgba(0,0,0,.6));}
+  #glow{position:absolute;inset:0;pointer-events:none;}
+  #hintbar{position:absolute;top:6px;left:50%;transform:translateX(-50%);color:#7c6aa0;font-size:11px;letter-spacing:.16em;text-transform:uppercase;white-space:nowrap;}
+  #buildtag{position:absolute;top:6px;right:10px;color:#3f5a6a;font-size:10px;letter-spacing:.18em;}
+  /* GET BIG deck button — a real clickable hotspot over the panel art; glows when the meter's ready */
+  #big{position:absolute;width:13%;aspect-ratio:1/1;border-radius:50%;cursor:pointer;
+       transform:translate(-50%,-50%);transition:filter .12s, background .12s;background:rgba(255,210,63,0);}
+  #big.ready{background:radial-gradient(circle, rgba(255,210,63,.45), rgba(255,210,63,0) 70%);
+       box-shadow:0 0 26px 6px rgba(255,210,63,.55);animation:pulse .7s infinite alternate;}
+  #big.q.ready{background:radial-gradient(circle, rgba(177,76,255,.45), rgba(177,76,255,0) 70%);box-shadow:0 0 26px 6px rgba(177,76,255,.55);}
+  @keyframes pulse{to{filter:brightness(1.4);}}
+  /* live SCORE matted into the panel's painted score windows (mirrors the table bug) */
+  .pscore{position:absolute;z-index:5;transform:translate(-50%,-50%);font-weight:900;line-height:1;pointer-events:none;
+          font-family:"Helvetica Neue",Arial,sans-serif;text-shadow:0 1px 0 rgba(255,255,255,.25);transition:transform .08s;}
+  /* broadcast OPEN */
+  #open{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;
+        background:#04040a center/cover no-repeat;cursor:pointer;transition:opacity .6s;}
+  #open.gone{opacity:0;pointer-events:none;}
+  #open .scrim{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 45%, rgba(8,4,18,.35), rgba(2,1,8,.9) 75%);}
+  #open .live{position:relative;color:#ff4d5e;font-weight:800;letter-spacing:.3em;font-size:13px;display:flex;align-items:center;gap:8px;text-shadow:0 0 14px #ff4d5e;}
+  #open .live .dot{width:9px;height:9px;border-radius:50%;background:#ff4d5e;box-shadow:0 0 12px #ff4d5e;animation:blink 1s infinite;}
+  @keyframes blink{50%{opacity:.25;}}
+  #open h1{position:relative;font-weight:900;font-size:clamp(30px,7vw,72px);letter-spacing:.02em;color:#fff;margin:10px 0 4px;
+           text-shadow:0 0 26px #b14cff,0 0 8px #27f6ff;transform:scale(1.06);animation:settle 2.4s ease-out forwards;}
+  @keyframes settle{from{transform:scale(1.16);letter-spacing:.12em;}to{transform:scale(1);letter-spacing:.02em;}}
+  #open .sub{position:relative;color:#9fb6c8;font-size:13px;letter-spacing:.22em;text-transform:uppercase;}
+  #open .warm{position:relative;margin-top:18px;color:#6f86b0;font-size:12px;letter-spacing:.14em;min-height:16px;}
+  #open .tap{position:relative;margin-top:26px;color:#5a6f86;font-size:11px;letter-spacing:.2em;animation:blink 1.4s infinite;}
+</style>
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSczMicgaGVpZ2h0PSczMic+PGVsbGlwc2UgY3g9JzE2JyBjeT0nMjEnIHJ4PScxMicgcnk9JzYnIGZpbGw9JyMxNDE0MTknLz48cmVjdCB4PSc0JyB5PScxMycgd2lkdGg9JzI0JyBoZWlnaHQ9JzgnIGZpbGw9JyMxNDE0MTknLz48ZWxsaXBzZSBjeD0nMTYnIGN5PScxMycgcng9JzEyJyByeT0nNicgZmlsbD0nI2YwYjQyOScvPjxlbGxpcHNlIGN4PScxNicgY3k9JzEzJyByeD0nNycgcnk9JzMuMicgZmlsbD0nI2ZmZDc2YicvPjwvc3ZnPg==">   <!-- gold puck — inline so there is no favicon.ico request (every build was 404ing one) -->
+</head>
+<body tabindex="0">
+<div id="wrap">
+  <iframe id="game" allow="gamepad; autoplay" title="THE HIGH TABLE — LIVE"></iframe>
+  <div id="deck">
+    <div id="hintbar">move = mouse / stick · ● = get big · space = get big</div>
+    <div id="buildtag">BUILD · LIVE 1UP</div>
+    <img id="panel" alt="control deck">
+    <div id="big" title="GET BIG"></div>
+    <div id="scoreL" class="pscore">0</div>
+    <div id="scoreR" class="pscore">0</div>
+    <canvas id="glow"></canvas>
+  </div>
+</div>
+
+<div id="open">
+  <div class="scrim"></div>
+  <div class="live"><span class="dot"></span> LIVE</div>
+  <h1>THE HIGH TABLE</h1>
+  <div class="sub">Deepwood · Hyscore Forest</div>
+  <div class="warm" id="warm"></div>
+  <div class="tap">PRESS / CLICK TO DROP THE PUCK</div>
+</div>
+
+<script>
+(()=>{
+"use strict";
+const Q=new URLSearchParams(location.search);
+const TABLE=Q.get('table')||'';                                  // optional ?table=bees|queens|throne|nachos
+const TEAM=(Q.get('team')||'bees').toLowerCase();                // which team-power the deck glows in
+const game=document.getElementById('game'), panel=document.getElementById('panel'),
+      deck=document.getElementById('deck'), big=document.getElementById('big'),
+      open=document.getElementById('open'), warm=document.getElementById('warm');
+
+// DECK PANEL per venue/team (Joe 2026-06-26 wiring): rivalry/away venues get their themed deck art;
+//   generic + THE HIGH TABLE keep the neutral HYSCORE panel. Same OTTHT deck layout, so the GET BIG
+//   hotspot (BIGPOS) holds across all three.
+const PANELS={bees:'panel_bees',queens:'panel_queens'}, teamSet=(Q.get('team')||'').toLowerCase();
+const pteam=(TABLE==='queens'||TABLE==='throne'||teamSet==='queens')?'queens':(TABLE==='bee'||TABLE==='bees'||teamSet==='bees')?'bees':null;
+const PNAME=(pteam?PANELS[pteam]:'panel_1up'); panel.src='sprites/'+PNAME+'.png';   // explicit rivalry/away venue or ?team themes the deck; default + THE HIGH TABLE keep the neutral HYSCORE panel
+if(Q.get('panel')==='off')deck.style.display='none';   // PANEL VIEW toggle: ?panel=off hides the deck → the game (flex:1) fills = bare screen
+game.src='side.html?embed=1&go=1&ctrl=all&stick=8way'+(TABLE?('&table='+encodeURIComponent(TABLE)):'')+'&_cb='+Date.now();   // _cb busts Chrome's --app cache so a fresh side.html loads every launch
+if(pteam==='queens'||(TEAM==='queens'&&teamSet)) big.classList.add('q');
+
+// GET BIG hotspot position as a fraction of the PANEL image (tune to the real panel_1up art).
+// GET BIG hotspot as a fraction of each FINAL panel art (GET BIG = the MIDDLE of the 3 buttons). Estimated from the art — eyeball + nudge.
+const BIGPOS=({panel_1up:{x:0.60,y:0.26},panel_bees:{x:0.63,y:0.33},panel_queens:{x:0.74,y:0.49}})[PNAME]||{x:0.60,y:0.26};
+// PAINTED score windows on each panel (detected off the art 2026-06-27) — L/R digit centres, cy, h, screen colour
+const PSCORE=({
+  panel_1up:   {L:0.447,R:0.579,cy:0.037,h:0.026,scr:'green'},
+  panel_bees:  {L:0.398,R:0.609,cy:0.072,h:0.045,scr:'yellow'},
+  panel_queens:{L:0.448,R:0.564,cy:0.035,h:0.036,scr:'green'},
+})[PNAME]||null;
+const scoreL=document.getElementById('scoreL'), scoreR=document.getElementById('scoreR');
+if(PSCORE){ const col=PSCORE.scr==='yellow'?'rgba(40,18,0,.95)':'rgba(5,26,6,.95)'; scoreL.style.color=col; scoreR.style.color=col; } else { scoreL.style.display=scoreR.style.display='none'; }
+function place(){ const pr=panel.getBoundingClientRect(), dr=deck.getBoundingClientRect();
+  big.style.left=(pr.left-dr.left+pr.width*BIGPOS.x)+'px';
+  big.style.top =(pr.top -dr.top +pr.height*BIGPOS.y)+'px';
+  if(PSCORE){ const fs=Math.max(8,pr.height*PSCORE.h*0.92); const ty=pr.top-dr.top+pr.height*PSCORE.cy;
+    scoreL.style.fontSize=scoreR.style.fontSize=fs+'px';
+    scoreL.style.left=(pr.left-dr.left+pr.width*PSCORE.L)+'px'; scoreL.style.top=ty+'px';
+    scoreR.style.left=(pr.left-dr.left+pr.width*PSCORE.R)+'px'; scoreR.style.top=ty+'px'; } }
+panel.addEventListener('load',place); addEventListener('resize',place); setTimeout(place,60);
+function popScore(el){ el.style.transform='translate(-50%,-50%) scale(1.35)'; setTimeout(()=>el.style.transform='translate(-50%,-50%)',110); }
+
+// talk to the embedded game
+function send(bk){ try{ game.contentWindow.postMessage({bk},'*'); }catch(e){} }
+big.addEventListener('pointerdown',e=>{ e.preventDefault(); send('big'); });
+// game reports GET BIG readiness → light the deck button; and the live SCORE → matte into the panel windows
+addEventListener('message',e=>{ const d=e.data; if(!d)return;
+  if(d.ht==='ready') big.classList.toggle('ready',!!d.on);
+  else if(d.ht==='score' && PSCORE){ if(scoreL.textContent!=String(d.n)){ scoreL.textContent=d.n; popScore(scoreL); } if(scoreR.textContent!=String(d.f)){ scoreR.textContent=d.f; popScore(scoreR); } } });
+
+// the broadcast OPEN: a few "warming up" beats, then pan to the knocker (drop the puck on confirm)
+const BEATS=['skaters take the ice…','knockers loosening up…','the crowd is in…','feeding the quarters…'];
+let bi=0; const warmT=setInterval(()=>{ warm.textContent=BEATS[bi%BEATS.length]; bi++; }, 900); warm.textContent=BEATS[0];
+let opened=false;
+function dropIn(){ if(opened)return; opened=true; clearInterval(warmT);
+  open.classList.add('gone'); send('start'); setTimeout(()=>open.remove(),650);
+  try{ game.contentWindow.focus(); }catch(e){} document.body.focus(); }
+open.addEventListener('pointerdown',dropIn);
+addEventListener('keydown',e=>{ if(!opened && (e.key===' '||e.key==='Enter')){ e.preventDefault(); dropIn(); return; }
+  if(e.key===' '||e.key==='Enter') send('start'); });   // forward start to the game once live
+})();
+</script>
+</body>
+</html>
