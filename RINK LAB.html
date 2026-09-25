@@ -30,7 +30,7 @@
 <canvas id="c"></canvas>
 <div id="hud">
   <h1>RINK LAB <b>2.0</b></h1>
-  <div class="row">table <b id="hPreset">—</b> <span id="hView"></span></div>
+  <div class="row">table <b id="hPreset">—</b> <span id="hView"></span> <span id="hSet" style="color:#ffe23a"></span></div>
   <div class="row">corner <b id="hCorner">tl</b> <span id="hCornerVal"></span></div>
   <div class="row">goal: half = <b id="hGoal">0.13</b> · axis <b id="hAxis">v</b> <span style="color:#7c6ba0">(X flips · drag cyan posts)</span></div>
   <div class="row">crop <b id="hCrop">full</b> <span id="hCropMode" style="color:#27f6ff"></span></div>
@@ -54,14 +54,28 @@
 (function(){
 "use strict";
 var G = window.RinkGeo;
-var keys = ['rivalry_top','honey_top','throne_top','penalty_box_top','rivalry_bee','rivalry_queens','honey_side_1','throne_side_1','throne_side_2','nachos_side_1','nachos_side_2',
+var ALL_KEYS = ['rivalry_top','honey_top','throne_top','penalty_box_top','rivalry_bee','rivalry_queens','honey_side_1','throne_side_1','throne_side_2','nachos_side_1','nachos_side_2',
             'killscreen_side_1','killscreen_side_2',
-            'nachos_mouse','throneuv_mouse',
+            'nachos_mouse','killscreen_mouse','throneuv_mouse',
             'generica_garden','generica_box','generica_prime'];
+// The 2026-09-25 re-render batch — everything whose ART changed and whose geometry therefore
+// wants confirming. ?only=new cycles just these so a placing pass doesn't walk the whole roster.
+var NEW_ART = ['penalty_box_top','nachos_mouse','nachos_side_1','nachos_side_2',
+               'killscreen_mouse','killscreen_side_1','killscreen_side_2'];
+// ?only=new  ·  ?only=nachos_side_1,penalty_box_top  ·  (absent = the full roster)
+var keys = (function(){
+  var q=(location.search.match(/[?&]only=([^&]+)/)||[])[1];
+  if(!q) return ALL_KEYS;
+  var want = decodeURIComponent(q)==='new' ? NEW_ART : decodeURIComponent(q).split(',');
+  var out = ALL_KEYS.filter(function(k){ return want.indexOf(k)>=0; });
+  return out.length ? out : ALL_KEYS;
+})();
 var GOALH_DEFAULT = 0.13;
 function defAxis(p){ return p.view==='top' ? 'u' : 'v'; }   // tops: goals L/R · sides: goals near/far
 var baked = {};
 keys.forEach(function(k){ var p=G.ALL_PRESETS[k]; if(p.goalHalf==null)p.goalHalf=GOALH_DEFAULT; if(p.goalAxis==null)p.goalAxis=defAxis(p); if(p.centerV==null)p.centerV=0.5; baked[k]=JSON.stringify({corners:p.corners,goalHalf:p.goalHalf,goalAxis:p.goalAxis,centerV:p.centerV}); });
+(function(){ var e=document.getElementById('hSet');
+  if(e) e.textContent = (keys.length===ALL_KEYS.length) ? '' : '· '+keys.length+' of '+ALL_KEYS.length+' (?only)'; })();
 var centerSlider=null, hCenter=null;
 function syncCenter(){ if(!centerSlider)return; var v=(preset.centerV==null?0.5:preset.centerV); centerSlider.value=v; hCenter.textContent=(+v).toFixed(3); }
 

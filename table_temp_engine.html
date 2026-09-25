@@ -137,8 +137,8 @@
 (()=>{
 "use strict";
 
-/* ----- ART HOOKS — any table works here; pick with ?table= (nachos|rivalry|throne|throneuv) -- */
-const _TBL={nachos:'table_nachos_top_land',rivalry:'table_rivalry_bg',bees:'table_bees_bg',throne:'table_throne_bg',throneuv:'table_throne_uv',garden:'table_garden_top',box:'table_box_top'};
+/* ----- ART HOOKS — any table works here; pick with ?table= (nachos|rivalry|throne|throneuv|killscreen) -- */
+const _TBL={nachos:'table_nachos_top_land',rivalry:'table_rivalry_bg',bees:'table_bees_bg',throne:'table_throne_bg',throneuv:'table_throne_uv',garden:'table_garden_top',box:'table_box_top',killscreen:'table_killscreen_top'};
 const _tbl=new URLSearchParams(location.search).get('table')||'nachos';
 const DEMO=new URLSearchParams(location.search).has('demo');   // ?demo=1 = CPU-vs-CPU attract: auto-start, both mallets AI, loops
 const MUTE=new URLSearchParams(location.search).has('mute');   // ?mute=1 = silence SFX (attract reel supplies its own bed)
@@ -222,7 +222,9 @@ function goalHalfFor(key){
   const G=window.RinkGeo; if(!G) return 0.13;
   const P=G.MOUSE_PRESETS||{}, T=G.RINK_PRESETS||{};
   const pre = ({ nachos:P.nachos_mouse||T.penalty_box_top, throne:P.throneuv_mouse||T.throne_top,
-                 bees:T.honey_top, rivalry:T.rivalry_top })[key];
+                 bees:T.honey_top, rivalry:T.rivalry_top,
+                 killscreen:P.killscreen_mouse })[key];   // CASTLE KILLSCREEN top (Joe placed it 2026-09-25;
+                 // without this case the table silently played on the 0.13 default instead of its measured 0.193)
   return (pre && pre.goalHalf) || 0.13;
 }
 
