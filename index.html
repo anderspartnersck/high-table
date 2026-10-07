@@ -1957,7 +1957,8 @@ function draw(){
     if(CUP.on||CUP.inPlayoff){ctx.fillStyle=wc;ctx.shadowColor=wc;ctx.shadowBlur=18;ctx.font=`900 ${Math.round(VH*0.05)}px "Helvetica Neue",Arial`;
       let line; if(CUP.inPlayoff){ line=won?'UNLOCK PLAYOFF — WON':'PLAYOFF — LOST'; }
       else { const w=CUP.win+(won?1:0), l=CUP.loss+(won?0:1); const tag=w>=SERIES_WINS?(twoP?' — P1 SERIES':' — SERIES!'):l>=SERIES_WINS?(twoP?' — P2 SERIES':' — OUT'):''; line=RAISE[CUP.variant].name+'  '+w+'–'+l+tag; }
-      fitFont(line,900,VH*0.05,VW*0.9); ctx.fillText(line,VW/2,VH*0.40);}
+      fitFont(line,900,VH*0.05,VW*0.9); ctx.fillText(line,VW/2,VH*0.40);
+      ctx.shadowBlur=0; drawSeriesBoard(won); }
     else if(TIMED){ctx.fillStyle='#ffe23a';ctx.shadowColor='#ff37c7';ctx.shadowBlur=18;const cl='CASTLE RULES · FINAL'+(otSudden?' · OT':'');fitFont(cl,900,VH*0.05,VW*0.9);ctx.fillText(cl,VW/2,VH*0.40);}
     ctx.fillStyle='#fff';ctx.shadowColor=wc;ctx.shadowBlur=24;ctx.font=`900 ${Math.round(VH*0.075)}px "Helvetica Neue",Arial`;ctx.fillText(scoreN+'  –  '+scoreF,VW/2,VH*0.5);
     let sub='tap / space to play again';
@@ -2048,6 +2049,45 @@ function drawBoard(){ const u=Math.min(VW,VH), cx=VW/2, t=interT; ctx.clearRect(
     ctx.textAlign='right'; ctx.fillStyle='#fff'; ctx.shadowBlur=0; ctx.fillText(L.s.toLocaleString(), VW*0.79, y); ctx.restore(); }
   ctx.save(); ctx.textAlign='center'; ctx.globalAlpha=0.7; ctx.fillStyle='#8aa0b8'; ctx.font=`700 ${Math.round(VH*0.022)}px "Helvetica Neue",Arial`;
   ctx.globalAlpha=0.62; ctx.fillStyle='#c79bff'; ctx.font=`700 ${Math.round(VH*0.02)}px "Helvetica Neue",Arial`; ctx.fillText('MUSIC & SFX BY TAYLOR LYONS & JOSEPH COLEMAN', cx, VH*0.885); ctx.restore(); }
+// ===== RAISE IT SERIES BOARD (Joe 2026-10-07: "fires a tournament bracket?") =====
+//   The series is a best-of-7, not a bracket, so the board is the series laid out: seven game cards. Played games
+//   show the score in the winner's colour; the game just finished pulses; the rest show WHERE they'll be played
+//   (the variant's venue route, GAME 7 on THE HIGH TABLE). Under it: what's next (game, venue, CPU level) or where
+//   a decided series goes (unlock playoff / the cup / out). Drawn on the between-games screen only; pure render.
+CUP.hist=[];
+function seriesLog(won){ const n=CUP.win+CUP.loss; if(CUP.hist.length!==n) CUP.hist=CUP.hist.slice(0,n);   // re-sync if a series restarted underneath
+  CUP.hist.push({won:won, n:scoreN, f:scoreF, t:tbl}); }
+const SB_SHORT={bee:'BEES END',queens:'QUEENS END',bees:'HONEY HOLE',throne:'THRONE ROOM',nachos:'HIGH TABLE',killscreen:'KILLSCREEN',garden:'GARDEN',box:'BOX',prime:'PRIME'};
+const SB_DIFF=['ROOKIE','PRO','ALL-STAR'];
+function seriesVenue(k){ if(CAMP) return CAMP_RUNGS[Math.min(3,campCleared)].tbl; if(CAB2||twoP) return tbl;
+  const v=RAISE[CUP.variant]; if(CUP.variant==='standard' && k===6) return 'nachos'; return v.route[k%v.route.length]; }
+function drawSeriesBoard(won){
+  const played=CUP.hist.slice(0,CUP.win+CUP.loss), cur={won:won,n:scoreN,f:scoreF,t:tbl,cur:true};
+  const games=CUP.inPlayoff?played:played.concat([cur]);
+  const w=games.filter(g=>g.won).length, l=games.length-w, done=(w>=SERIES_WINS||l>=SERIES_WINS);
+  const mine=tcol(PTEAM), theirs=tcol(OTEAM), who=twoP?['P1','P2']:['YOU','CPU'];
+  const room=(TMODE&&BG.ok)?BG.dw*0.96:VW*0.9;                               // phone: stay inside the table, clear of the button frame
+  const BW=Math.min(room,VH*1.75), gap=BW*0.014, cw=(BW-gap*6)/7, ch=Math.min(cw*0.95,VH*0.15), x0=VW/2-BW/2, y0=VH*0.12;
+  ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle='rgba(3,3,10,0.82)'; rr(x0-gap*2,y0-VH*0.07,BW+gap*4,ch+VH*0.14,BW*0.012); ctx.fill();   // plate: reads over the live scoreboard behind it
+  ctx.fillStyle='#cfe6ff'; ctx.font=`900 ${Math.round(VH*0.026)}px "Helvetica Neue",Arial`;
+  ctx.fillText((RAISE[CUP.variant]?RAISE[CUP.variant].name:'RAISE IT')+' · BEST OF 7 · '+who[0]+' '+w+' – '+l+' '+who[1], VW/2, y0-VH*0.035);
+  for(let k=0;k<7;k++){ const x=x0+k*(cw+gap), g=games[k], dead=!g&&done, t=g?g.t:seriesVenue(k), g7=(k===6&&t==='nachos'&&!(CAB2||twoP||CAMP));
+    const pulse=g&&g.cur?0.5+0.5*Math.sin(clock*6):0;
+    ctx.globalAlpha=dead?0.25:1;
+    ctx.fillStyle=g?(g.won?mine:theirs):'rgba(10,10,24,0.85)'; ctx.globalAlpha*=g?0.9:1; rr(x,y0,cw,ch,cw*0.12); ctx.fill(); ctx.globalAlpha=dead?0.25:1;
+    ctx.lineWidth=g&&g.cur?3+3*pulse:1.5; ctx.strokeStyle=g&&g.cur?'#ffffff':(g7?'#ffd23f':'rgba(160,180,220,0.45)'); rr(x,y0,cw,ch,cw*0.12); ctx.stroke();
+    ctx.fillStyle=g?'#0a0a12':'#8fa3c4'; ctx.font=`800 ${Math.round(ch*0.16)}px "Helvetica Neue",Arial`; ctx.fillText('GAME '+(k+1),x+cw/2,y0+ch*0.2);
+    if(g){ ctx.font=`900 ${Math.round(ch*0.3)}px "Helvetica Neue",Arial`; ctx.fillText(g.n+'–'+g.f,x+cw/2,y0+ch*0.52); }
+    else { ctx.fillStyle=g7?'#ffd23f':'#cfe6ff'; ctx.font=`900 ${Math.round(ch*(g7?0.26:0.2))}px "Helvetica Neue",Arial`; ctx.fillText(dead?'—':(g7?'★':'·'),x+cw/2,y0+ch*0.52); }
+    ctx.fillStyle=g?'rgba(10,10,18,0.85)':(g7?'#ffd23f':'#8fa3c4'); fitFont(SB_SHORT[t]||t,800,ch*0.13,cw*0.92); ctx.fillText(SB_SHORT[t]||t,x+cw/2,y0+ch*0.82); }
+  ctx.globalAlpha=1; let nx;
+  if(CUP.inPlayoff) nx='UNLOCK PLAYOFF · ONE GAME · SUDDEN DEATH · THE HIGH TABLE';
+  else if(!done){ const k=games.length; nx='NEXT · GAME '+(k+1)+' · '+(SB_SHORT[seriesVenue(k)]||'')+(twoP||CAB2?'':' · CPU '+SB_DIFF[Math.min(2,Math.floor(k/2)+(CAMP&&campCleared>=2?1:0))]); }
+  else if(w>=SERIES_WINS) nx=twoP?'P1 TAKES THE SERIES':(CAMP?'TABLE CLEARED':(nextLocked()?'NEXT · UNLOCK PLAYOFF on THE HIGH TABLE':'RAISE THE CUP'));
+  else nx=twoP?'P2 TAKES THE SERIES':'SERIES OVER';
+  ctx.fillStyle='#ffd23f'; fitFont(nx,800,VH*0.028,VW*0.9); ctx.fillText(nx,VW/2,y0+ch+VH*0.04);
+  ctx.restore(); }
 function winPress(){   // win-screen tap: advance the series / fire the unlock playoff / lift the cup; otherwise rematch
   const won = TIMED ? (scoreN>scoreF) : (scoreN>=TARGET);   // near = the human side. TIMED (Castle Rules) is decided by GOALS at the clock, not by reaching TARGET — so a VS · TIMED series resolves correctly (was scoreN>=TARGET, which a 3–2 clock game never meets → series mis-crowned).
   if(CUP.inPlayoff){ CUP.inPlayoff=false;
@@ -2058,6 +2098,7 @@ function winPress(){   // win-screen tap: advance the series / fire the unlock p
     CUP.playoff=null; CUP.on=false; CUP.win=0; CUP.loss=0; TARGET=7; DIFF=Math.min(DIFF,1);   // playoff is a BONUS unlock attempt — you already WON the series, so still LIFT THE CUP (just no unlock)
       champTeam=PTEAM; champUnlock=null; champUnlockKey=null; state='champion'; champT=0; victoryCue(champTeam); banner('SERIES WON — no bonus unlock',1.4); return; }
   if(CUP.on){
+    seriesLog(won);                                                              // the SERIES BOARD's history (drawSeriesBoard)
     if(won){ CUP.win++;
       if(CUP.win>=SERIES_WINS){                                                // P1 / near takes the series
         if(CAMP){ campWinSeries(); return; }                                   // CAMPAIGN: clear this rung, unlock the next table (no away-game playoff)
@@ -2072,7 +2113,7 @@ function winPress(){   // win-screen tap: advance the series / fire the unlock p
       CUP.on=false; CUP.win=0; CUP.loss=0; }                                   // 1P: eliminated by the CPU -> a plain rematch
     else { applySeries(); startMatch(); return; } }
   startMatch(); }
-function resetSeries(){ CUP.on=false; CUP.win=0; CUP.loss=0; CUP.inPlayoff=false; CUP.playoff=null; champUnlock=null; champUnlockKey=null; champTeam=null; champBonus=null; champT=0; TARGET=7; pendBanner=null; }   // drop any armed series banner too
+function resetSeries(){ CUP.hist=[]; CUP.on=false; CUP.win=0; CUP.loss=0; CUP.inPlayoff=false; CUP.playoff=null; champUnlock=null; champUnlockKey=null; champTeam=null; champBonus=null; champT=0; TARGET=7; pendBanner=null; }   // drop any armed series banner too
 // ===== IN-GAME SELECT (breakaway-style canvas cycle-menu — replaces the DOM card menu) =====
 //   TITLE -> push BLAST -> SELECT (cycle the venue/mode on the canvas with the stick) -> push BLAST -> game.
 //   ?go / ?demo / ?cab2 boot straight in (DIRECT). ?jail unlocks the full venue list incl. the away-games.
@@ -2337,7 +2378,8 @@ addEventListener('resize',tpadLayout); addEventListener('orientationchange',func
     try{ localStorage.setItem('htTouchStick',on?'1':'0'); }catch(_){} tpadLayout(); }
   chip.addEventListener('pointerdown',e=>{ e.preventDefault(); buzz(); applyStick(!TSTICK.on); });
   if(Q.has('qa')) window.__htPad={ peek:()=>({state,TX:near.TX,TY:near.TY,grab:deckGrab,blastCD:near.blastCD,big:near.big,sup:near.sup,held:puckHeld,bg:[BG.dx,BG.dw,BG.dh],st:[TSTICK.x,TSTICK.y]}),
-    prime:()=>{ near.sup=1; near.blastCD=0; } };   // ?qa: headless phone-pad test hook (tools/_qa/phone_pad.mjs)
+    prime:()=>{ near.sup=1; near.blastCD=0; },
+    series:(w,l,hist,n,f,v)=>{ CUP.on=true; CUP.inPlayoff=false; CUP.variant=v||'standard'; CUP.win=w; CUP.loss=l; CUP.hist=hist; scoreN=n; scoreF=f; TIMED=false; TARGET=n>f?n:f; state='win'; } };   // QA: stage a between-games screen   // ?qa: headless phone-pad test hook (tools/_qa/phone_pad.mjs)
   { let on=Q.has('tstick'); try{ if(!on) on=localStorage.getItem('htTouchStick')==='1'; }catch(_){} applyStick(on); }
   let src='';
   window.tpadTick=function(){
