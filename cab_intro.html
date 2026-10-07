@@ -93,6 +93,7 @@
     try{ cue.currentTime=0; cue.play(); }catch(e){}
     neon.classList.add('on');
     try{ gameEl && gameEl.contentWindow.postMessage({cabAudio:'arm'},'*'); }catch(e){}
+    try{ gameEl.focus(); gameEl.contentWindow.focus(); }catch(e){}   // keys go to the GAME after the reveal (a keyboard player had to click in before)
     setTimeout(function(){ ck.classList.add('gone'); if(kb){ kb.classList.add('show'); requestAnimationFrame(function(){ kb.classList.add('push'); }); } }, 2500);
     setTimeout(function(){ if(ck&&ck.parentNode) ck.parentNode.removeChild(ck); }, 4000);
     setTimeout(function(){ if(kb) kb.classList.add('fade'); }, 6300);
