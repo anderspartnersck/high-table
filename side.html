@@ -483,7 +483,8 @@ function geoKey(){ return (MIRROR2 && side2Key(tbl)) || HMAP[tbl]; }
 var BG = {dx:0,dy:0,dw:0,dh:0,ok:false};
 function homoPreset(){ if(!HOMO||!window.RinkGeo) return null; var p=window.RinkGeo.SIDE_PRESETS[geoKey()]; if(p&&!p.H)window.RinkGeo.rebuildPreset(p); return p||null; }
 try{const sv=JSON.parse(localStorage.getItem('sideRink.'+tbl));if(sv)Object.assign(RINK,sv);}catch(e){}
-function setTable(name){tbl=name;VENUE=venueOf(name);var _art=TBL[name]||TBL.nachos;if(MIRROR2&&side2Key(name))_art=_art.replace(/_side$/,'_side2');load('bg','sprites/'+_art+'.png');let sv=null;try{sv=JSON.parse(localStorage.getItem('sideRink.'+name));}catch(e){}Object.assign(RINK,presetFor(name),sv||{});venueGoal();GEOM.krMul=KRTBL[name]||1.0;banner((TNAME[name]||name),1.0);}
+function setTable(name){ setTableArt(name); applyTablePair(name); }   // + the table's default knocker pairing
+function setTableArt(name){tbl=name;VENUE=venueOf(name);var _art=TBL[name]||TBL.nachos;if(MIRROR2&&side2Key(name))_art=_art.replace(/_side$/,'_side2');load('bg','sprites/'+_art+'.png');let sv=null;try{sv=JSON.parse(localStorage.getItem('sideRink.'+name));}catch(e){}Object.assign(RINK,presetFor(name),sv||{});venueGoal();GEOM.krMul=KRTBL[name]||1.0;banner((TNAME[name]||name),1.0);}
 const REG=Q.has('reg'); let dragC=-1;
 const SBREG=Q.has('sbreg');   // outline the painted score windows (verify/nudge the matte)
 let ZOOM=1, keyShift=false;
@@ -706,7 +707,23 @@ function oppKnock(k){ return OPPKNOCK[k]||'red'; }
 const KSPR={white:'knocker_white',house:'knocker_white',bees:'knocker_yellow',queens:'knocker_purple',ice:'knocker_blue',turf:'knocker_green',red:'knocker_red',orange:'knocker_orange',royal:'knocker_royal'};
 const KGLOWC={white:'#dfefff',house:'#dfefff',bees:'#ffe23a',queens:'#b14cff',ice:'#27a0ff',turf:'#39ff7a',red:'#e64a4a',orange:'#ff9a3c',royal:'#5a86fa'};
 const KFLATC={white:true,house:true,bees:false,queens:false,ice:true,turf:true,red:true,orange:true,royal:true};
-function setMatchKnockers(p1key,p1team,p2key){ var a=KSPR[p1key]?p1key:'turf', b=KSPR[p2key]?p2key:oppKnock(a);   // p2key omitted -> contrast of P1
+// TABLE KNOCKER DEFAULTS (Joe 2026-10-07). Each table has a house pairing [P1, opponent]. They are DEFAULTS, not
+//   locks: a player who PICKED a knocker (menu, jailbreak picker, arcade row, ?knocker=) keeps it, and the table
+//   only sets the opponent -- the pair's other half if you picked one of the pair, else the half on the other team.
+//   Unpicked boots (?go with no knocker, the attract/demo, arcade.html's embeds) get the whole pairing.
+//   2-player per-player picks (2-UP, ?p1knock/?p2knock) are never touched.
+const TABLE_PAIR={ bee:['bees','queens'], queens:['queens','bees'], throne:['queens','queens'], bees:['bees','bees'], nachos:['house','turf'] };
+const KTEAM={bees:'bees',queens:'queens',house:'bees',white:'bees',turf:'bees',red:'bees',orange:'bees',ice:'queens',royal:'queens'};
+let P1PICK=false, CURK={a:'turf',team:'bees'};
+function pairOpp(pair,a){ const A=(a==='white'?'house':a);
+  if(A===pair[0]) return pair[1]; if(A===pair[1]) return pair[0];
+  const t=KTEAM[A]||'bees'; return (KTEAM[pair[1]]!==t)?pair[1]:(KTEAM[pair[0]]!==t?pair[0]:pair[1]); }
+function applyTablePair(name){ const pair=TABLE_PAIR[name]; if(!pair||CAB2) return;
+  if(twoP && (Q.get('p1knock')||Q.get('p2knock'))) return;                    // per-player 2P picks own both ends
+  const a=P1PICK?CURK.a:pair[0], team=P1PICK?CURK.team:(KTEAM[a]||'bees');
+  setMatchKnockers(a, team, pairOpp(pair,a), true); }
+function setMatchKnockers(p1key,p1team,p2key,_fromTable){ var a=KSPR[p1key]?p1key:'turf', b=KSPR[p2key]?p2key:oppKnock(a);
+  if(!_fromTable){ CURK={a:a, team:p1team||(a==='queens'?'queens':'bees')}; }   // p2key omitted -> contrast of P1
   load('near','sprites/'+KSPR[a]+'_34.png'); load('nearB','sprites/'+KSPR[a]+'_bottom.png');
   load('far','sprites/'+KSPR[b]+'_34.png'); load('farB','sprites/'+KSPR[b]+'_bottom.png');
   near.flat=KFLATC[a]; far.flat=KFLATC[b];
@@ -1991,7 +2008,7 @@ function endPeriod(){   // CASTLE RULES: regulation clock hit 0
   if(period<PERIODS){ period++; perClock=PERIOD_LEN; banner('PERIOD '+period+' OF '+PERIODS,1.8); state='serve'; setTimeout(()=>{ if(state==='serve') faceoff(); }, 1900); }
   else if(scoreN===scoreF){ otSudden=true; banner('OVERTIME · NEXT GOAL WINS',2.0); state='serve'; setTimeout(()=>{ if(state==='serve') faceoff(); }, 2000); }   // tie -> sudden death
   else { state='win'; banner(winName(scoreN>scoreF),99); victoryCue(scoreN>scoreF?PTEAM:OTEAM); } }   // most goals after 3 — final BUZZER (was silent)
-function startDemo(){ startMatch(); }   // self-playing attract (the DEMO flag drives both mallets in step)
+function startDemo(){ if(!REEL) setTable(tbl); startMatch(); }   // a ?demo boot (arcade.html's embed) gets the table's default knocker pairing   // self-playing attract (the DEMO flag drives both mallets in step)
 // ===== ATTRACT REEL DIRECTOR — cinematics as interstitials between live demos on the two headline tables =====
 const LEADERS=[ {r:'JOE',s:842100,t:'bees'},{r:'AND',s:771600,t:'queens'},{r:'BEE',s:690400,t:'bees'},{r:'QNS',s:642850,t:'queens'},{r:'CKS',s:588300,t:'bees'},{r:'HVM',s:521770,t:'bees'},{r:'ROB',s:498020,t:'queens'},{r:'TAY',s:455900,t:'queens'} ];
 // ATTRACT ADS pod — venue/mode slides (shared copy from the catalog, same as index.html so it can't drift).
@@ -2003,11 +2020,14 @@ const REELSEG=[   // wipe = the transition used to ENTER each beat (carpet / com
   {k:'demo',  tbl:'bee', knock:'bees', team:'bees', dur:18, wipe:'clash'},   // RIVALRY (bee end) — bee uses the proper HOMOGRAPHY preset (queens is trapezoid w/ off centerline); bees vs queens, live CPU
   {k:'inter', act:'splash',   dur:4.0,  wipe:'carpet'},   // TITLE card AFTER the action
   {k:'board', dur:6.5,                  wipe:'comet'},    // HYSCORE leaderboard
+  {k:'demo',  tbl:'queens', knock:'queens', team:'queens', dur:12, wipe:'clash'},   // RIVALRY (queens end): queens vs bees (TABLE_PAIR)
   {k:'inter', act:'ads', dur:ADS_DUR,   wipe:'comet'},    // THE VENUES + MODES — the "sell the table/modes" pod (incl. VS · 2P)
+  {k:'demo',  tbl:'throne', knock:'queens', team:'queens', dur:12, wipe:'clash'},   // THE THRONE ROOM: queens vs queens (TABLE_PAIR)
   {k:'inter', act:'montage',  dur:HOCK, wipe:'carpet'},   // comic hockey montage
   {k:'inter', act:'goalie',   dur:2.6,  wipe:'comet'},    // GOALIE GLOVE SAVE highlight (2-frame robbery)
   {k:'demo',  tbl:'nachos', knock:'house', team:'bees', dur:18, wipe:'clash'},      // PENALTY BOX NACHOS = THE HIGH TABLE (neutral house knocker)
   {k:'inter', act:'clash',    dur:3.8,  wipe:'comet'},    // HIVEMIND vs THE QUEENS' TABLE (team logos, zapped in)
+  {k:'demo',  tbl:'bees', knock:'bees', team:'bees', dur:12, wipe:'clash'},         // THE HONEY HOLE: bees vs bees (TABLE_PAIR)
   {k:'inter', act:'overture', dur:3.0,  wipe:'comet'} ];  // silhouette overture, then loop
 function reelStart(){ REEL=true; DEMO=true; try{Music.kick();}catch(e){} reelIdx=0; reelStartSeg(REELSEG[0]); }
 function reelStartSeg(s){ reelT=0; interT=0; interAct=s.act||'splash'; interDur=s.dur||4; DEMO=true;
@@ -2146,7 +2166,7 @@ function selCycle(d){ if(TRANS.on)return;   // don't cycle while a wipe is cover
   if(selPhase==='puck'){ puckIdx=(puckIdx+d+CFG_PUCKS.length)%CFG_PUCKS.length; } else { selIdx=(selIdx+d+SELLIST.length)%SELLIST.length; } SFX.cursor(); }
 function selBack(){ if(TRANS.on||selPhase!=='puck')return; selPhase='venue'; SFX.cursor(); }   // puck beat -> back to the TABLE beat (stick ↕ / Up-Down)
 function goSelect(){ SFX.cut(); rebuildSelList(); transition('carpet',()=>{ if(SELJAIL){ state='config'; cfgRow=0; } else { state='select'; selIdx=0; selPhase='venue'; } }); }   // slap cut, NOT a mode_select sting — the title bed carries straight into the venue screen (mode_select is reserved for the PUCK screen; the old sting also duck-blocked the puck bed for ~8s)   // arcade -> SELLIST; JAILBREAK -> the full venue/puck/knocker CONFIG picker
-function playEntry(s){ setMatchKnockers(s.knock, s.team==='queens'?'queens':'bees'); setTable(s.tbl);   // far = the contrast of the arcade row's knocker
+function playEntry(s){ P1PICK=true; setMatchKnockers(s.knock, s.team==='queens'?'queens':'bees'); setTable(s.tbl);   // far = the contrast of the arcade row's knocker
   estAd = s.tag ? {name:s.name, tag:s.tag} : null;   // a tagged edition shows its AD on the establish card; plain venue = the venue card
   startMatch(); }
 function selConfirm(){
@@ -2165,7 +2185,7 @@ let cfgRow=0, cfgV=0, cfgP=0, cfgK=Math.max(0,CFG_KNOCKS.findIndex(K=>K.k==='tur
 function cfgRowMove(d){ cfgRow=(cfgRow+d+3)%3; SFX.cursor(); }
 function cfgCycle(d){ if(cfgRow===0){ cfgV=(cfgV+d+CFG_VENUES.length)%CFG_VENUES.length; setTable(CFG_VENUES[cfgV].tbl); } else if(cfgRow===1){ cfgP=(cfgP+d+CFG_PUCKS.length)%CFG_PUCKS.length; const P=CFG_PUCKS[cfgP]; PUCKSTYLE=P.k; PUCKCOL=CFG_PCOL[P.k]||'#fff'; } else { cfgK=(cfgK+d+CFG_KNOCKS.length)%CFG_KNOCKS.length; } SFX.cursor(); }   // P.k IS the PuckArt style (incl. real 'lit' white) — no remap
 function cfgStart(){ const V=CFG_VENUES[cfgV], P=CFG_PUCKS[cfgP], K=CFG_KNOCKS[cfgK]; SFX.menu('mode_confirm',0.7);   // mirrors the proven ?go knocker path (all 8 verified)
-  setMatchKnockers(K.k, K.k==='queens'?'queens':'bees');   // far = the contrast of the picked knocker
+  P1PICK=true; setMatchKnockers(K.k, K.k==='queens'?'queens':'bees');   // jailbreak picker = a real pick (table sets only the opponent)
   PUCKSTYLE=P.k; PUCKCOL=CFG_PCOL[P.k]||'#fff'; setTable(V.tbl); estAd=null;
   transition('comic',()=>{ resetSeries(); startMatch(); }); }
 function drawConfig(){ const u=Math.min(VW,VH), cx=VW/2, t=clock; ctx.clearRect(0,0,VW,VH);
@@ -2186,7 +2206,7 @@ function startBonusEngine(){ resetSeries(); playEntry({tbl:'killscreen',knock:'h
 // ----- OLD-TYME CAMPAIGN runtime -----
 function startCampaign(){   // launch the current rung's best-of-7 (player = the Bees, the climber)
   FREE=false; CUP.on=true; CUP.variant='standard'; CUP.win=0; CUP.loss=0; CUP.inPlayoff=false; CUP.playoff=null;
-  setMatchKnockers('bees','bees');   // the BEES climb the rivalry ladder vs the QUEENS (contrast pairing holds)
+  P1PICK=true; setMatchKnockers('bees','bees');   // the BEES climb the rivalry ladder vs the QUEENS (contrast pairing holds)
   applySeries(); startMatch(); }
 function campBegin(){   // title -> climb. Cleared ladder -> OLD-TYME FREEPLAY venue pick (endless).
   if(campCleared>=4){ FREE=true; CUP.on=false; goSelect(); return; }
@@ -2224,7 +2244,7 @@ function begin(){
     var perPlayer = !!(CAB2 || (twoP && (Q.get('p1knock')||Q.get('p2knock'))));   // 2-up / 2P: near=P1, far=P2 via p1knock/p2knock is the ONLY knocker path. Running setMatchKnockers TOO fired a 2nd async load onto IMG.near/far/nearB/farB and RACED it → the "SIDE 2 = two queens" bug (SIDE 2's contrast-load = queens sometimes won).
     if(!perPlayer && kn&&KSPR[kn]){ var tm=Q.get('team'), isQ=tm?(tm==='queens'):(tb==='queens'||tb==='throne');
       if(isQ&&kn==='bees')kn='queens'; else if(!isQ&&kn==='queens')kn='bees';   // BRAND LOCK: a queens side never wears a bees knocker (or vice-versa); neutral knockers pass through. 1P cab only.
-      setMatchKnockers(kn, isQ?'queens':'bees'); }   // far = the contrast of the cab's knocker (alternates with P1)
+      P1PICK=true; setMatchKnockers(kn, isQ?'queens':'bees'); }   // far = the contrast of the cab's knocker (alternates with P1)
     if(perPlayer){ // 2-UP (both screens) OR single-screen side-by-side 2P: load near=P1 / far=P2 with each player's chosen knocker + glow. (2-up mirror shows P2 its own end; single-screen shares one view, far at top.)
       // PER-PLAYER KNOCKER (open mode): ?p1knock / ?p2knock pick ANY skin; default to the end's team. The launcher
       // brand-locks the rivalry split to queens/bees upstream; neutral tables pass free picks. Glow follows the skin.
@@ -2757,7 +2777,7 @@ function cabReport(){ try{ if(parent===window) return; }catch(_){ return; }   //
 
   function launch(){
     const K=pick.knock, R=pick.rink;
-    setMatchKnockers(K.key, K.team==='queens'?'queens':'bees');   // near = the chosen skin, far = its CONTRAST (alternates with P1)
+    P1PICK=true; setMatchKnockers(K.key, K.team==='queens'?'queens':'bees');   // near = the chosen skin, far = its CONTRAST (alternates with P1)
     if(pick.puck){ load('puck', pick.puck.img); PUCKCOL=pick.puck.col; PUCKSTYLE=pick.puck.style||'classic'; }   // the chosen colour + procedural style the drop squashes into
     setTable(R.key);
     if(cstatus){ try{cstatus.stop();}catch(e){} cstatus=null; }   // stop the title's controller-status poll once we're in a match

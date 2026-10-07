@@ -138,6 +138,8 @@ var REEL=[
  {t:'title', dur:6.5, tag:'ONE-TIMER · THE HIGH TABLE', vol:0.6, sting:'logo'},
  {t:'demo',  dur:14.0, vol:0.5, sting:'mode'},
  {t:'ads',   dur:ADS_DUR, vol:0.5, sting:'logo'},
+ {t:'demo',  dur:12.0, vol:0.5, sting:'mode'},     // a 2nd live table per loop (DEMO_ROT rotates every table)
+ {t:'mouse', dur:12.0, vol:0.5, sting:'mode'},     // top-down live demo (TOP_ROT, incl. CASTLE KILLSCREEN red vs blue)
  {t:'board', dur:7.0, vol:0.5, sting:'logo'},
 ];
 
@@ -426,10 +428,13 @@ function show(s){ scr=s; var attract=s==='title';
 // Mount the REAL side.html engine, self-playing (?demo), over the reel canvas during the demo beat.
 // z-index 2 sits above the procedural canvas but UNDER the caption/PRESS overlays. Muted + clean
 // (the reel supplies music + its own PRESS text). Idempotent; blanked when the scene leaves.
+// ATTRACT TABLE ROTATION (Joe 2026-10-07): CPU vs CPU on EVERY table with its default knocker pairing (side.html /
+//   table_temp_engine.html TABLE_PAIR) instead of only the menu's current venue. Advances once per demo beat.
+var DEMO_ROT=['bee','throne','queens','bees','nachos'], demoN=0, TOP_ROT=['killscreen','rivalry','nachos'], topN=0;
 function setDemoFrame(on,kind){ if(!gameEl)return;
   if(on){ var want=kind==='mouse'?'mouse':'side';
-    if(gameEl.getAttribute('data-demo')!==want){ var v=(VEN&&VEN[venI])?VEN[venI].key:'rivalry';
-      gameEl.src = want==='mouse' ? 'table_temp_engine.html?demo=1&mute=1&table=nachos'
+    if(gameEl.getAttribute('data-demo')!==want){ var v=DEMO_ROT[(demoN++)%DEMO_ROT.length];
+      gameEl.src = want==='mouse' ? 'table_temp_engine.html?demo=1&mute=1&table='+TOP_ROT[(topN++)%TOP_ROT.length]
                                   : 'side.html?embed=1&demo=1&mute=1&clean=1&diff=0&table='+v;
       gameEl.setAttribute('data-demo',want); }
     gameEl.style.zIndex='2'; gameEl.style.display='block'; }

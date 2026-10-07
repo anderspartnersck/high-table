@@ -801,13 +801,19 @@ function coverDraw(im,x,y,w,h){
       im.onerror=()=>tryNext(i+1); im.src=cands[i]; })(0); })();
 
   let pick={ knock:C.knock('bees'), rink:C.RINKS_TOP[0], puck:C.puck('neutral') };
+  // TABLE KNOCKER DEFAULTS (Joe 2026-10-07) — same rule as side.html: a picked knocker is kept and the table sets the
+  //   opponent; an unpicked boot (the ?demo attract) gets the table's whole pairing. The picker stays.
+  const TOP_PAIR={ rivalry:['bees','queens'], nachos:['house','turf'], killscreen:['red','ice'], throne:['queens','queens'], bees:['bees','bees'] };
+  let P1PICK=false;
+  function pairOpp(pair,a){ if(a===pair[0]) return pair[1]; if(a===pair[1]) return pair[0];
+    const t=(C.knock(a)||{}).team; return ((C.knock(pair[1])||{}).team!==t)?pair[1]:(((C.knock(pair[0])||{}).team!==t)?pair[0]:pair[1]); }
   const goLoad=M.makeLoader(loadEl, SFX);
   function show(p){ [pTitle,pKnock,pRink,pPuck].forEach(x=>x.classList.add('hidden')); p.classList.remove('hidden'); }
 
   // detected-controller pill (mouse game → minimal)
   M.controllerStatus(document.getElementById('m-cstatus'), {minimal:true});
 
-  M.buildKnockers(kgrid, C.KNOCKERS, { engine:'top', onPick:(K)=>{ pick.knock=K; SFX.resume();
+  M.buildKnockers(kgrid, C.KNOCKERS, { engine:'top', onPick:(K)=>{ pick.knock=K; P1PICK=true; SFX.resume();
     goLoad(()=>show(pRink), { crest:C.CREST[K.team], title:C.CHANT[K.team]||K.name,
       sting:()=>{ if(K.team==='bees')SFX.goal('Y'); else if(K.team==='queens')SFX.goal('P'); else SFX.start(); } }); } });
   M.buildRinks(rgrid, C.RINKS_TOP, { engine:'top', onPick:(R)=>{ pick.rink=R; SFX.resume();
@@ -816,11 +822,13 @@ function coverDraw(im,x,y,w,h){
     goLoad(()=>launch(), { title:'DROPPING THE PUCK', sub:P.name }); } });
 
   function launch(){
-    const K=pick.knock, R=pick.rink, P=pick.puck;
+    const R=pick.rink, P=pick.puck, pair=TOP_PAIR[R.key];
+    if(pair && !P1PICK) pick.knock=C.knock(pair[0]);                       // unpicked (attract demo): the table's own knocker
+    const K=pick.knock;
     const p1=new Image(); p1.onload=()=>IMG.knockerP1=p1; p1.src=C.knockerSprite(K,'top'); yk.col=K.col;
     const b1=new Image(); b1.onload=()=>IMG.knockerP1B=b1; b1.src=C.knockerBottom(K,'top');   // P1 underside for the flip
     const oppGold=(K.key==='queens');                 // if the player took queens, the rival goes gold
-    const opp=oppGold?C.knock('bees'):C.knock('queens');
+    const opp=pair?C.knock(pairOpp(pair,K.key)):(oppGold?C.knock('bees'):C.knock('queens'));   // table default opponent
     const p2=new Image(); p2.onload=()=>IMG.knockerP2=p2; p2.src=C.knockerSprite(opp,'top'); pk.col=opp.col;
     const b2=new Image(); b2.onload=()=>IMG.knockerP2B=b2; b2.src=C.knockerBottom(opp,'top');   // P2 underside
     const bg=new Image(); bg.onload=()=>{ IMG.bg=bg; layout(); }; bg.src=R.bg;
