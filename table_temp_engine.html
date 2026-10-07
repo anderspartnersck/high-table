@@ -519,7 +519,7 @@ function goal(who){
     if(DEMO) setTimeout(()=>{ if(GAME.state==='win') startMatch(); }, 2600);   // attract: rematch loop
   } else {
     GAME.state='goal'; GAME.goalT=1.4; GAME.pendingServe = yWin?1:-1;
-    banner('GOAL!', yWin?'#ffe23a':'#b14cff', 1.4, yWin?'BEES':'QUEENS');
+    banner('GOAL!', yWin?(yk.col||'#ffe23a'):(pk.col||'#b14cff'), 1.4, yWin?(yk.lbl||'BEES'):(pk.lbl||'QUEENS'));
     resetPuck(0);
   }
 }
@@ -748,8 +748,8 @@ function drawScore(){
   ctx.shadowColor='#b14cff'; ctx.fillStyle='#b14cff'; ctx.fillText(scoreP, pp[0], pp[1]-unit*.08);
   // tiny labels + target
   ctx.shadowBlur=8; ctx.font=`700 ${Math.round(unit*.045)}px "Helvetica Neue",Arial`;
-  ctx.fillStyle='rgba(255,226,58,.8)'; ctx.fillText('BEES', yp[0], yp[1]+unit*.10);
-  ctx.fillStyle='rgba(177,76,255,.8)'; ctx.fillText('QUEENS', pp[0], pp[1]+unit*.10);
+  ctx.fillStyle=yk.col||'rgba(255,226,58,.8)'; ctx.fillText(yk.lbl||'BEES', yp[0], yp[1]+unit*.10);
+  ctx.fillStyle=pk.col||'rgba(177,76,255,.8)'; ctx.fillText(pk.lbl||'QUEENS', pp[0], pp[1]+unit*.10);
   ctx.restore();
 }
 
@@ -803,7 +803,8 @@ function coverDraw(im,x,y,w,h){
   let pick={ knock:C.knock('bees'), rink:C.RINKS_TOP[0], puck:C.puck('neutral') };
   // TABLE KNOCKER DEFAULTS (Joe 2026-10-07) — same rule as side.html: a picked knocker is kept and the table sets the
   //   opponent; an unpicked boot (the ?demo attract) gets the table's whole pairing. The picker stays.
-  const TOP_PAIR={ rivalry:['bees','queens'], nachos:['house','turf'], killscreen:['red','ice'], throne:['queens','queens'], bees:['bees','bees'] };
+  const TOP_PAIR={ rivalry:['queens','bees'],   // P1's end of the top-down rivalry art is the CROWN half -> P1 = queens by default (was bees defending the queens' half)
+                    nachos:['house','turf'], killscreen:['red','ice'], throne:['queens','queens'], bees:['bees','bees'] };
   let P1PICK=false;
   function pairOpp(pair,a){ if(a===pair[0]) return pair[1]; if(a===pair[1]) return pair[0];
     const t=(C.knock(a)||{}).team; return ((C.knock(pair[1])||{}).team!==t)?pair[1]:(((C.knock(pair[0])||{}).team!==t)?pair[0]:pair[1]); }
@@ -830,6 +831,7 @@ function coverDraw(im,x,y,w,h){
     const oppGold=(K.key==='queens');                 // if the player took queens, the rival goes gold
     const opp=pair?C.knock(pairOpp(pair,K.key)):(oppGold?C.knock('bees'):C.knock('queens'));   // table default opponent
     const p2=new Image(); p2.onload=()=>IMG.knockerP2=p2; p2.src=C.knockerSprite(opp,'top'); pk.col=opp.col;
+    yk.lbl=K.name; pk.lbl=opp.name;   // the score labels name the knockers actually playing (were hard-coded BEES / QUEENS)
     const b2=new Image(); b2.onload=()=>IMG.knockerP2B=b2; b2.src=C.knockerBottom(opp,'top');   // P2 underside
     const bg=new Image(); bg.onload=()=>{ IMG.bg=bg; layout(); }; bg.src=R.bg;
     if(P){ const pk2=new Image(); pk2.onload=()=>IMG.puck=pk2; pk2.src=P.img; }   // the chosen puck colour

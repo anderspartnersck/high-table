@@ -264,7 +264,7 @@ const SCOREBOARD2={ throne:{L:0.438,R:0.559,cy:0.098,h:0.062,scr:'green'},
   nachos:{L:0.430,R:0.569,cy:0.197,h:0.056,scr:'green'}, killscreen:{L:0.424,R:0.576,cy:0.190,h:0.062,scr:'green'} };   // 0925 re-renders: _side2 measured separately 2026-10-07
 
 const IMG={};
-function load(k,src){const im=new Image();im.onload=()=>IMG[k]=im;im.src=src;}
+function load(k,src){ const W=load._w||(load._w={}); W[k]=src; const im=new Image(); im.onload=()=>{ if(W[k]===src) IMG[k]=im; }; im.src=src; }   // only the LATEST request for a slot may land (a slower earlier knocker load used to overwrite the table's pairing -> wrong sprite)
 load('bg','sprites/'+(TBL[tbl]||TBL.nachos)+'.png');
 load('carpet','sprites/carpet_hyscore.png');   // neutral blacklight CARPET for the menu (title/select) — you transition into a real table on pick, so the menu shows the carpet, not a rink
 const nearName=Q.get('near')||'knocker_green_34', farName=Q.get('far')||'knocker_red_34';   // HIGH TABLE base = GREEN (player) vs its contrast RED (opponent); ?near=/?far= override
@@ -732,7 +732,8 @@ function pairOpp(pair,a){ const A=(a==='white'?'house':a);
 function applyTablePair(name){ const pair=TABLE_PAIR[name]; if(!pair||CAB2) return;
   if(twoP && (Q.get('p1knock')||Q.get('p2knock'))) return;                    // per-player 2P picks own both ends
   const a=P1PICK?CURK.a:pair[0], team=P1PICK?CURK.team:(KTEAM[a]||'bees');
-  setMatchKnockers(a, team, pairOpp(pair,a), true); }
+  const o=pairOpp(pair,a); setMatchKnockers(a, team, o, true);
+  if(pair[0]===pair[1] && KTEAM[o]===team) OTEAM=team; }   // mirror tables (Honey Hole bees v bees, Throne queens v queens): the opponent keeps its real team
 function setMatchKnockers(p1key,p1team,p2key,_fromTable){ var a=KSPR[p1key]?p1key:'turf', b=KSPR[p2key]?p2key:oppKnock(a);
   if(!_fromTable){ CURK={a:a, team:p1team||(a==='queens'?'queens':'bees')}; }   // p2key omitted -> contrast of P1
   load('near','sprites/'+KSPR[a]+'_34.png'); load('nearB','sprites/'+KSPR[a]+'_bottom.png');
@@ -2211,9 +2212,9 @@ let cfgRow=0, cfgV=0, cfgP=0, cfgK=Math.max(0,CFG_KNOCKS.findIndex(K=>K.k==='tur
 function cfgRowMove(d){ cfgRow=(cfgRow+d+3)%3; SFX.cursor(); }
 function cfgCycle(d){ if(cfgRow===0){ cfgV=(cfgV+d+CFG_VENUES.length)%CFG_VENUES.length; setTable(CFG_VENUES[cfgV].tbl); } else if(cfgRow===1){ cfgP=(cfgP+d+CFG_PUCKS.length)%CFG_PUCKS.length; const P=CFG_PUCKS[cfgP]; PUCKSTYLE=P.k; PUCKCOL=CFG_PCOL[P.k]||'#fff'; } else { cfgK=(cfgK+d+CFG_KNOCKS.length)%CFG_KNOCKS.length; } SFX.cursor(); }   // P.k IS the PuckArt style (incl. real 'lit' white) — no remap
 function cfgStart(){ const V=CFG_VENUES[cfgV], P=CFG_PUCKS[cfgP], K=CFG_KNOCKS[cfgK]; SFX.menu('mode_confirm',0.7);   // mirrors the proven ?go knocker path (all 8 verified)
-  P1PICK=true; setMatchKnockers(K.k, K.k==='queens'?'queens':'bees');   // jailbreak picker = a real pick (table sets only the opponent)
+  P1PICK=true; setMatchKnockers(K.k, KTEAM[K.k]||'bees');   // jailbreak picker = a real pick (table sets only the opponent); ice/royal play as QUEENS
   PUCKSTYLE=P.k; PUCKCOL=CFG_PCOL[P.k]||'#fff'; setTable(V.tbl); estAd=null;
-  transition('comic',()=>{ resetSeries(); startMatch(); }); }
+  transition('comic',()=>{ const on=CUP.on, v=CUP.variant; resetSeries(); if(on){ CUP.on=true; CUP.variant=v; applySeries(); } startMatch(); }); }   // keep a chosen series (RAISE IT / HOME COOKED / THE HIGH TABLE) -- it used to be reset to an exhibition
 function drawConfig(){ const u=Math.min(VW,VH), cx=VW/2, t=clock; ctx.clearRect(0,0,VW,VH);
   if(IMG.carpet){ const ir=IMG.carpet.width/IMG.carpet.height,br=VW/VH; let dw,dh,dx,dy; if(ir>br){dh=VH;dw=VH*ir;dx=(VW-dw)/2;dy=0;}else{dw=VW;dh=VW/ir;dx=0;dy=(VH-dh)/2;} ctx.drawImage(IMG.carpet,dx,dy,dw,dh); } else { ctx.fillStyle='#0a0618'; ctx.fillRect(0,0,VW,VH); }
   ctx.save(); ctx.textAlign='center';
