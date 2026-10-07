@@ -1332,8 +1332,22 @@ function scoreDigit(n,cx,cy,dh,pop,scr){ const sz=dh*0.80*(1+0.32*pop);
   ctx.fillStyle = scr==='orange' ? 'rgba(34,14,0,0.96)' : 'rgba(5,26,6,0.96)';                          // printed dark digit on the screen
   if(pop>0.01){ ctx.shadowColor='#ffffff'; ctx.shadowBlur=16*pop; }
   ctx.fillText(n,cx,cy); ctx.restore(); }
+// SCOREBOARD FRAMING (2026-10-07). The side renders are 3:2; a 16:9+ desktop COVER-crops top and bottom, which cut
+//   the painted twin panels off the top edge (Bee/Queens/Honey Hole half-gone, Throne entirely). sbCropDy() slides the
+//   crop DOWN just enough to show the panels, but never so far that the near rail (the homography's bottom corners)
+//   leaves the frame -- gameplay framing wins. If both can't fit (ultra-wide), sbRect() reports the panels hidden and
+//   drawScoreboard falls back to the floating score bug. Geometry is safe: unproject/project read BG.dy.
+function sbCoords(){ return (MIRROR2&&SCOREBOARD2[tbl])||SCOREBOARD[tbl]; }
+function sbCropDy(dy,dh){ const c=sbCoords(); if(!c) return dy;
+  const want=VH*0.012-(c.cy-c.h*0.62)*dh;                                    // panel top just inside the frame
+  const hp=homoPreset(), nearY=hp&&hp.corners?Math.max(hp.corners.bl[1],hp.corners.br[1]):0.85;
+  const limit=VH*0.97-nearY*dh;                                              // keep the near rail on screen
+  return Math.max(dy, Math.min(want, limit, 0)); }
+function sbRect(){ const c=sbCoords();                                        // where the score sits on screen this frame
+  if(c && BG.ok){ const my=BG.dy+c.cy*BG.dh, dh=c.h*BG.dh; if(my-dh*0.5>=-2) return {painted:true, c:c, my:my, dh:dh, bottom:my+dh*0.5}; }
+  return {painted:false, bottom:VH*0.05+VH*0.058}; }                          // the floating bug (same box as the fallback below)
 function drawScoreboard(){
-  const c=(MIRROR2&&SCOREBOARD2[tbl])||SCOREBOARD[tbl];   // P2's mirror end uses _side2 window coords where they differ (throne)
+  const R=sbRect(), c=R.painted?R.c:null;   // P2's mirror end uses _side2 window coords where they differ (throne)
   if(c && BG.ok){ const lx=BG.dx+c.L*BG.dw, rx=BG.dx+c.R*BG.dw, my=BG.dy+c.cy*BG.dh, dh=c.h*BG.dh;     // matte into the BAKED twin windows
     if(SBREG){ ctx.save(); ctx.strokeStyle='#ff37c7'; ctx.lineWidth=2; const ww=Math.abs(rx-lx)*0.9; ctx.strokeRect(lx-ww/2,my-dh/2,ww,dh); ctx.strokeRect(rx-ww/2,my-dh/2,ww,dh); ctx.fillStyle='#ff37c7'; ctx.font='12px monospace'; ctx.textAlign='center'; ctx.fillText('L '+tbl,lx,my-dh/2-6); ctx.fillText('R',rx,my-dh/2-6); ctx.restore(); }
     scoreDigit(scoreN, lx, my, dh, popN, c.scr); scoreDigit(scoreF, rx, my, dh, popF, c.scr); return; }
@@ -1833,7 +1847,9 @@ function draw(){
   ctx.save(); if(shake>0)ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);
   if(ZOOM!==1){ctx.translate(VW/2,VH*0.55);ctx.scale(ZOOM,ZOOM);ctx.translate(-VW/2,-VH*0.55);}
   {const _menu=(state==='title'||state==='select'), _bg=(_menu&&IMG.carpet)?IMG.carpet:IMG.bg;   // menu lives on the neutral CARPET; the real table only appears in-game (you transition into it)
-   if(_bg){const ir=_bg.width/_bg.height,br=VW/VH;let dw,dh,dx,dy;if(TMODE&&!_menu){ctx.fillStyle='#05050c';ctx.fillRect(0,0,VW,VH);if(ir>br){dw=VW;dh=VW/ir;dx=0;dy=(VH-dh)/2;}else{dh=VH;dw=VH*ir;dx=(VW-dw)/2;dy=0;}}else if(ir>br){dh=VH;dw=VH*ir;dx=(VW-dw)/2;dy=0;}else{dw=VW;dh=VW/ir;dx=0;dy=(VH-dh)/2;}ctx.drawImage(_bg,dx,dy,dw,dh);if(!_menu){BG.dx=dx;BG.dy=dy;BG.dw=dw;BG.dh=dh;BG.ok=true;}}
+   if(_bg){const ir=_bg.width/_bg.height,br=VW/VH;let dw,dh,dx,dy;if(TMODE&&!_menu){ctx.fillStyle='#05050c';ctx.fillRect(0,0,VW,VH);if(ir>br){dw=VW;dh=VW/ir;dx=0;dy=(VH-dh)/2;}else{dh=VH;dw=VH*ir;dx=(VW-dw)/2;dy=0;}}else if(ir>br){dh=VH;dw=VH*ir;dx=(VW-dw)/2;dy=0;}else{dw=VW;dh=VW/ir;dx=0;dy=(VH-dh)/2;
+     if(!_menu) dy=sbCropDy(dy,dh);}   // WIDESCREEN: the cover crop ate the top of the painted scoreboard (Throne's vanished) -> slide down to show it
+   ctx.drawImage(_bg,dx,dy,dw,dh);if(!_menu){BG.dx=dx;BG.dy=dy;BG.dw=dw;BG.dh=dh;BG.ok=true;}}
    else{ctx.fillStyle='#0a0618';ctx.fillRect(0,0,VW,VH);}}
   if(state!=='title'&&state!=='select'&&state!=='boot'){ goalGlow(0.0,tcol(PTEAM)); goalGlow(1.0,tcol(OTEAM)); }   // goal mouths follow the TEAMS (near=PTEAM/far=OTEAM), not a fixed gold/purple — correct on reversed RIVALRY sides
   if(state!=='title'&&state!=='select'&&state!=='boot'&&state!=='win') drawSlot();                  // the slot — quiet, in front of each net
@@ -1879,8 +1895,9 @@ function draw(){
   if(TIMED&&state!=='title'&&state!=='select'&&state!=='boot'&&state!=='win'&&state!=='champion'){   // CASTLE RULES clock + period readout
     ctx.save();ctx.textAlign='center';const pc=Math.max(0,perClock),mm=Math.floor(pc/60),ss=Math.floor(pc%60),low=pc<=10&&!otSudden;
     const cc=otSudden?'#ff37c7':(low?'#ff5a5a':'#cfe6ff');ctx.fillStyle=cc;ctx.shadowColor=cc;ctx.shadowBlur=(otSudden||low)?18:8;
-    ctx.font=`900 ${Math.round(VH*0.05)}px "Helvetica Neue",Arial`;ctx.fillText(otSudden?'OT':(mm+':'+(ss<10?'0':'')+ss),VW/2,VH*0.085);
-    ctx.font=`800 ${Math.round(VH*0.024)}px "Helvetica Neue",Arial`;ctx.fillStyle='#9fb6c8';ctx.shadowBlur=0;ctx.fillText(otSudden?'NEXT GOAL WINS':('PERIOD '+period+' / '+PERIODS),VW/2,VH*0.122);ctx.restore();}
+    ctx.font=`900 ${Math.round(VH*0.05)}px "Helvetica Neue",Arial`;const _cy=Math.max(VH*0.085, sbRect().bottom+VH*0.055);   // sits UNDER the scoreboard (it used to land on top of the panels)
+    ctx.fillText(otSudden?'OT':(mm+':'+(ss<10?'0':'')+ss),VW/2,_cy);
+    ctx.font=`800 ${Math.round(VH*0.024)}px "Helvetica Neue",Arial`;ctx.fillStyle='#9fb6c8';ctx.shadowBlur=0;ctx.fillText(otSudden?'NEXT GOAL WINS':('PERIOD '+period+' / '+PERIODS),VW/2,_cy+VH*0.037);ctx.restore();}
   if(!TMODE&&state!=='title'&&state!=='select'&&state!=='boot'&&state!=='champion'){
     const w=VW*0.24, x=VW*0.04, y=VH*0.175, bh=VH*0.02, rd=near.sup>=1, fc=rd?'#ffe23a':'#37c0ff', blink=rd&&(Math.floor(clock*3)%2===0);
     ctx.save();

@@ -149,7 +149,14 @@ var titleEl=document.getElementById('title'),menuEl=document.getElementById('men
 
 /* ---------- music: bed ducks under legend, swells on title/board, with stings ---------- */
 var music=new Audio('audio/title.mp3'); music.loop=true; music.volume=0; var musicOn=false, musicTarget=0.5, AC=null;
-function startMusic(){ if(musicOn)return; musicOn=true; try{music.play();}catch(e){} try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){AC=null;} }
+function startMusic(){ if(musicOn)return; musicOn=true;
+  try{ var pr=music.play(); if(pr&&pr.catch) pr.catch(function(){ musicOn=false; }); }catch(e){ musicOn=false; }   // blocked (no gesture yet) -> stay retryable
+  try{ if(!AC) AC=new (window.AudioContext||window.webkitAudioContext)(); if(AC&&AC.state==='suspended') AC.resume(); }catch(e){AC=null;} }
+// ATTRACT WITH SOUND (2026-10-07): the bed used to wait for the first press, so even the cab launchers (which pass
+//   --autoplay-policy=no-user-gesture-required) ran a SILENT attract. Try it on load; a browser that blocks autoplay
+//   rejects the play() and the first press/tap retries it.
+setTimeout(startMusic,0);   // not 'load': that waits for every attract asset (the reel video) and the bed came in late or not at all
+['pointerdown','keydown','touchstart'].forEach(function(ev){ addEventListener(ev,function(){ startMusic(); },{passive:true}); });
 function sting(kind){ if(!AC)return; try{
   var now=AC.currentTime, g=AC.createGain(); g.connect(AC.destination);
   var notes = kind==='logo' ? [660,990] : [523];
