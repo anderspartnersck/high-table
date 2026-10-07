@@ -253,13 +253,14 @@ const SCOREBOARD={
   bee:   {L:0.447,R:0.574,cy:0.091,h:0.076,scr:'green'},
   queens:{L:0.455,R:0.569,cy:0.118,h:0.072,scr:'green'},
   throne:{L:0.444,R:0.565,cy:0.066,h:0.066,scr:'green'},
-  nachos:{L:0.446,R:0.559,cy:0.231,h:0.045,scr:'green'},
-  killscreen:{L:0.430,R:0.583,cy:0.132,h:0.065,scr:'green'},   // CASTLE KILLSCREEN bonus — baked twin green LED windows (blob-scanned off table_killscreen_side.png 2026-09-01; digits were falling through to the floating fallback bug, leaving the panels empty)
+  nachos:{L:0.433,R:0.566,cy:0.200,h:0.052,scr:'green'},   // RE-MEASURED 2026-10-07 on the 0925 re-render (was 0.446/0.559 @0.231 — old art; digits sat under the panels)
+  killscreen:{L:0.426,R:0.575,cy:0.205,h:0.056,scr:'green'},   // RE-MEASURED 2026-10-07 on the 0925 KS SIDE REDO (was cy 0.132 — digits floated above the panels)   // CASTLE KILLSCREEN bonus — baked twin green LED windows (blob-scanned off table_killscreen_side.png 2026-09-01; digits were falling through to the floating fallback bug, leaving the panels empty)
   bees:  {L:0.435,R:0.578,cy:0.106,h:0.082,scr:'orange'} };   // generica (garden/box/prime) have no painted window -> self-contained fallback bug
 // P2 (MIRROR2 / 2-UP client) renders the _side2 art, whose baked windows can sit differently from _side1.
 // Override ONLY where they differ materially (throne_side2 panels are ~0.03 lower); killscreen/nachos _side2
 // are within tolerance so they reuse the _side1 coords. Measured off table_*_side2.png 2026-09-01.
-const SCOREBOARD2={ throne:{L:0.438,R:0.559,cy:0.098,h:0.062,scr:'green'} };
+const SCOREBOARD2={ throne:{L:0.438,R:0.559,cy:0.098,h:0.062,scr:'green'},
+  nachos:{L:0.430,R:0.569,cy:0.197,h:0.056,scr:'green'}, killscreen:{L:0.424,R:0.576,cy:0.190,h:0.062,scr:'green'} };   // 0925 re-renders: _side2 measured separately 2026-10-07
 
 const IMG={};
 function load(k,src){const im=new Image();im.onload=()=>IMG[k]=im;im.src=src;}
