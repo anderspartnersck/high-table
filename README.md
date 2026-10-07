@@ -38,24 +38,25 @@ Your knocker is the near one. Score in the far goal.
 - Two players on one keyboard: press **P** on the title screen. Player 2 steers
   with O K L ; and uses comma for GET BIG, period for BLAST.
 
-## Modes
+## Ways to play
 
-Tap or click the MODE chip on the title screen, or press C, to switch:
+- [HYSCORE][play]: the 1UP arcade cab. Pick your knocker, your table and your
+  puck, then use the MODE chip on the title screen (or press C) for
+  **EXHIBITION**, **RAISE IT!** (a best-of-seven gauntlet against a CPU that
+  keeps getting better, for the Breakaway Cup) or **CASTLE RULES**.
+- [CAMPAIGN][camp]: the Old-Tyme climb. Win a series on each table to reach the
+  next, all the way up to the High Table.
+- [CASTLE RULES][castle]: three timed periods. Most goals at the horn wins; a tie
+  goes to sudden death.
+- [JAILBREAK][jail]: every table, knocker and puck, open from the start.
+- [2 PLAYER][twoup]: split screen, each player at their own end of the table.
+  P1 steers with WASD and plays Z / X / C; P2 steers with O K L ; or the arrows,
+  comma for GET BIG, period for BLAST. Two pads work too.
+- [TOP DOWN][todown]: the same game from overhead. Steer with the mouse, or drag
+  on a phone.
 
-- **EXHIBITION**: one game.
-- **RAISE IT!**: a best-of-seven gauntlet against a CPU that keeps getting
-  better, for the Breakaway Cup.
-- **CASTLE RULES**: three timed periods.
-
-Other ways in:
-
-- [HYSCORE][play] is the 1UP arcade cab, and the default.
-- [OLD-TYME CAMPAIGN][camp] keeps your progress: clear its tables and the cabs
-  in the garage unlock.
-- [CASTLE RULES][castle] goes straight to the clock.
-- [JAILBREAK][jail] opens every table, knocker and puck at once.
-- Also: [2 players][twoup] *(work in progress)* · [Top-down][todown] ·
-  [Table picker][picker] · [The garage][garage]
+Every table has its house knockers. Pick your own and the table brings the
+other end.
 
 Your progress and settings are kept in your own browser and never sent
 anywhere.
@@ -86,5 +87,3 @@ Music & SFX by **Taylor Lyons** and **Joseph Coleman**.
 [jail]: https://anderspartnersck.github.io/high-table/?jail
 [twoup]: https://anderspartnersck.github.io/high-table/2up.html?solo
 [todown]: https://anderspartnersck.github.io/high-table/table_temp_engine.html
-[picker]: https://anderspartnersck.github.io/high-table/arcade.html
-[garage]: https://anderspartnersck.github.io/high-table/garage.html
