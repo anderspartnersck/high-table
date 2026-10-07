@@ -41,16 +41,15 @@ Your knocker is the near one. Score in the far goal.
 ## Ways to play
 
 - [HYSCORE][play]: the house cab at HYSCORE, the arcade off the 101 in the
-  Valley. A quarter-eater: drop a quarter, play it out, run it back or walk.
-  Pick your knocker, your table and your puck; the MODE chip on the title
-  screen (or C) switches between **EXHIBITION**, **RAISE IT!** (a best-of-seven
-  gauntlet against a CPU that keeps getting better, for the Breakaway Cup) and
-  **CASTLE RULES**.
+  Valley. A quarter-eater: it runs its attract until you drop a quarter, then
+  you play it out and run it back or walk.
 - [CAMPAIGN][camp]: the Old-Tyme climb. Win a series on each table to reach the
   next, all the way up to the High Table.
 - [CASTLE RULES][castle]: three timed periods. Most goals at the horn wins; a tie
   goes to sudden death.
-- [JAILBREAK][jail]: every table, knocker and puck, open from the start.
+- [JAILBREAK][jail]: the cab behind the velvet rope. Every table, knocker and
+  puck, open from the start, plus **RAISE IT!**, a best-of-seven gauntlet
+  against a CPU that keeps getting better, for the Breakaway Cup.
 - [2 PLAYER][twoup]: split screen, each player at their own end of the table.
   P1 steers with WASD and plays Z / X / C; P2 steers with O K L ; or the arrows,
   comma for GET BIG, period for BLAST. Two pads work too.
@@ -83,9 +82,9 @@ Music & SFX by **Taylor Lyons** and **Joseph Coleman**.
 
 <sub>RESPEK LOGIC ART UREA</sub>
 
-[play]: https://anderspartnersck.github.io/high-table/cab_intro.html?cab=OTTHT_1%20up%20HYSCORE%20color&game=side.html&title=HYSCORE
+[play]: https://anderspartnersck.github.io/high-table/cab_intro.html?cab=OTTHT_1%20up%20HYSCORE%20color&game=side.html%3Fhyscore&title=HYSCORE
 [camp]: https://anderspartnersck.github.io/high-table/cab_intro.html?cab=1up%20HIVEMIND%20color&game=side.html%3Fcamp&title=CAMPAIGN
-[castle]: https://anderspartnersck.github.io/high-table/cab_intro.html?cab=OTTHT_1%20up%20HYSCORE%20color&game=side.html%3Fcastlerules&title=CASTLE%20RULES
-[jail]: https://anderspartnersck.github.io/high-table/cab_intro.html?cab=OTTHT_1%20up%20HYSCORE%20gray&game=side.html%3Fjail&title=JAILBREAK
+[castle]: https://anderspartnersck.github.io/high-table/cab_intro.html?cab=OTTHT_1%20up%20HYSCORE%20color&game=side.html%3Fhyscore%26castlerules&title=CASTLE%20RULES
+[jail]: https://anderspartnersck.github.io/high-table/cab_intro.html?cab=OTTHT_1%20up%20HYSCORE%20violet&game=side.html%3Fjail&title=JAILBREAK
 [twoup]: https://anderspartnersck.github.io/high-table/cab_intro.html?cab=RIVALRY%20A%20color&game=2up.html%3Fsolo&title=2%20PLAYER
 [todown]: https://anderspartnersck.github.io/high-table/table_temp_engine.html

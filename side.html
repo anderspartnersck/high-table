@@ -944,7 +944,8 @@ function step(dt){
   if(state==='board'){ if(!TRANS.on){ interT+=dt; if(interT>=interDur) reelAdvance(); } return; }    // ATTRACT leaderboard
   if(state==='config') return;   // JAILBREAK custom-match picker — static (clock-animated in drawConfig), no sim
   if(REEL && !TRANS.on && reelIdx>=0 && REELSEG[reelIdx] && REELSEG[reelIdx].k==='demo'){ reelT+=dt; if(reelT>=REELSEG[reelIdx].dur && (state==='play'||state==='serve'||state==='faceoff')) reelAdvance(); }   // cut the live demo to the next beat
-  if(state==='splash'){ splashIdle+=dt; if(!DIRECT && !REEL && splashIdle>7){ reelStart(); } return; }   // SPLASH idles to the ATTRACT REEL; clock-animated in drawSplash, no sim
+  if(HYSCORE){ if(state==='win'||state==='champion'){ hyIdle+=dt; if(hyIdle>25){ hyIdle=0; hyAttract(); return; } } else hyIdle=0; }   // nobody fed it another quarter -> attract
+  if(state==='splash'){ splashIdle+=dt; if(!DIRECT && !REEL && splashIdle>(HYSCORE?2.5:7)){ reelStart(); } return; }   // SPLASH idles to the ATTRACT REEL; clock-animated in drawSplash, no sim
   if(state==='title'||state==='select'){ menuSim(dt); return; }   // MENU: a little air-hockey demo (knockers bat the pucks) — then skip the game physics/SFX entirely
   if(estT>0)estT=Math.max(0,estT-dt);
   else if(pendBanner!==null && (state==='play'||state==='faceoff'||state==='serve'||state==='goal')){ banner(pendBanner,pendBannerD); pendBanner=null; }   // the establishing beat just cleared -> reveal the staggered RAISE IT · GAME N banner
@@ -1999,7 +2000,7 @@ function draw(){
     else if(CUP.on){ const w=CUP.win+(won?1:0), l=CUP.loss+(won?0:1); sub = (w>=SERIES_WINS||l>=SERIES_WINS)?(twoP?'tap to play again':(w>=SERIES_WINS?(nextLocked()?'tap → UNLOCK PLAYOFF':'tap to RAISE IT'):'tap — series over')):'tap for the next game'; }
     ctx.shadowBlur=0;ctx.fillStyle='#9fb6c8';ctx.font=`700 ${Math.round(VH*0.038)}px "Helvetica Neue",Arial`;ctx.fillText(sub,VW/2,VH*0.62);
     // an exit has to be VISIBLE or it may as well not exist -- this screen used to offer only a rematch
-    ctx.fillStyle='#6f8496';ctx.font=`700 ${Math.round(VH*0.028)}px "Helvetica Neue",Arial`;ctx.fillText('ESC — back to the menu',VW/2,VH*0.69);
+    ctx.fillStyle='#6f8496';ctx.font=`700 ${Math.round(VH*0.028)}px "Helvetica Neue",Arial`;ctx.fillText(HYSCORE?'ESC — back to the attract':'ESC — back to the menu',VW/2,VH*0.69);
     ctx.restore();}
   if(state==='select'){ if(selPhase==='puck') drawPuck(); else drawSelect(); }
   if(state==='champion') drawChampion();
@@ -2154,6 +2155,15 @@ function resetSeries(){ CUP.hist=[]; CUP.on=false; CUP.win=0; CUP.loss=0; CUP.in
 //   TITLE -> push BLAST -> SELECT (cycle the venue/mode on the canvas with the stick) -> push BLAST -> game.
 //   ?go / ?demo / ?cab2 boot straight in (DIRECT). ?jail unlocks the full venue list incl. the away-games.
 const DIRECT=Q.has('go')||Q.has('demo')||!!CAB2;
+// ===== HYSCORE QUARTER-EATER (?hyscore — Joe 2026-10-07) =====
+//   The house cab: boot -> the ATTRACT reel; a coin (any button) drops straight into a match -- no menu. Each credit
+//   rotates the front-door tables with their house knockers. Game over: press to run it back; walk away and it
+//   returns to the attract. ESC / the pause menu's exit go back to the attract. ?castlerules rides along (clocked).
+const HYSCORE=Q.has('hyscore'), HY_ROT=['bee','queens','nachos']; let hyN=0, hyIdle=0;
+function hyCoin(){ const t=HY_ROT[(hyN++)%HY_ROT.length], pr=TABLE_PAIR[t];
+  try{SFX.menu('player_select',0.6);}catch(e){}
+  transition('clash',()=>{ reelExit(); resetSeries(); playEntry({tbl:t, knock:pr[0], team:KTEAM[pr[0]]||'bees'}); },0.9,()=>{try{SFX.hit(0.85);}catch(e){}}); }
+function hyAttract(){ closePause(); try{ resetSeries(); }catch(e){} DEMO=false; state='splash'; splashIdle=0; reelStart(); }
 const SELJAIL=Q.has('jail');
 const SELALL=[
   {tbl:'bee',    name:'BEES',           knock:'bees',   team:'bees'},
@@ -2241,6 +2251,7 @@ function engineCycleMode(){ const order=SELJAIL?['off','standard','homecooked','
   banner(TIMED?'CASTLE RULES · 3 PERIODS':(CUP.on?RAISE[CUP.variant].name:'EXHIBITION'),0.9); }
 function begin(){
   if(TRANS.on) return;   // ignore input mid-transition — MUST be first: held-key auto-repeat / stick+key in one window were re-entering the reel/splash branches below and re-firing the clash wipe + SFX.hit (double impact). The boot intro isn't a transition() so this never blocks skipping it.
+  if(HYSCORE && (REEL||state==='inter'||state==='board'||state==='splash')){ hyCoin(); return; }   // QUARTER-EATER: the coin goes straight into a match
   if(REEL||state==='inter'||state==='board'){ reelExit(); SFX.menu('player_select',0.6); transition('clash',()=>{ state='title'; },0.9,()=>{try{SFX.hit(0.85);}catch(e){}}); return; }   // any input during the ATTRACT REEL -> the menu (clash wipe; impact at the collision)
   if(state==='boot'){ try{SFX.stopKill();}catch(e){} menuCueDuck=0; state='splash'; bootT=0; splashIdle=0; try{Music.kick();}catch(e){} return; }   // any input skips the boot intro -> SPLASH TITLE (cut the killscreen sting so it can't bleed)
   if(state==='splash'){ SFX.menu('player_select',0.6); transition('clash',()=>{ state='title'; },0.9,()=>{try{SFX.hit(0.85);}catch(e){}}); return; }   // SPLASH -> the carpet MENU (clash wipe; impact at the collision)
@@ -2276,7 +2287,7 @@ function begin(){
     if(pk){ var PM={lit:['lit','#ffffff'],classic:['classic','#ff5ae1'],neutral:['classic','#ff5ae1'],zebra:['zebra','#27f6ff'],energy:['energy','#27f6ff'],hive:['hive','#ffe23a'],bees:['hive','#ffe23a'],royal:['royal','#b14cff'],queens:['royal','#b14cff'],contested:['contested','#dfefff']}; if(PM[pk]){PUCKSTYLE=PM[pk][0];PUCKCOL=PM[pk][1];} }   // accept BOTH the catalog keys (neutral/bees/queens) and the legacy launcher keys (classic/hive/royal)
   }
   if(Q.has('pick')){ state='config'; cfgRow=0; }   // ?pick = jump straight into the JAILBREAK venue/puck/knocker CONFIG picker
-  else if(Q.has('reel')){ state='splash'; setTimeout(function(){ try{reelStart();}catch(_){} }, 350); }   // ?reel = jump straight into the full ATTRACT REEL (demos + interstitials + leaderboard)
+  else if(Q.has('reel')||(HYSCORE&&Q.has('noboot'))){ state='splash'; setTimeout(function(){ try{reelStart();}catch(_){} }, 350); }   // ?hyscore inside the cab reveal: the cab already played the CK ident -> straight to the attract   // ?reel = jump straight into the full ATTRACT REEL (demos + interstitials + leaderboard)
   else if(DEMO) setTimeout(function(){ try{startDemo();}catch(_){} }, 400);
   else if(CAB2==='p1'){ var _t0=performance.now(); (function waitLink(){ try{ if(state!=='title'){return;} if(linkSeen>0 || performance.now()-_t0>6000){ begin(); return; } }catch(_){} requestAnimationFrame(waitLink); })(); }   // HOST: wait until SIDE 2 is linked (or 6s fallback) so both screens start together
   else if(Q.has('go')) setTimeout(function(){ try{begin();}catch(_){} }, 500); }catch(_){} })();
@@ -2325,7 +2336,7 @@ addEventListener('keydown',e=>{if(e.key==='Shift')keyShift=true;keys[e.key]=true
   // rematch of the same venue, so a jailbreak session could never get back to the table picker.
   if(e.key==='Escape' && (state==='win'||state==='champion')){ e.preventDefault(); backToMenu(); return; }
   if((e.key==='Escape'||e.key.toLowerCase()==='p') && ((state==='play'||state==='faceoff'||state==='serve') || !pauseEl.classList.contains('hidden'))){ e.preventDefault(); togglePause(); return; }   // PAUSE MENU (active match only, so 'win' rematch + title 2P toggle below are untouched)
-  if((state==='title')&&e.key.toLowerCase()==='p'){twoP=!twoP;return;}if(state==='select'&&e.key==='ArrowLeft'){selCycle(-1);return;}if(state==='select'&&e.key==='ArrowRight'){selCycle(1);return;}if(state==='config'&&e.key==='ArrowLeft'){cfgCycle(-1);return;}if(state==='config'&&e.key==='ArrowRight'){cfgCycle(1);return;}if(state==='config'&&e.key==='ArrowUp'){cfgRowMove(-1);return;}if(state==='config'&&e.key==='ArrowDown'){cfgRowMove(1);return;}if(state==='select'&&(e.key==='ArrowUp'||e.key==='ArrowDown')){selBack();return;}if((state==='title'||(state==='select'&&selPhase!=='puck'))&&e.key.toLowerCase()==='c'){engineCycleMode();return;}if((state==='title')&&e.key.toLowerCase()==='t'){setTable(TKEYS[(TKEYS.indexOf(tbl)+1)%TKEYS.length]);return;}if(e.key.toLowerCase()==='m'){MONO=!MONO;banner(MONO?'MONOCHROME':'COLOR',0.8);return;}if(e.key.toLowerCase()==='y'){WAYS=WAYS===4?8:4;try{localStorage.setItem('sideStickWays',String(WAYS));}catch(_){}banner(WAYS+'-WAY STICK',1.0);return;}if(state==='play'&&near.sup>=1&&(e.key===' '||e.key.toLowerCase()==='f')){e.preventDefault();bigUp(near,PTEAM);return;}if(state==='play'&&twoP&&!CAB2&&far.sup>=1&&(e.key==='Enter'||e.key==='/')){e.preventDefault();bigUp(far,OTEAM);return;}if(REG&&e.key.toLowerCase()==='s'){try{localStorage.setItem('sideRink.'+tbl,JSON.stringify(RINK));}catch(_){}const j=JSON.stringify({nearY:+RINK.nearY.toFixed(3),farY:+RINK.farY.toFixed(3),nearHalf:+RINK.nearHalf.toFixed(3),farHalf:+RINK.farHalf.toFixed(3),cx:+RINK.cx.toFixed(3)});console.log('RINKPRESET '+tbl+':  '+j);banner('SAVED '+(TNAME[tbl]||tbl),1.2);return;}if(REG&&e.key.toLowerCase()==='r'){try{localStorage.removeItem('sideRink.'+tbl);}catch(_){}location.reload();return;}if(e.key>='1'&&e.key<='3'&&(state==='title'||state==='win'))DIFF=+e.key-1;if(e.key===' '||e.key==='Enter'){e.preventDefault();if(AUTOFS&&!_fsTried){_fsTried=true;goFullscreen();}begin();}});
+  if((state==='title')&&e.key.toLowerCase()==='p'){twoP=!twoP;return;}if(state==='select'&&e.key==='ArrowLeft'){selCycle(-1);return;}if(state==='select'&&e.key==='ArrowRight'){selCycle(1);return;}if(state==='config'&&e.key==='ArrowLeft'){cfgCycle(-1);return;}if(state==='config'&&e.key==='ArrowRight'){cfgCycle(1);return;}if(state==='config'&&e.key==='ArrowUp'){cfgRowMove(-1);return;}if(state==='config'&&e.key==='ArrowDown'){cfgRowMove(1);return;}if(state==='select'&&(e.key==='ArrowUp'||e.key==='ArrowDown')){selBack();return;}if((state==='title'||(state==='select'&&selPhase!=='puck'))&&e.key.toLowerCase()==='c'){engineCycleMode();return;}if((state==='title')&&e.key.toLowerCase()==='t'){setTable(TKEYS[(TKEYS.indexOf(tbl)+1)%TKEYS.length]);return;}if(e.key.toLowerCase()==='m'){MONO=!MONO;banner(MONO?'MONOCHROME':'COLOR',0.8);return;}if(e.key.toLowerCase()==='y'){WAYS=WAYS===4?8:4;try{localStorage.setItem('sideStickWays',String(WAYS));}catch(_){}banner(WAYS+'-WAY STICK',1.0);return;}if(state==='play'&&!DEMO&&near.sup>=1&&(e.key===' '||e.key.toLowerCase()==='f')){e.preventDefault();bigUp(near,PTEAM);return;}if(state==='play'&&twoP&&!CAB2&&far.sup>=1&&(e.key==='Enter'||e.key==='/')){e.preventDefault();bigUp(far,OTEAM);return;}if(REG&&e.key.toLowerCase()==='s'){try{localStorage.setItem('sideRink.'+tbl,JSON.stringify(RINK));}catch(_){}const j=JSON.stringify({nearY:+RINK.nearY.toFixed(3),farY:+RINK.farY.toFixed(3),nearHalf:+RINK.nearHalf.toFixed(3),farHalf:+RINK.farHalf.toFixed(3),cx:+RINK.cx.toFixed(3)});console.log('RINKPRESET '+tbl+':  '+j);banner('SAVED '+(TNAME[tbl]||tbl),1.2);return;}if(REG&&e.key.toLowerCase()==='r'){try{localStorage.removeItem('sideRink.'+tbl);}catch(_){}location.reload();return;}if(e.key>='1'&&e.key<='3'&&(state==='title'||state==='win'))DIFF=+e.key-1;if(e.key===' '||e.key==='Enter'){e.preventDefault();if(AUTOFS&&!_fsTried){_fsTried=true;goFullscreen();}begin();}});
 addEventListener('keyup',e=>{if(e.key==='Shift')keyShift=false;keys[e.key]=false;});
 // ---- PAUSE MENU wiring (live control toggles; PAUSED freezes the sim, render keeps going, NOTHING resets) ----
 const pauseEl=document.getElementById('pause');
@@ -2338,7 +2349,7 @@ function togglePause(){ if(pauseEl.classList.contains('hidden'))openPause(); els
 // JAILBREAK especially that is a dead end -- you pick a table and then you are on it until you
 // reload the page. goSelect() is the existing route back (it rebuilds the list and lands on the
 // jailbreak picker when ?jail, the venue select otherwise), so both exits just call it.
-function backToMenu(){ closePause(); try{ resetSeries(); }catch(e){} goSelect(); }
+function backToMenu(){ if(HYSCORE){ hyAttract(); return; } closePause(); try{ resetSeries(); }catch(e){} goSelect(); }   // the quarter-eater has no menu: back = the attract
 (function(){ var b=document.getElementById('pmenu'); if(b) b.addEventListener('click',backToMenu); })();
 pauseEl.querySelectorAll('.ctog').forEach(t=>{ t.addEventListener('click',()=>{ const k=t.getAttribute('data-ctrl'); CTRL[k]=!CTRL[k]; saveCtrl(); syncPauseToggles(); banner((CTRL[k]?'':'NO ')+k.toUpperCase(),0.7); }); });
 addEventListener('keydown',e=>{ if(twoP && !CAB2 && state==='play' && e.key==='.') farBlastReq=true; });   // BLAST = . (mirror of P1's C)   // single-screen P2 BLAST ('.') → far lunge
@@ -2647,7 +2658,7 @@ function cabReport(){ try{ if(parent===window) return; }catch(_){ return; }   //
   // shell/cab (?go), attract (?demo) or a 2-up screen (?cab2) HIDE the menu — but we still fall through and register
   // the window.__* helpers below, because the victory-lap unlock (__startAway) + the C-key mode toggle (__cycleMode)
   // run on exactly those cab builds. Only the visible-menu BUILDING is skipped.
-  const skipMenu=(Q.has('go')||Q.has('demo')||Q.has('pick')||CAB2); if(skipMenu) menu.classList.add('hidden');
+  const skipMenu=(Q.has('go')||Q.has('demo')||Q.has('pick')||CAB2||HYSCORE); if(skipMenu) menu.classList.add('hidden');
 
   if(!skipMenu)(function setCarpet(){ const cands=['sprites/carpet_hyscore.png','sprites/carpet_hyscore_alt.png'];
     (function tryNext(i){ if(i>=cands.length)return; const im=new Image();
