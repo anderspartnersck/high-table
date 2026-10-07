@@ -652,7 +652,9 @@ const LINK2=CAB2?new BroadcastChannel('ht2up_'+(Q.get('room')||'q')):null;
 let p2in={tx:0.5,ty:1.5,big:false,trap:false,blast:false}, _netState=null, p2blastPrev=false, linkSeen=0;
 if(LINK2){ twoP=true;
   LINK2.onmessage=(e)=>{ const m=e.data; if(!m)return; linkSeen=performance.now();   // any message from the other screen = it's alive (drives the link badge)
-    if(CAB2==='p1'){ if(m.t==='start'){ if(state==='title'||state==='win'||state==='champion') begin(); } }   // 2-UP: the HOST window reads BOTH sticks locally (8BitDo=P1, F300=P2) so only ONE focused window needs the controllers; the 2nd monitor is a pure display. Channel input is ignored — only a remote START/rematch is honored.
+    if(CAB2==='p1'){ if(m.t==='start'){ if(state==='title'||state==='win'||state==='champion') begin(); }
+      else if(m.t==='in') clientIn(m.d);                                       // P2's pointer / deck buttons / its own pad (was sent, never read)
+      else if(m.t==='key'){ keys[m.k]=!!m.d; } }                               // a key typed while SIDE 2 had focus -> the host reads it like its own   // 2-UP: the HOST window reads BOTH sticks locally (8BitDo=P1, F300=P2) so only ONE focused window needs the controllers; the 2nd monitor is a pure display. Channel input is ignored — only a remote START/rematch is honored.
     else if(CAB2==='p2'&&m.t==='st'){ _netState=m.d; } };
 }
 // HOST: glide the far knocker toward P2's target (mirror of the near glide; clamps to far's half).
@@ -690,6 +692,14 @@ function applyNetState(){ const m=_netState; if(!m)return;
   scoreN=m.sn;scoreF=m.sf;state=m.st;foT=m.fo;foDropped=m.fd;msg=m.mg;msgT=m.mt;flashT=m.flt;flashCol=m.flc;shake=m.sh;
   estT=m.es;est0=m.e0;estImg=m.ei;ZOOM=m.zm;MONO=m.mo;clock=m.ck; }
 function sendP2Input(){ if(LINK2) LINK2.postMessage({t:'in',d:p2local}); }
+// 2-UP INPUT (2026-10-07). The client streams p2local every frame; the host now APPLIES it, but only what CHANGED,
+//   so an idle client never overrides P2's stick (which the host reads itself) -- last input wins.
+let _cin=null, _p2kb=false, _p2kl=false;
+function clientIn(d){ if(!d) return; const o=_cin||{};
+  if(d.tx!==o.tx||d.ty!==o.ty){ p2in.tx=d.tx; p2in.ty=d.ty; }
+  if(!!d.big!==!!o.big) p2in.big=!!d.big;
+  if(!!d.blast!==!!o.blast) p2in.blast=!!d.blast;
+  _cin={tx:d.tx,ty:d.ty,big:!!d.big,blast:!!d.blast}; }
 function blitClient(){ viewCtx.setTransform(1,0,0,1,0,0); viewCtx.clearRect(0,0,cv.width,cv.height);   // NORMAL blit — the mirror is in project()/depth() now (P2's own side angle), NOT a screen rotation, so text reads right-side-up
   viewCtx.filter=MONO?MONO_FILTER:'none'; viewCtx.drawImage(ocv,0,0); viewCtx.filter='none'; }
 let PTEAM='bees', OTEAM='queens';   // team of the NEAR knocker / FAR knocker — set by the menu (and cab2: near=P1, far=P2)
@@ -990,6 +1000,11 @@ function step(dt){
   else glideKnocker(near, near.TX, Math.max(KR,Math.min(1.0,near.TY)), dt);            // mass on the cushion — carries + overshoots; clamp to near half
   // CPU: guard far goal, pounce when the puck is on its half
   if(CAB2==='p1'){ // 2-UP HOST: far is P2, gliding toward the target sent from the other screen
+    // P2 KEYBOARD (2-UP): same keys as single-screen 2P -- O K L ; or the arrows, comma GET BIG, period BLAST -- but
+    //   steered in P2's OWN view (monitor 2 looks from the far end), so left/right mirror like P2's stick does.
+    { let kx=0,ky=0; if(keys['ArrowLeft']||keys['k'])kx-=1; if(keys['ArrowRight']||keys[';'])kx+=1; if(keys['ArrowUp']||keys['o'])ky-=1; if(keys['ArrowDown']||keys['l'])ky+=1;
+      if(kx||ky){ const kn2=(kx&&ky)?0.7071:1; p2in.tx=Math.max(0,Math.min(1,p2in.tx-kx*1.5*kn2*dt)); p2in.ty=Math.max(AR*0.5,Math.min(AR-KR,p2in.ty+ky*1.5*kn2*dt)); }
+      const kb=!!keys[','], kl=!!keys['.']; if(kb!==_p2kb){ p2in.big=kb; _p2kb=kb; } if(kl!==_p2kl){ p2in.blast=kl; _p2kl=kl; } }
     // Same committed-BLAST rule as the near knocker, applied HOST-side because the lunge lives here:
     // SIDE 2's pointer keeps streaming tx/ty during the lunge, and if we took ty the client would drag
     // its own target up-ice chasing the knocker and park it at the tip. The client has no lungeT to
@@ -2278,8 +2293,9 @@ function pointer(px,py){ SFX.resume();
   const u=unproject(px,py); if(u[1]<0.55){   // MOUSE SENS amplifies the TARGET around centre (less mouse travel, snappier) — the glide spring is untouched, so glide feel stays
     const s=GLIDE.sens||1; near.TX=Math.max(0,Math.min(1, 0.5+(u[0]-0.5)*s));
     if(!lunging) near.TY=Math.max(KR,Math.min(1.0, 0.5+(u[1]*AR-0.5)*s)); } }
-if(CAB2==='p2'){ addEventListener('keydown',e=>{ if(e.key===' '||e.key.toLowerCase()==='f'){ p2local.big=true; } if(e.key==='.'||e.key.toLowerCase()==='v'){ p2local.blast=true; } if(e.key==='Enter'||e.key===' '){ if(LINK2)LINK2.postMessage({t:'start'}); } });   // P2 GET BIG + BLAST (client keyboard) + start/rematch the host
-  addEventListener('keyup',e=>{ if(e.key===' '||e.key.toLowerCase()==='f') p2local.big=false; if(e.key==='.'||e.key.toLowerCase()==='v') p2local.blast=false; }); }
+if(CAB2==='p2'){   // 2-UP CLIENT: forward EVERY key to the host (it owns both players' keys), so one keyboard works whichever screen has focus
+  addEventListener('keydown',e=>{ if(e.repeat)return; if(LINK2) LINK2.postMessage({t:'key',k:e.key,d:true}); if(e.key==='Enter'||e.key===' '){ if(LINK2)LINK2.postMessage({t:'start'}); } });
+  addEventListener('keyup',e=>{ if(LINK2) LINK2.postMessage({t:'key',k:e.key,d:false}); }); }
 // FULLSCREEN (Joe 2026-06-19): mousing off the window gets you stuck — grab fullscreen on the first click so the
 //   play area fills the screen and the cursor stays in. Toggle with the F-key-free path below; Esc exits (browser).
 let _fsTried=false; const AUTOFS=Q.has('fs');   // auto-fullscreen on first input is now OPT-IN (?fs) — so a square/windowed launch stays at its window size and the game resizes with it

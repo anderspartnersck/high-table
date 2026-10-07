@@ -224,6 +224,7 @@
         half._place=function(){ var ir=d.getBoundingClientRect(), wr=wrap.getBoundingClientRect(); if(!ir.width)return; g.style.left=(ir.left-wr.left+ir.width*bp.x)+'px'; g.style.top=(ir.top-wr.top+ir.height*bp.y)+'px';
           if(ps){ var fs=Math.max(8,ir.height*ps.h*0.92), ty=ir.top-wr.top+ir.height*ps.cy; sL.style.fontSize=sR.style.fontSize=fs+'px'; sL.style.left=(ir.left-wr.left+ir.width*ps.L)+'px'; sL.style.top=ty+'px'; sR.style.left=(ir.left-wr.left+ir.width*ps.R)+'px'; sR.style.top=ty+'px'; } };
         d.addEventListener('load',half._place); setTimeout(half._place,90);
+        if(role==='p1') f.addEventListener('load',function(){ try{ f.contentWindow.focus(); }catch(_){ } });   // keyboard lands on the HOST (it reads both players' keys); SIDE 2 forwards any it gets
         g.addEventListener('pointerdown',function(e){ e.preventDefault(); try{ f.contentWindow.postMessage({bk:'big'},'*'); }catch(_){ } });   // host -> near GET BIG · client -> far GET BIG (p2local)
         g.addEventListener('pointerup',function(){ try{ f.contentWindow.postMessage({bk:'bigup'},'*'); }catch(_){ } });
         g.addEventListener('pointerleave',function(){ try{ f.contentWindow.postMessage({bk:'bigup'},'*'); }catch(_){ } });
