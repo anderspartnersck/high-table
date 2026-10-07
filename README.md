@@ -40,10 +40,12 @@ Your knocker is the near one. Score in the far goal.
 
 ## Ways to play
 
-- [HYSCORE][play]: the 1UP arcade cab. Pick your knocker, your table and your
-  puck, then use the MODE chip on the title screen (or press C) for
-  **EXHIBITION**, **RAISE IT!** (a best-of-seven gauntlet against a CPU that
-  keeps getting better, for the Breakaway Cup) or **CASTLE RULES**.
+- [HYSCORE][play]: the house cab at HYSCORE, the arcade off the 101 in the
+  Valley. A quarter-eater: drop a quarter, play it out, run it back or walk.
+  Pick your knocker, your table and your puck; the MODE chip on the title
+  screen (or C) switches between **EXHIBITION**, **RAISE IT!** (a best-of-seven
+  gauntlet against a CPU that keeps getting better, for the Breakaway Cup) and
+  **CASTLE RULES**.
 - [CAMPAIGN][camp]: the Old-Tyme climb. Win a series on each table to reach the
   next, all the way up to the High Table.
 - [CASTLE RULES][castle]: three timed periods. Most goals at the horn wins; a tie
