@@ -1,0 +1,16 @@
+{
+  "name": "ONE-TIMER: The High Table",
+  "short_name": "HIGH TABLE",
+  "description": "Side-angle air hockey — Bees vs Queens. Hold your phone sideways.",
+  "id": "./?app=side",
+  "start_url": "./?app=side",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#04040a",
+  "theme_color": "#04040a",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

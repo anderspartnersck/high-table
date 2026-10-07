@@ -3,6 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<!-- HOME-SCREEN APP (2026-10-07): Share -> Add to Home Screen launches full-screen with its own icon; sw.js caches it for offline -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="HIGH TABLE">
+<meta name="theme-color" content="#04040a">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png">
 <title>ONE-TIMER: THE HIGH TABLE — SIDE ANGLE (live air hockey)</title>
 <!--
   ============================================================================
@@ -91,11 +99,72 @@
   #pause button{flex:1;padding:13px 0;border:1px solid #2a3550;border-radius:9px;background:#121828;color:#cfe6ff;font:800 12px/1 ui-monospace,monospace;letter-spacing:.1em;cursor:pointer}
   #pause button:hover{border-color:#ffe23a;color:#fff}
   #pause button.primary{background:#1a2236;border-color:#ffe23a;color:#ffe23a}
+  /* ---- PHONE PAD (Joe 2026-10-07): landscape phone = whole table centred, a dark FRAME column each side
+     holding thumb buttons. Left thumb: TRAP (low) + GET BIG (above). Right thumb: BLAST. Colours follow the
+     1UP panel art (TRAP gold · GET BIG bone · BLAST purple). Shown only in body.tmode (touch + landscape). */
+  #tpad,#trot{display:none}
+  body.tmode #hint{display:none}
+  body.tmode #tpad{display:block;position:fixed;inset:0;pointer-events:none;z-index:5}
+  #tpad .col{position:absolute;top:0;bottom:0;width:var(--col,120px);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
+    gap:calc(var(--btn,84px)*0.16);padding-bottom:max(14px,calc(var(--btn,84px)*0.28))}
+  #tpad .L{left:0;padding-left:env(safe-area-inset-left)} #tpad .R{right:0;padding-right:env(safe-area-inset-right)}
+  .tb{pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
+    position:relative;width:var(--btn,84px);height:var(--btn,84px);border-radius:50%;
+    background:radial-gradient(circle at 50% 42%,rgba(255,255,255,.16),rgba(12,12,24,.42) 62%,rgba(0,0,0,.5));
+    border:2px solid color-mix(in srgb,var(--c) 75%,transparent);box-shadow:0 0 14px color-mix(in srgb,var(--c) 30%,transparent),inset 0 0 12px rgba(0,0,0,.6);
+    transition:transform .08s,box-shadow .15s,border-color .15s}
+  .tb .ring{position:absolute;inset:-6px;border-radius:50%;pointer-events:none;
+    background:conic-gradient(var(--c) calc(var(--p,1)*360deg),rgba(255,255,255,.07) 0);
+    -webkit-mask:radial-gradient(closest-side,transparent calc(100% - 5px),#000 calc(100% - 4px));mask:radial-gradient(closest-side,transparent calc(100% - 5px),#000 calc(100% - 4px))}
+  .tb img{position:absolute;left:50%;top:50%;width:64%;height:64%;object-fit:contain;transform:translate(-50%,-50%);pointer-events:none;
+    filter:drop-shadow(0 3px 4px rgba(0,0,0,.7));transition:transform .09s cubic-bezier(.3,1.6,.5,1),opacity .2s,filter .2s;transform-origin:50% 85%}
+  .tb .lb{position:absolute;left:50%;bottom:-2px;transform:translate(-50%,100%);font:italic 900 calc(var(--btn,84px)*0.15)/1.3 "Helvetica Neue",Arial;
+    letter-spacing:.04em;color:var(--c);text-shadow:0 1px 3px #000,0 0 8px rgba(0,0,0,.9);white-space:nowrap;pointer-events:none}
+  .tb.trap{--c:#f5b31b} .tb.big{--c:#efe6d2} .tb.blast{--c:#a64bff}
+  .tb.down{transform:scale(.94);box-shadow:0 0 26px var(--c),inset 0 0 18px rgba(0,0,0,.5)}
+  .tb.trap.down img{transform:translate(-50%,-50%) scale(1.22,.6)}                      /* TRAP = the knocker squashes down onto the puck */
+  .tb.trap.hold{border-color:#fff;box-shadow:0 0 calc(10px + 22px*var(--q,0)) var(--c)}  /* holding a puck: glow builds with the charge */
+  .tb.big img{transform:translate(-50%,-50%) scale(.72);opacity:.55;filter:grayscale(.6) drop-shadow(0 3px 4px rgba(0,0,0,.7))}
+  .tb.big.rdy{border-color:#fff;animation:tbRdy .8s ease-in-out infinite}
+  .tb.big.rdy img{transform:translate(-50%,-50%) scale(.92);opacity:1;filter:drop-shadow(0 0 8px #ff37c7) drop-shadow(0 3px 4px rgba(0,0,0,.7))}
+  .tb.big.on img{transform:translate(-50%,-50%) scale(1.3);opacity:1;filter:drop-shadow(0 0 12px #ffe23a)}   /* GET BIG live: the knocker stays big while it lasts */
+  .tb.big.pop img{animation:tbPop .45s cubic-bezier(.2,1.8,.4,1)}
+  .tb.blast img{width:78%;height:78%}
+  .tb.blast.cd img{opacity:.45;filter:grayscale(.7)}
+  .tb.blast.pop img{animation:tbPunch .32s ease-out}
+  @keyframes tbRdy{50%{box-shadow:0 0 30px #ff37c7,inset 0 0 12px rgba(0,0,0,.5)}}
+  @keyframes tbPop{0%{transform:translate(-50%,-50%) scale(.9)}55%{transform:translate(-50%,-50%) scale(1.6)}100%{transform:translate(-50%,-50%) scale(1.3)}}
+  @keyframes tbPunch{0%{transform:translate(-50%,-50%) scale(1)}25%{transform:translate(-50%,-50%) scale(1.35) rotate(-8deg)}100%{transform:translate(-50%,-50%) scale(1)}}
+  #tpause{position:absolute;top:max(10px,env(safe-area-inset-top));left:calc(env(safe-area-inset-left) + 12px);pointer-events:auto;touch-action:none;
+    width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(8,8,16,.5);color:#cfe6ff;font:900 15px/38px "Helvetica Neue",Arial;text-align:center}
+  /* THE FRAME: panel surface per team (Bees honeycomb / Queens marble / neutral 1UP grain) + the ONETIMER bezel's
+     gold-bone-purple triple line on the edge that meets the table. */
+  #tpad .col{background:radial-gradient(120% 80% at 50% 100%,#14121c,#06060b)}
+  #tpad .L{box-shadow:inset -3px 0 0 #f5b31b,inset -6px 0 0 #000,inset -8px 0 0 #efe6d2,inset -11px 0 0 #000,inset -13px 0 0 #a64bff}
+  #tpad .R{box-shadow:inset 3px 0 0 #f5b31b,inset 6px 0 0 #000,inset 8px 0 0 #efe6d2,inset 11px 0 0 #000,inset 13px 0 0 #a64bff}
+  body.tbees #tpad .col{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='48.5'%3E%3Cpath d='M14 0l14 8.08v16.17L14 32.33 0 24.25V8.08zM14 32.33v16.17' fill='none' stroke='%23f5b31b' stroke-opacity='.2' stroke-width='1.2'/%3E%3C/svg%3E") 0 0/22px auto,radial-gradient(120% 80% at 50% 100%,#1a1508,#070604)}
+  body.tqueens #tpad .col{background:radial-gradient(90% 60% at 30% 20%,rgba(177,76,255,.10),transparent 70%),linear-gradient(160deg,#f3f0f7,#d6d0e0 60%,#c9c2d6)}
+  body.tqueens .tb .lb{text-shadow:0 1px 2px #fff,0 0 6px rgba(255,255,255,.9);color:color-mix(in srgb,var(--c) 70%,#2a1640)}
+  body.tqueens .tb{background:radial-gradient(circle at 50% 42%,rgba(255,255,255,.3),rgba(40,20,70,.38) 62%,rgba(20,8,40,.5))}
+  body.tnarrow #tpad .col{background:none;box-shadow:none}
+  #tzone{display:none;pointer-events:auto;touch-action:none;position:relative;width:100%;flex:1;max-height:72%}
+  #tzone canvas{position:absolute;left:50%;bottom:0;transform:translateX(-50%);pointer-events:none}
+  body.tstick #tzone{display:block}
+  body.tstick #tpad .R{gap:calc(var(--btn,84px)*0.34)}
+  #tchip{position:absolute;top:max(10px,env(safe-area-inset-top));right:calc(env(safe-area-inset-right) + 10px);pointer-events:auto;touch-action:none;
+    padding:0 11px;height:30px;border-radius:15px;border:1px solid rgba(255,255,255,.3);background:rgba(8,8,16,.6);color:#ffe23a;font:900 11px/28px "Helvetica Neue",Arial;letter-spacing:.1em}
+  body.tmode.tnarrow .tb{opacity:.82}   /* no room for side columns (iPad-ish aspect): buttons float over the corners instead */
+  body.trot #trot{display:flex;position:fixed;inset:0;z-index:60;background:#05050c;color:#cfe6ff;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+    font:900 20px/1.2 "Helvetica Neue",Arial;letter-spacing:.06em;text-align:center}
+  #trot .ph{width:46px;height:78px;border:3px solid #ffe23a;border-radius:9px;animation:tRot 1.6s ease-in-out infinite}
+  @keyframes tRot{40%,100%{transform:rotate(-90deg)}}
 </style>
 <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSczMicgaGVpZ2h0PSczMic+PGVsbGlwc2UgY3g9JzE2JyBjeT0nMjEnIHJ4PScxMicgcnk9JzYnIGZpbGw9JyMxNDE0MTknLz48cmVjdCB4PSc0JyB5PScxMycgd2lkdGg9JzI0JyBoZWlnaHQ9JzgnIGZpbGw9JyMxNDE0MTknLz48ZWxsaXBzZSBjeD0nMTYnIGN5PScxMycgcng9JzEyJyByeT0nNicgZmlsbD0nI2YwYjQyOScvPjxlbGxpcHNlIGN4PScxNicgY3k9JzEzJyByeD0nNycgcnk9JzMuMicgZmlsbD0nI2ZmZDc2YicvPjwvc3ZnPg==">   <!-- gold puck — inline so there is no favicon.ico request (every build was 404ing one) -->
 </head>
 <body>
 <canvas id="c"></canvas>
+<div id="tpad"><div class="col L" id="tcolL"><div id="tzone"><canvas id="tstickcv"></canvas></div><div class="tb big" id="tbBig"><div class="ring"></div><img alt=""><span class="lb">GET BIG</span></div><div class="tb trap" id="tbTrap"><div class="ring"></div><img alt=""><span class="lb">TRAP</span></div></div><div class="col R" id="tcolR"><div class="tb blast" id="tbBlast"><div class="ring"></div><img src="sprites/btn_blast.png" alt=""><span class="lb">BLAST</span></div></div><div id="tpause">&#10074;&#10074;</div><div id="tchip">STICK</div></div>
+<div id="trot"><div class="ph"></div>TURN YOUR PHONE<br><span style="font-size:13px;color:#9fb6c8;font-weight:700">the high table plays sideways</span></div>
 <div id="hint"><b>P1</b> mouse or <kbd>WASD</kbd> · <kbd>Z</kbd> TRAP · <kbd>X</kbd> GET BIG · <kbd>C</kbd> BLAST &nbsp;·&nbsp; <b>P2</b> <kbd>OKL;</kbd> · <kbd>,</kbd> GET BIG · <kbd>.</kbd> BLAST &nbsp;·&nbsp; score in the far goal</div>
 
 <!-- FRONT-END: title -> knocker select -> rink select -->
@@ -151,6 +220,8 @@
 (()=>{
 "use strict";
 const Q=new URLSearchParams(location.search);
+let TMODE=false, _tpadIR=0;   // PHONE PAD: touch device held landscape (see tpadLayout)
+const TSTICK={on:false,x:0,y:0};   // PHONE THUMBSTICK: on = stick layout; x,y = snapped 8-way direction (-1..1, y<0 = pushed up)
 const TBL={nachos:'table_nachos_side',bees:'table_bees_side',queens:'table_queens_side',throne:'table_throne_side',bee:'table_bee_side',garden:'table_garden_side',box:'table_box_side',prime:'table_prime_side',killscreen:'table_killscreen_side'};
 let tbl=Q.get('table')||'bee';
 function venueOf(t){return (t==='bees')?'bees':(t==='queens'||t==='throne')?'queens':null;}
@@ -886,6 +957,13 @@ function step(dt){
     // straight line, so the quickest route anywhere was a zig-zag. Normalise when both are pressed.
     if(kvx||kvy){ var ksp=1.6, kn=(kvx&&kvy)?0.7071:1;
       near.TX=Math.max(0,Math.min(1,near.TX+kvx*ksp*kn*dt)); near.TY=Math.max(KR,Math.min(1.0,near.TY-kvy*ksp*kn*dt)); } }
+  // PHONE THUMBSTICK (Joe 2026-10-07): 8-way, same feel as the cab stick -- direction -> eased velocity on the
+  //   target, the glide spring still carries the knocker. Push UP = forward (up-table), like the real stick.
+  if(TSTICK.on && TMODE){ var tk=Math.min(1,dt*12), tn=(TSTICK.x&&TSTICK.y)?0.7071:1;
+    near._tsvx=(near._tsvx||0)+((TSTICK.x*1.6*tn)-(near._tsvx||0))*tk;
+    near._tsvy=(near._tsvy||0)+((TSTICK.y*1.6*tn)-(near._tsvy||0))*tk;
+    if(Math.abs(near._tsvx)>1e-4||Math.abs(near._tsvy)>1e-4){
+      near.TX=Math.max(0,Math.min(1,near.TX+near._tsvx*dt)); if(!(near.lungeT>0)) near.TY=Math.max(KR,Math.min(1.0,near.TY-near._tsvy*dt)); } }
   // player control: BLAST LUNGE = a forward dash across centre · else GLIDE to the hand
   if(near.lungeT>0){ const oxx=near.X, oyy=near.Y;
     near.Y=Math.min(blastTipNear(), near.Y+BLAST.lungeV*dt);                       // drive forward (clamp to the PAINTED centre + reach, not flat AR*0.5)
@@ -1754,7 +1832,7 @@ function draw(){
   ctx.save(); if(shake>0)ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);
   if(ZOOM!==1){ctx.translate(VW/2,VH*0.55);ctx.scale(ZOOM,ZOOM);ctx.translate(-VW/2,-VH*0.55);}
   {const _menu=(state==='title'||state==='select'), _bg=(_menu&&IMG.carpet)?IMG.carpet:IMG.bg;   // menu lives on the neutral CARPET; the real table only appears in-game (you transition into it)
-   if(_bg){const ir=_bg.width/_bg.height,br=VW/VH;let dw,dh,dx,dy;if(ir>br){dh=VH;dw=VH*ir;dx=(VW-dw)/2;dy=0;}else{dw=VW;dh=VW/ir;dx=0;dy=(VH-dh)/2;}ctx.drawImage(_bg,dx,dy,dw,dh);if(!_menu){BG.dx=dx;BG.dy=dy;BG.dw=dw;BG.dh=dh;BG.ok=true;}}
+   if(_bg){const ir=_bg.width/_bg.height,br=VW/VH;let dw,dh,dx,dy;if(TMODE&&!_menu){ctx.fillStyle='#05050c';ctx.fillRect(0,0,VW,VH);if(ir>br){dw=VW;dh=VW/ir;dx=0;dy=(VH-dh)/2;}else{dh=VH;dw=VH*ir;dx=(VW-dw)/2;dy=0;}}else if(ir>br){dh=VH;dw=VH*ir;dx=(VW-dw)/2;dy=0;}else{dw=VW;dh=VW/ir;dx=0;dy=(VH-dh)/2;}ctx.drawImage(_bg,dx,dy,dw,dh);if(!_menu){BG.dx=dx;BG.dy=dy;BG.dw=dw;BG.dh=dh;BG.ok=true;}}
    else{ctx.fillStyle='#0a0618';ctx.fillRect(0,0,VW,VH);}}
   if(state!=='title'&&state!=='select'&&state!=='boot'){ goalGlow(0.0,tcol(PTEAM)); goalGlow(1.0,tcol(OTEAM)); }   // goal mouths follow the TEAMS (near=PTEAM/far=OTEAM), not a fixed gold/purple — correct on reversed RIVALRY sides
   if(state!=='title'&&state!=='select'&&state!=='boot'&&state!=='win') drawSlot();                  // the slot — quiet, in front of each net
@@ -1802,7 +1880,7 @@ function draw(){
     const cc=otSudden?'#ff37c7':(low?'#ff5a5a':'#cfe6ff');ctx.fillStyle=cc;ctx.shadowColor=cc;ctx.shadowBlur=(otSudden||low)?18:8;
     ctx.font=`900 ${Math.round(VH*0.05)}px "Helvetica Neue",Arial`;ctx.fillText(otSudden?'OT':(mm+':'+(ss<10?'0':'')+ss),VW/2,VH*0.085);
     ctx.font=`800 ${Math.round(VH*0.024)}px "Helvetica Neue",Arial`;ctx.fillStyle='#9fb6c8';ctx.shadowBlur=0;ctx.fillText(otSudden?'NEXT GOAL WINS':('PERIOD '+period+' / '+PERIODS),VW/2,VH*0.122);ctx.restore();}
-  if(state!=='title'&&state!=='select'&&state!=='boot'&&state!=='champion'){
+  if(!TMODE&&state!=='title'&&state!=='select'&&state!=='boot'&&state!=='champion'){
     const w=VW*0.24, x=VW*0.04, y=VH*0.175, bh=VH*0.02, rd=near.sup>=1, fc=rd?'#ffe23a':'#37c0ff', blink=rd&&(Math.floor(clock*3)%2===0);
     ctx.save();
     ctx.fillStyle='rgba(4,4,12,0.58)'; rr(x-VW*0.014,y-VH*0.05,w+VW*0.028,VH*0.078,9); ctx.fill();   // dark backing plate so it reads over the table
@@ -2135,8 +2213,11 @@ cv.addEventListener('mousedown',e=>{if(REG){regDown(e.clientX,e.clientY);return;
   begin(); if(_wasLive) pointer(e.clientX,e.clientY);});   // the click that STARTS a match must not set the play target (clicking a corner to begin used to zip the knocker there past faceoff's re-center); only steer on clicks during live play
 cv.addEventListener('mouseup',()=>dragC=-1); addEventListener('mouseup',()=>{mouseDown=false;});
 cv.addEventListener('mousemove',e=>{if(REG){if(e.buttons)regMove(e.clientX,e.clientY);return;}pointer(e.clientX,e.clientY);});
-cv.addEventListener('touchstart',e=>{e.preventDefault();if(AUTOFS&&!_fsTried){_fsTried=true;goFullscreen();}begin();const t=e.changedTouches[0];pointer(t.clientX,t.clientY);},{passive:false});
-cv.addEventListener('touchmove',e=>{e.preventDefault();const t=e.changedTouches[0];pointer(t.clientX,t.clientY);},{passive:false});
+let steerId=null;   // the finger that steers = the first one that landed on the table; others are ignored until it lifts
+function steerTouch(list){ for(var i=0;i<list.length;i++){ if(list[i].identifier===steerId) return list[i]; } return null; }
+cv.addEventListener('touchstart',e=>{e.preventDefault();if(AUTOFS&&!_fsTried){_fsTried=true;goFullscreen();}begin();if(steerId!==null&&steerTouch(e.touches))return;const t=e.changedTouches[0];steerId=t.identifier;pointer(t.clientX,t.clientY);},{passive:false});
+cv.addEventListener('touchmove',e=>{e.preventDefault();const t=steerTouch(e.changedTouches);if(t)pointer(t.clientX,t.clientY);},{passive:false});
+['touchend','touchcancel'].forEach(ev=>cv.addEventListener(ev,e=>{ if(steerTouch(e.changedTouches)) steerId=null; }));
 addEventListener('keydown',e=>{if(e.key==='Shift')keyShift=true;keys[e.key]=true;
   if(TUNE){ let t=true;
     if(e.key==='[')GLIDE.accel=Math.max(20,GLIDE.accel-10); else if(e.key===']')GLIDE.accel+=10;
@@ -2166,6 +2247,100 @@ function backToMenu(){ closePause(); try{ resetSeries(); }catch(e){} goSelect();
 pauseEl.querySelectorAll('.ctog').forEach(t=>{ t.addEventListener('click',()=>{ const k=t.getAttribute('data-ctrl'); CTRL[k]=!CTRL[k]; saveCtrl(); syncPauseToggles(); banner((CTRL[k]?'':'NO ')+k.toUpperCase(),0.7); }); });
 addEventListener('keydown',e=>{ if(twoP && !CAB2 && state==='play' && e.key==='.') farBlastReq=true; });   // BLAST = . (mirror of P1's C)   // single-screen P2 BLAST ('.') → far lunge
 document.getElementById('presume').addEventListener('click',closePause);
+// ---- PHONE PAD (Joe 2026-10-07) -------------------------------------------------------------------------
+// Landscape phone: whole table + thumb buttons in the frame columns. They drive the SAME hooks as the cab
+// deck (deckGrab = TRAP held, deckBlast = one-shot BLAST, bigUp = GET BIG) -- no new game rules.
+// TMODE = touch device held landscape, or forced with ?touch (desktop testing). Portrait in a match = turn card.
+const TOUCHDEV = Q.has('touch') || ((('ontouchstart' in window)||navigator.maxTouchPoints>0) && matchMedia('(pointer:coarse)').matches);
+// offline cache for the home-screen app: Pages (https) only -- never on the local keep_server/file:// dev loop, where a
+//   cached page would hide your edits. Not inside an iframe (arcade / cab wrappers own their own frame).
+if('serviceWorker' in navigator && location.protocol==='https:' && window.top===window){ addEventListener('load',function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); }); }
+const PADOK = !!(document.getElementById('tpad') && document.body && document.body.classList);   // headless harness (tools/sim.mjs) stubs the DOM: pad stays off
+function tpadLayout(){ if(!PADOK) return;
+  var land=innerWidth>=innerHeight;
+  TMODE = TOUCHDEV && land && !CAB2;
+  document.body.classList.toggle('tmode',TMODE);
+  if(!TMODE) return;
+  var ir=(IMG.bg&&IMG.bg.width)?IMG.bg.width/IMG.bg.height:1.5; _tpadIR=ir;
+  var col=Math.max(0,(innerWidth-innerHeight*ir)/2);           // the frame column the contained table leaves each side
+  var narrow=col<76, btn=Math.round(Math.min(narrow?innerHeight*0.2:col*0.78, TSTICK.on?(innerHeight-56)/5.0:innerHeight*0.27, 118));
+  document.body.classList.toggle('tnarrow',narrow);
+  var r=document.documentElement.style; r.setProperty('--col',(narrow?btn*1.5:col)+'px'); r.setProperty('--btn',btn+'px');
+  if(window.tstickSize) tstickSize(narrow?btn*1.5:col);
+}
+addEventListener('resize',tpadLayout); addEventListener('orientationchange',function(){ setTimeout(tpadLayout,120); }); tpadLayout();
+(function(){ if(!PADOK) return;
+  const bT=document.getElementById('tbTrap'), bB=document.getElementById('tbBig'), bX=document.getElementById('tbBlast'), bP=document.getElementById('tpause');
+  function buzz(){ try{ navigator.vibrate&&navigator.vibrate(12); }catch(_){} }
+  function press(el,down,up){
+    el.addEventListener('pointerdown',e=>{ e.preventDefault(); try{el.setPointerCapture(e.pointerId);}catch(_){} SFX.resume(); el.classList.add('down'); buzz(); down&&down(); });
+    const lift=e=>{ if(!el.classList.contains('down'))return; el.classList.remove('down'); up&&up(); };
+    el.addEventListener('pointerup',lift); el.addEventListener('pointercancel',lift); el.addEventListener('lostpointercapture',lift);
+    el.addEventListener('contextmenu',e=>e.preventDefault());
+  }
+  function pop(el){ el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+  let trapGrace=0;   // let go of TRAP while holding the puck -> keep the hold ~0.22s so the SAME thumb can roll onto BLAST
+  press(bT, ()=>{ clearTimeout(trapGrace); deckGrab=true; }, ()=>{ clearTimeout(trapGrace); if(puckHeld==='near') trapGrace=setTimeout(()=>{ deckGrab=false; },220); else deckGrab=false; });
+  press(bB, ()=>{ if(state==='play'&&!PAUSED&&near.sup>=1){ bigUp(near,PTEAM); pop(bB); } });
+  press(bX, ()=>{ if(state==='play'&&!PAUSED){ deckBlast=true; if(near.blastCD<=0||puckHeld==='near') pop(bX); } });
+  bP.addEventListener('pointerdown',e=>{ e.preventDefault(); if(state==='play'||state==='faceoff'||state==='serve'||PAUSED) togglePause(); });
+  // ---- THUMBSTICK (8-way). Floating origin: wherever the thumb lands in the zone is centre; past a small
+  //   deadzone the drag snaps to one of 8 directions. Drawn from Joe's stick renders: fixed base, a shaft
+  //   from the hole, the ball leaning that way (forward = up and a touch smaller, back = down and bigger).
+  const zone=document.getElementById('tzone'), scv=document.getElementById('tstickcv'), sx=scv.getContext('2d'), chip=document.getElementById('tchip');
+  const SG={w:256,h:179,px:128.8,py:50.4,by:-84.7,r:54.4,sw:46.5};   // tools/cut_touch_sticks.py geometry (same for every colour)
+  const SCOL={yellow:'yellow',purple:'purple',white:'gray',blue:'blue',green:'green',red:'red',orange:'yellow',royal:'blue'};
+  const SIMG={}; let scol='', sid=null, so=[0,0], sk=1, sdpr=1, sVis={x:0,y:0};
+  function simg(n){ if(!SIMG[n]){ SIMG[n]=new Image(); SIMG[n].src='sprites/tstick/'+n+'.png'; } return SIMG[n]; }
+  window.tstickSize=function(col){ var W=Math.min(col*0.9,innerHeight*0.36); sk=W/SG.w; sdpr=Math.min(devicePixelRatio||1,2.5);
+    var H=(SG.h-SG.by+SG.r+12)*sk; scv.style.width=W+'px'; scv.style.height=H+'px'; scv.width=Math.round(W*sdpr); scv.height=Math.round(H*sdpr); };
+  function sdir(dx,dy){ var d=Math.hypot(dx,dy); if(d<14){ TSTICK.x=0; TSTICK.y=0; return; }
+    var a=Math.round(Math.atan2(dy,dx)/(Math.PI/4)); a=((a%8)+8)%8;   // 8 sectors
+    TSTICK.x=[1,1,0,-1,-1,-1,0,1][a]; TSTICK.y=[0,1,1,1,0,-1,-1,-1][a]; }
+  zone.addEventListener('pointerdown',e=>{ e.preventDefault(); if(sid!==null)return; sid=e.pointerId; try{zone.setPointerCapture(sid);}catch(_){} so=[e.clientX,e.clientY]; SFX.resume(); buzz(); });
+  zone.addEventListener('pointermove',e=>{ if(e.pointerId!==sid)return; var ox=TSTICK.x, oy=TSTICK.y; sdir(e.clientX-so[0],e.clientY-so[1]); if((TSTICK.x!==ox||TSTICK.y!==oy)&&(TSTICK.x||TSTICK.y)) try{navigator.vibrate&&navigator.vibrate(6);}catch(_){} });
+  const sUp=e=>{ if(e.pointerId!==sid)return; sid=null; TSTICK.x=0; TSTICK.y=0; };
+  zone.addEventListener('pointerup',sUp); zone.addEventListener('pointercancel',sUp);
+  function drawStick(){
+    var n=SCOL[(/knocker_([a-z]+)_/.exec(src)||[])[1]]||'gray', base=simg(n+'_base'), ball=simg(n+'_ball');
+    sVis.x+=(TSTICK.x-sVis.x)*0.45; sVis.y+=(TSTICK.y-sVis.y)*0.45;   // spring the lean so it snaps but doesn't teleport
+    var W=scv.width, H=scv.height, k=sk*sdpr; sx.setTransform(1,0,0,1,0,0); sx.clearRect(0,0,W,H);
+    var ox=(W-SG.w*k)/2, oy=H-SG.h*k;   // base sits on the bottom of the canvas
+    if(base.complete&&base.naturalWidth) sx.drawImage(base,ox,oy,SG.w*k,SG.h*k);
+    var L=(SG.py-SG.by)*k, th=0.5, px=ox+SG.px*k, py=oy+SG.py*k;
+    var bx=px+sVis.x*L*Math.sin(th), by=py-L*Math.cos(th*Math.hypot(sVis.x,sVis.y))+sVis.y*L*Math.sin(th)*0.42, bs=1+sVis.y*0.07;
+    var g=sx.createLinearGradient(bx-SG.sw*k/2,0,bx+SG.sw*k/2,0); g.addColorStop(0,'#1a1712'); g.addColorStop(0.35,'#6b6252'); g.addColorStop(0.55,'#2a2620'); g.addColorStop(1,'#0c0b09');
+    sx.strokeStyle=g; sx.lineCap='round'; sx.lineWidth=SG.sw*k*0.5; sx.beginPath(); sx.moveTo(px,py); sx.lineTo(bx,by+SG.r*k*0.5); sx.stroke();
+    if(ball.complete&&ball.naturalWidth){ var R=SG.r*k*bs; sx.drawImage(ball,bx-R,by-R,R*2,R*2); }
+  }
+  function applyStick(on){ TSTICK.on=on; TSTICK.x=TSTICK.y=0; document.body.classList.toggle('tstick',on); chip.textContent=on?'TOUCH':'STICK';
+    const L=document.getElementById('tcolL'), R=document.getElementById('tcolR');
+    if(!L||!L.appendChild){}else if(on){ R.insertBefore(bB,bX); R.appendChild(bT); } else { L.appendChild(bB); L.appendChild(bT); }   // stick: GET BIG / BLAST / TRAP stacked on the right thumb
+    try{ localStorage.setItem('htTouchStick',on?'1':'0'); }catch(_){} tpadLayout(); }
+  chip.addEventListener('pointerdown',e=>{ e.preventDefault(); buzz(); applyStick(!TSTICK.on); });
+  if(Q.has('qa')) window.__htPad={ peek:()=>({state,TX:near.TX,TY:near.TY,grab:deckGrab,blastCD:near.blastCD,big:near.big,sup:near.sup,held:puckHeld,bg:[BG.dx,BG.dw,BG.dh],st:[TSTICK.x,TSTICK.y]}),
+    prime:()=>{ near.sup=1; near.blastCD=0; } };   // ?qa: headless phone-pad test hook (tools/_qa/phone_pad.mjs)
+  { let on=Q.has('tstick'); try{ if(!on) on=localStorage.getItem('htTouchStick')==='1'; }catch(_){} applyStick(on); }
+  let src='';
+  window.tpadTick=function(){
+    const inMatch=!DEMO && !(state==='title'||state==='select'||state==='boot'||state==='splash'||state==='inter'||state==='board'||state==='config');   // the boot ident / attract / demo stay clean
+    document.body.classList.toggle('trot', TOUCHDEV && !CAB2 && innerWidth<innerHeight && inMatch);
+    if(TOUCHDEV&&IMG.bg&&IMG.bg.width&&IMG.bg.width/IMG.bg.height!==_tpadIR) tpadLayout();   // table art changed aspect -> resize the frame columns
+    if(!TMODE) return;
+    const tp=document.getElementById('tpad'); tp.style.visibility=inMatch?'visible':'hidden'; tp.style.opacity=(estT>0)?'0':'1'; tp.style.transition='opacity .5s';   // the slow-push venue intro plays clean, the pad fades in after
+    document.body.classList.toggle('tbees',PTEAM==='bees'); document.body.classList.toggle('tqueens',PTEAM==='queens');
+    if(IMG.near&&IMG.near.src&&IMG.near.src!==src){ src=IMG.near.src; bT.querySelector('img').src=src; bB.querySelector('img').src=src; }   // your chosen knocker skin
+    const rdy=near.sup>=1&&near.big<=0;
+    bB.classList.toggle('rdy',rdy); bB.classList.toggle('on',near.big>0);
+    bB.style.setProperty('--p',near.big>0?Math.min(1,near.big/2.6):Math.min(1,near.sup));      // ring = super meter (drains while big)
+    const cd=Math.max(0,near.blastCD||0);
+    bX.classList.toggle('cd',cd>0&&puckHeld!=='near'); bX.style.setProperty('--p',1-Math.min(1,cd/BLAST.cd));   // ring refills over the cooldown
+    const held=puckHeld==='near'; bT.classList.toggle('hold',held); bT.style.setProperty('--q',held?Math.min(1,grabT/TRAP.charge):0);
+    bT.style.setProperty('--p',held?Math.min(1,grabT/TRAP.charge):1);
+    if(TSTICK.on) drawStick();
+  };
+})();
+
 pauseEl.addEventListener('click',e=>{ if(e.target===pauseEl)closePause(); });   // click the dim backdrop to resume
 // cab/deck wrapper talks to the game over postMessage: START, and the GET BIG deck button.
 addEventListener('message',e=>{ const d=e.data; if(!d||!d.bk)return;
@@ -2572,6 +2747,7 @@ function updateLinkBadge(){ if(!linkBadge)return; var linked=(performance.now()-
   linkBadge.style.opacity=(linked&&state==='play')?'0.3':'1'; }
 let last=0;
 function frame(t){const rdt=last?Math.max(1e-4,Math.min(0.033,(t-last)/1000)):0.016;last=t; let dt=rdt; if(hitstop>0){hitstop=Math.max(0,hitstop-rdt);dt=rdt*0.18;}   // Math.max(1e-4,…): a duplicate rAF timestamp (t===last) gave dt=0 → (x-ox)/0 = NaN mallet velocity → NaN puck (the MAXV clamp can't catch NaN). Guarded (Fable 2026-07-16).
+  if(window.tpadTick)tpadTick();
   Music.update(rdt);   // swell the menu/attract bed, duck it under live play
   if(CAB2) updateLinkBadge();
   if(CAB2==='p2'){ applyNetState(); draw(); blitClient(); sendP2Input(); cabReport(); }   // CLIENT: mirror the host's state, render flipped, send input; report local GET BIG + score to its deck

@@ -73,8 +73,11 @@
 <script>
 (function(){
   var Q=new URLSearchParams(location.search);
-  var cab=Q.get('cab')||'OTTHT_1 up HYSCORE color';
-  var game=Q.get('game')||'side.html?ctrl=all&stick=8way';
+  // ?cab / ?game are LINK INPUT -- only our own pages and plain art names get through. An unchecked ?game went
+  // straight into the iframe src (javascript: URLs, or framing any outside site inside the cab art).
+  var cab=Q.get('cab')||'', game=Q.get('game')||'';
+  if(!/^[\w \-]{1,64}$/.test(cab)) cab='OTTHT_1 up HYSCORE color';
+  if(!/^(side|table_temp_engine|2up|queens_2up)\.html(\?[\w=&.%-]*)?$/.test(game)) game='side.html?ctrl=all&stick=8way';
   var cabUrl='cab_final/'+encodeURIComponent(cab)+'.png';
   document.getElementById('room').style.backgroundImage="url('"+cabUrl+"')";
   {var _cp=document.getElementById('cabPhoto'); _cp.onerror=function(){this.style.opacity=0.12;}; _cp.src=cabUrl;}   // beauty-shot 404 → dim, not a broken glyph
