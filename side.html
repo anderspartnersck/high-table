@@ -946,7 +946,7 @@ function step(dt){
   if(state==='config') return;   // JAILBREAK custom-match picker — static (clock-animated in drawConfig), no sim
   if(REEL && !TRANS.on && reelIdx>=0 && REELSEG[reelIdx] && REELSEG[reelIdx].k==='demo'){ reelT+=dt; if(reelT>=REELSEG[reelIdx].dur && (state==='play'||state==='serve'||state==='faceoff')) reelAdvance(); }   // cut the live demo to the next beat
   if(HYSCORE){ if(state==='win'||state==='champion'){ hyIdle+=dt; if(hyIdle>25){ hyIdle=0; hyAttract(); return; } } else hyIdle=0; }   // nobody fed it another quarter -> attract
-  if(state==='splash'){ splashIdle+=dt; if(!DIRECT && !REEL && splashIdle>(HYSCORE?2.5:7)){ reelStart(); } return; }   // SPLASH idles to the ATTRACT REEL; clock-animated in drawSplash, no sim
+  if(state==='splash'){ splashIdle+=dt; if(!DIRECT && !REEL && splashIdle>7){ reelStart(); } return; }   // the title holds its full beat before the attract (HYSCORE included)   // SPLASH idles to the ATTRACT REEL; clock-animated in drawSplash, no sim
   if(state==='title'||state==='select'){ menuSim(dt); return; }   // MENU: a little air-hockey demo (knockers bat the pucks) — then skip the game physics/SFX entirely
   if(estT>0)estT=Math.max(0,estT-dt);
   else if(pendBanner!==null && (state==='play'||state==='faceoff'||state==='serve'||state==='goal')){ banner(pendBanner,pendBannerD); pendBanner=null; }   // the establishing beat just cleared -> reveal the staggered RAISE IT · GAME N banner
@@ -2160,7 +2160,9 @@ const DIRECT=Q.has('go')||Q.has('demo')||!!CAB2;
 //   The house cab: boot -> the ATTRACT reel; a coin (any button) drops straight into a match -- no menu. Each credit
 //   rotates the front-door tables with their house knockers. Game over: press to run it back; walk away and it
 //   returns to the attract. ESC / the pause menu's exit go back to the attract. ?castlerules rides along (clocked).
-const HYSCORE=Q.has('hyscore'), HY_ROT=['bee','queens','nachos']; let hyN=0, hyIdle=0;
+// HYSCORE is the DEFAULT build: the bare link (bundle index.html == this file, PLAY IT NOW, the home-screen app) and a
+//   plain side.html are the quarter-eater. Any other mode param keeps its own front end; ?select restores the old selector.
+const HYSCORE=Q.has('hyscore') || !['camp','jail','go','demo','reel','pick','embed','cab2','select','raiseit','cup','p2'].some(k=>Q.has(k)), HY_ROT=['bee','queens','nachos']; let hyN=0, hyIdle=0;
 function hyCoin(){ const t=HY_ROT[(hyN++)%HY_ROT.length], pr=TABLE_PAIR[t];
   try{SFX.menu('player_select',0.6);}catch(e){}
   transition('clash',()=>{ reelExit(); resetSeries(); playEntry({tbl:t, knock:pr[0], team:KTEAM[pr[0]]||'bees'}); },0.9,()=>{try{SFX.hit(0.85);}catch(e){}}); }

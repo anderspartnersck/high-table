@@ -82,9 +82,9 @@ Music & SFX by **Taylor Lyons** and **Joseph Coleman**.
 
 <sub>RESPEK LOGIC ART UREA</sub>
 
-[play]: https://anderspartnersck.github.io/high-table/cab_intro.html?cab=OTTHT_1%20up%20HYSCORE%20color&game=side.html%3Fhyscore&title=HYSCORE
+[play]: https://anderspartnersck.github.io/high-table/
 [camp]: https://anderspartnersck.github.io/high-table/cab_intro.html?cab=1up%20HIVEMIND%20color&game=side.html%3Fcamp&title=CAMPAIGN
-[castle]: https://anderspartnersck.github.io/high-table/cab_intro.html?cab=OTTHT_1%20up%20HYSCORE%20color&game=side.html%3Fhyscore%26castlerules&title=CASTLE%20RULES
+[castle]: https://anderspartnersck.github.io/high-table/?castlerules
 [jail]: https://anderspartnersck.github.io/high-table/cab_intro.html?cab=OTTHT_1%20up%20HYSCORE%20violet&game=side.html%3Fjail&title=JAILBREAK
 [twoup]: https://anderspartnersck.github.io/high-table/cab_intro.html?cab=RIVALRY%20A%20color&game=2up.html%3Fsolo&title=2%20PLAYER
 [todown]: https://anderspartnersck.github.io/high-table/table_temp_engine.html
