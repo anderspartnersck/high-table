@@ -96,12 +96,15 @@
   #pause .ctog .nm{font:800 13px/1.2 'Helvetica Neue',Arial;letter-spacing:.08em;color:#fff}
   #pause .ctog .hk{color:#7f97a8;font-size:10.5px;letter-spacing:.04em;margin-top:3px}
   #pause .ctog .txt{flex:1}
+  #pause .tonly{display:none} body.tmode #pause .tonly{display:flex} body.tmode #pause .ctog[data-ctrl]{display:none}   /* phone: the HAND flop replaces the desktop input toggles */
   #pause .pbtns{display:flex;gap:9px;margin-top:18px}
   #pause button{flex:1;padding:13px 0;border:1px solid #2a3550;border-radius:9px;background:#121828;color:#cfe6ff;font:800 12px/1 ui-monospace,monospace;letter-spacing:.1em;cursor:pointer}
   #pause button:hover{border-color:#ffe23a;color:#fff}
   #pause button.primary{background:#1a2236;border-color:#ffe23a;color:#ffe23a}
   /* ---- PHONE PAD (Joe 2026-10-07): landscape phone = whole table centred, a dark FRAME column each side
-     holding thumb buttons. Left thumb: TRAP (low) + GET BIG (above). Right thumb: BLAST. Colours follow the
+     holding thumb buttons. ALL THREE on one thumb (Joe 2026-10-14, after the phone test: BLAST alone on the right
+     was the one miss), top→bottom TRAP · GET BIG · BLAST; the other thumb is free to steer on the table.
+     HAND setting (pause menu / ?hand=right) flops the whole pad for left-handers. Colours follow the
      1UP panel art (TRAP gold · GET BIG bone · BLAST purple). Shown only in body.tmode (touch + landscape). */
   #tpad,#trot{display:none}
   body.tmode #hint{display:none}
@@ -151,7 +154,7 @@
   #tzone{display:none;pointer-events:auto;touch-action:none;position:relative;width:100%;flex:1;max-height:72%}
   #tzone canvas{position:absolute;left:50%;bottom:0;transform:translateX(-50%);pointer-events:none}
   body.tstick #tzone{display:block}
-  body.tstick #tpad .R{gap:calc(var(--btn,84px)*0.34)}
+  body.tstick #tpad .col{gap:calc(var(--btn,84px)*0.34)}
   #tchip{position:absolute;top:max(10px,env(safe-area-inset-top));right:calc(env(safe-area-inset-right) + 10px);pointer-events:auto;touch-action:none;
     padding:0 11px;height:30px;border-radius:15px;border:1px solid rgba(255,255,255,.3);background:rgba(8,8,16,.6);color:#ffe23a;font:900 11px/28px "Helvetica Neue",Arial;letter-spacing:.1em}
   body.tmode.tnarrow .tb{opacity:.82}   /* no room for side columns (iPad-ish aspect): buttons float over the corners instead */
@@ -164,7 +167,7 @@
 </head>
 <body>
 <canvas id="c"></canvas>
-<div id="tpad"><div class="col L" id="tcolL"><div id="tzone"><canvas id="tstickcv"></canvas></div><div class="tb big" id="tbBig"><div class="ring"></div><img alt=""><span class="lb">GET BIG</span></div><div class="tb trap" id="tbTrap"><div class="ring"></div><img alt=""><span class="lb">TRAP</span></div></div><div class="col R" id="tcolR"><div class="tb blast" id="tbBlast"><div class="ring"></div><img src="sprites/btn_blast.png" alt=""><span class="lb">BLAST</span></div></div><div id="tpause">&#10074;&#10074;</div><div id="tchip">STICK</div></div>
+<div id="tpad"><div class="col L" id="tcolL"><div id="tzone"><canvas id="tstickcv"></canvas></div><div class="tb trap" id="tbTrap"><div class="ring"></div><img alt=""><span class="lb">TRAP</span></div><div class="tb big" id="tbBig"><div class="ring"></div><img alt=""><span class="lb">GET BIG</span></div><div class="tb blast" id="tbBlast"><div class="ring"></div><img src="sprites/btn_blast.png" alt=""><span class="lb">BLAST</span></div></div><div class="col R" id="tcolR"></div><div id="tpause">&#10074;&#10074;</div><div id="tchip">STICK</div></div>
 <div id="trot"><div class="ph"></div>TURN YOUR PHONE<br><span style="font-size:13px;color:#9fb6c8;font-weight:700">the high table plays sideways</span></div>
 <div id="hint"><b>P1</b> mouse or <kbd>WASD</kbd> · <kbd>Z</kbd> TRAP · <kbd>X</kbd> GET BIG · <kbd>C</kbd> BLAST &nbsp;·&nbsp; <b>P2</b> <kbd>OKL;</kbd> · <kbd>,</kbd> GET BIG · <kbd>.</kbd> BLAST &nbsp;·&nbsp; score in the far goal</div>
 
@@ -208,6 +211,7 @@
     <div class="ctog" data-ctrl="mouse"><div class="box"><i></i></div><div class="txt"><div class="nm">MOUSE</div><div class="hk">move the cursor to steer · click TRAP</div></div></div>
     <div class="ctog" data-ctrl="keyboard"><div class="box"><i></i></div><div class="txt"><div class="nm">KEYBOARD</div><div class="hk">WASD / arrows to steer · Z TRAP · X GET BIG · C BLAST</div></div></div>
     <div class="ctog" data-ctrl="stick"><div class="box"><i></i></div><div class="txt"><div class="nm">STICK (F300 / pad)</div><div class="hk">left stick / d-pad · A TRAP · B BLAST · RT GET BIG</div></div></div>
+    <div class="ctog tonly" id="phand"><div class="box"><i></i></div><div class="txt"><div class="nm">BUTTONS ON THE RIGHT</div><div class="hk">left-handed: TRAP · GET BIG · BLAST move to the right thumb, steer with the left</div></div></div>
     <div class="pbtns"><button class="primary" id="presume">▶ RESUME</button><button id="pmenu">↩ BACK TO MENU</button></div>
   </div>
 </div>
@@ -221,7 +225,8 @@
 (()=>{
 "use strict";
 const Q=new URLSearchParams(location.search);
-let TMODE=false, _tpadIR=0;   // PHONE PAD: touch device held landscape (see tpadLayout)
+let TMODE=false, _tpadIR=0;
+let PADHAND='L'; try{ if(localStorage.getItem('htPadHand')==='R') PADHAND='R'; }catch(_){} { const h=(new URLSearchParams(location.search).get('hand')||'').toLowerCase(); if(h==='right'||h==='r') PADHAND='R'; else if(h==='left'||h==='l') PADHAND='L'; }   // PHONE PAD buttons side (pause menu flop)   // PHONE PAD: touch device held landscape (see tpadLayout)
 const TSTICK={on:false,x:0,y:0};   // PHONE THUMBSTICK: on = stick layout; x,y = snapped 8-way direction (-1..1, y<0 = pushed up)
 const TBL={nachos:'table_nachos_side',bees:'table_bees_side',queens:'table_queens_side',throne:'table_throne_side',bee:'table_bee_side',garden:'table_garden_side',box:'table_box_side',prime:'table_prime_side',killscreen:'table_killscreen_side'};
 let tbl=Q.get('table')||'bee';
@@ -2343,7 +2348,7 @@ addEventListener('keydown',e=>{if(e.key==='Shift')keyShift=true;keys[e.key]=true
 addEventListener('keyup',e=>{if(e.key==='Shift')keyShift=false;keys[e.key]=false;});
 // ---- PAUSE MENU wiring (live control toggles; PAUSED freezes the sim, render keeps going, NOTHING resets) ----
 const pauseEl=document.getElementById('pause');
-function syncPauseToggles(){ pauseEl.querySelectorAll('.ctog').forEach(t=>{ t.classList.toggle('on',!!CTRL[t.getAttribute('data-ctrl')]); }); }
+function syncPauseToggles(){ pauseEl.querySelectorAll('.ctog[data-ctrl]').forEach(t=>{ t.classList.toggle('on',!!CTRL[t.getAttribute('data-ctrl')]); }); const ph=document.getElementById('phand'); if(ph) ph.classList.toggle('on',PADHAND==='R'); }
 function openPause(){ PAUSED=true; for(var k in keys)keys[k]=false; mouseDown=false; deckGrab=false; syncPauseToggles(); pauseEl.classList.remove('hidden'); }   // clear held input so nothing sticks across the pause
 function closePause(){ PAUSED=false; pauseEl.classList.add('hidden'); }
 function togglePause(){ if(pauseEl.classList.contains('hidden'))openPause(); else closePause(); }
@@ -2354,7 +2359,7 @@ function togglePause(){ if(pauseEl.classList.contains('hidden'))openPause(); els
 // jailbreak picker when ?jail, the venue select otherwise), so both exits just call it.
 function backToMenu(){ if(HYSCORE){ hyAttract(); return; } closePause(); try{ resetSeries(); }catch(e){} goSelect(); }   // the quarter-eater has no menu: back = the attract
 (function(){ var b=document.getElementById('pmenu'); if(b) b.addEventListener('click',backToMenu); })();
-pauseEl.querySelectorAll('.ctog').forEach(t=>{ t.addEventListener('click',()=>{ const k=t.getAttribute('data-ctrl'); CTRL[k]=!CTRL[k]; saveCtrl(); syncPauseToggles(); banner((CTRL[k]?'':'NO ')+k.toUpperCase(),0.7); }); });
+pauseEl.querySelectorAll('.ctog[data-ctrl]').forEach(t=>{ t.addEventListener('click',()=>{ const k=t.getAttribute('data-ctrl'); CTRL[k]=!CTRL[k]; saveCtrl(); syncPauseToggles(); banner((CTRL[k]?'':'NO ')+k.toUpperCase(),0.7); }); });
 addEventListener('keydown',e=>{ if(twoP && !CAB2 && state==='play' && e.key==='.') farBlastReq=true; });   // BLAST = . (mirror of P1's C)   // single-screen P2 BLAST ('.') → far lunge
 document.getElementById('presume').addEventListener('click',closePause);
 // ---- PHONE PAD (Joe 2026-10-07) -------------------------------------------------------------------------
@@ -2373,7 +2378,7 @@ function tpadLayout(){ if(!PADOK) return;
   if(!TMODE) return;
   var ir=(IMG.bg&&IMG.bg.width)?IMG.bg.width/IMG.bg.height:1.5; _tpadIR=ir;
   var col=Math.max(0,(innerWidth-innerHeight*ir)/2);           // the frame column the contained table leaves each side
-  var narrow=col<76, btn=Math.round(Math.min(narrow?innerHeight*0.2:col*0.78, TSTICK.on?(innerHeight-56)/5.0:innerHeight*0.27, 118));
+  var narrow=col<76, btn=Math.round(Math.min(narrow?innerHeight*0.2:col*0.78, TSTICK.on?(innerHeight-56)/5.0:(innerHeight-40)/4.6, 118));   // 3 stacked + labels on one thumb
   document.body.classList.toggle('tnarrow',narrow);
   var r=document.documentElement.style; r.setProperty('--col',(narrow?btn*1.5:col)+'px'); r.setProperty('--btn',btn+'px');
   if(window.tstickSize) tstickSize(narrow?btn*1.5:col);
@@ -2423,10 +2428,15 @@ addEventListener('resize',tpadLayout); addEventListener('orientationchange',func
     sx.strokeStyle=g; sx.lineCap='round'; sx.lineWidth=SG.sw*k*0.5; sx.beginPath(); sx.moveTo(px,py); sx.lineTo(bx,by+SG.r*k*0.5); sx.stroke();
     if(ball.complete&&ball.naturalWidth){ var R=SG.r*k*bs; sx.drawImage(ball,bx-R,by-R,R*2,R*2); }
   }
+  // HAND (Joe 2026-10-14): the side the buttons ride in finger mode ('L' default, 'R' = left-handed flop). STICK mode
+  //   keeps the arcade convention (stick on that side, buttons on the other) -- the flop mirrors the whole pad.
+  function placePad(){ const L=document.getElementById('tcolL'), R=document.getElementById('tcolR'); if(!L||!L.appendChild) return;
+    const home=PADHAND==='R'?R:L, away=home===L?R:L, btns=TSTICK.on?away:home;
+    home.appendChild(zone); btns.appendChild(bT); btns.appendChild(bB); btns.appendChild(bX); }   // top->bottom TRAP · GET BIG · BLAST, always one thumb
+  window.setPadHand=function(h){ PADHAND=h==='R'?'R':'L'; try{ localStorage.setItem('htPadHand',PADHAND); }catch(_){} placePad(); syncPauseToggles(); };
   function applyStick(on){ TSTICK.on=on; TSTICK.x=TSTICK.y=0; document.body.classList.toggle('tstick',on); chip.textContent=on?'TOUCH':'STICK';
-    const L=document.getElementById('tcolL'), R=document.getElementById('tcolR');
-    if(!L||!L.appendChild){}else if(on){ R.insertBefore(bB,bX); R.appendChild(bT); } else { L.appendChild(bB); L.appendChild(bT); }   // stick: GET BIG / BLAST / TRAP stacked on the right thumb
-    try{ localStorage.setItem('htTouchStick',on?'1':'0'); }catch(_){} tpadLayout(); }
+    placePad(); try{ localStorage.setItem('htTouchStick',on?'1':'0'); }catch(_){} tpadLayout(); }
+  { const ph=document.getElementById('phand'); if(ph) ph.addEventListener('click',()=>{ setPadHand(PADHAND==='R'?'L':'R'); banner(PADHAND==='R'?'BUTTONS RIGHT':'BUTTONS LEFT',0.7); }); }
   chip.addEventListener('pointerdown',e=>{ e.preventDefault(); buzz(); applyStick(!TSTICK.on); });
   if(Q.has('qa')) window.__htPad={ peek:()=>({state,TX:near.TX,TY:near.TY,grab:deckGrab,blastCD:near.blastCD,big:near.big,sup:near.sup,held:puckHeld,bg:[BG.dx,BG.dw,BG.dh],st:[TSTICK.x,TSTICK.y]}),
     prime:()=>{ near.sup=1; near.blastCD=0; },
