@@ -67,8 +67,9 @@ Set the pad to X-input (on an 8BitDo, also set the lever to D-pad). Press
 Every table has its house knockers. Pick your own and the table brings the
 other end.
 
-Settings and campaign progress stay in your own browser. Nothing is sent
-anywhere.
+Nothing is saved on your device and nothing is sent anywhere: settings,
+unlocks and campaign progress last until you close the page, like an arcade
+cab at closing time.
 
 ## Credits
 

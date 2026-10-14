@@ -62,11 +62,12 @@
 <div class="grid" id="grid"></div>
 <footer>Cabs unlock as you climb the <b>OLD-TYME CAMPAIGN</b>. <span id="rung"></span> &nbsp;·&nbsp; <a href="side.html?camp&ctrl=all">▶ PLAY THE CAMPAIGN</a></footer>
 <div id="viewer"><img class="vshot" id="vshot" alt="" onerror="this.style.opacity=.12"><div class="vvig"></div><div class="vexit">▶ B · GET BIG — or click — to exit</div><div class="vname" id="vname"></div></div>
+<script src="lib/store.js?v=1"></script>
 <script>
 const Q=new URLSearchParams(location.search);
 const JAIL=Q.has('jail');
 // campaign progress = the console save (0..4 rungs cleared). ?jail unlocks everything.
-let RUNG=0; try{ RUNG=Math.max(0,Math.min(4,+(localStorage.getItem('htCampRung')||0))); }catch(e){}
+let RUNG=0; try{ RUNG=Math.max(0,Math.min(4,+((window.HTStore?HTStore.getItem('htCampRung'):null)||0))); }catch(e){}
 // cab registry — beauty-shot (cab_final/, no ext), the game it launches, and the campaign rung that frees it.
 //   unlock:0 = free from the start. RIVALRY 2-up (typo-fixed 0709 art) unlocks at campaign-complete (rung 4).
 const CABS=[

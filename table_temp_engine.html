@@ -104,6 +104,7 @@
 <div id="hint">move to steer your knocker · score in the far goal</div>
 <div id="drop">drop to set table backdrop</div>
 
+<script src="lib/store.js?v=1"></script>
 <script src="lib/rink-geo.js"></script>
 <script src="lib/catalog.js?v=2"></script>
 <script src="lib/pucks.js?v=noglow1"></script>
@@ -324,7 +325,7 @@ window.addEventListener('keydown', e=>{ if(e.key===' '||e.key==='Enter'){ e.prev
   var DEAD=0.18, prevAny=false, HX=[0,1,1,1,0,-1,-1,-1], HY=[-1,-1,0,1,1,1,0,-1];
   // Honor the in-cab CONTROLLER MAPPER (gamepad_mapper.html): shared localStorage profile picks the
   // steer axes + deadzone + invert. No profile → the defaults below.
-  var M=(function(){ try{ var m=JSON.parse(localStorage.getItem('highTableGamepad')); return (m&&m.v)?m:null; }catch(e){ return null; } })();
+  var M=(function(){ try{ var m=JSON.parse((window.HTStore?HTStore.getItem('highTableGamepad'):null)); return (m&&m.v)?m:null; }catch(e){ return null; } })();
   var AXX=(M&&M.axisX!=null)?M.axisX:0, AYY=(M&&M.axisY!=null)?M.axisY:1;
   var INVX=(M&&M.invertX)?-1:1, INVY=(M&&M.invertY)?-1:1;
   if(M&&M.deadzone!=null) DEAD=M.deadzone;
