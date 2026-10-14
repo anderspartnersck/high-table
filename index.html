@@ -668,6 +668,9 @@ const PERIOD_LEN=75, PERIODS=3;
 let perClock=PERIOD_LEN, period=1, otSudden=false;
 function seriesTable(){ const v=RAISE[CUP.variant];
   if(CUP.variant==='standard'&&CUP.win===3&&CUP.loss===3) return 'nachos';   // GAME 7 decider climaxes on THE HIGH TABLE
+  // BRAND LOCK (Joe 2026-10-14: no queens knocker on the bees side): wearing a TEAM knocker, the series stays at YOUR end of the
+  //   Rivalry (bees = bee end, queens = crown end); a neutral skin still tours both ends.
+  if(CUP.variant==='standard'&&P1PICK&&!twoP&&!CAB2){ if(CURK.a==='queens') return 'queens'; if(CURK.a==='bees') return 'bee'; }
   return v.route[(CUP.win+CUP.loss)%v.route.length]; }
 let CUP={ on:Q.has('cup')||Q.has('raiseit'), variant:(Q.get('raiseit')||'standard'), win:0, loss:0, inPlayoff:false, playoff:null };
 if(!RAISE[CUP.variant]) CUP.variant='standard';
@@ -2312,8 +2315,15 @@ const CFG_KNOCKS=[{k:'white',n:'WHITE',sp:'knocker_white_34',flat:true},{k:'bees
 const CFG_KIMG={}; CFG_KNOCKS.forEach(K=>{ const im=new Image(); im.src='sprites/'+K.sp+'.png'; CFG_KIMG[K.k]=im; });
 const CFG_PCOL={classic:'#ff5ae1',hive:'#ffe23a',royal:'#b14cff',zebra:'#27f6ff',energy:'#27f6ff',contested:'#dfefff',lit:'#ffffff'};
 let cfgRow=0, cfgV=0, cfgP=0, cfgK=Math.max(0,CFG_KNOCKS.findIndex(K=>K.k==='turf'));   // base knocker = GREEN (turf)
-function cfgRowMove(d){ cfgRow=(cfgRow+d+3)%3; SFX.cursor(); }
-function cfgCycle(d){ if(cfgRow===0){ cfgV=(cfgV+d+CFG_VENUES.length)%CFG_VENUES.length; setTable(CFG_VENUES[cfgV].tbl); } else if(cfgRow===1){ cfgP=(cfgP+d+CFG_PUCKS.length)%CFG_PUCKS.length; const P=CFG_PUCKS[cfgP]; PUCKSTYLE=P.k; PUCKCOL=CFG_PCOL[P.k]||'#fff'; } else { cfgK=(cfgK+d+CFG_KNOCKS.length)%CFG_KNOCKS.length; } SFX.cursor(); }   // P.k IS the PuckArt style (incl. real 'lit' white) — no remap
+function cfgRowMove(d){ cfgRow=(cfgRow+d+4)%4; SFX.cursor(); }
+// MODE row (Joe 2026-10-14: "raise it does not appear available in jailbreak"): the series modes lived only on the title's
+//   C / stick-↕ toggle, which the jailbreak picker never showed. Row 0 now cycles them both ways, right where you pick.
+const CFG_MODES=['off','standard','homecooked','hightable','castle'];
+function cfgModeKey(){ return TIMED?'castle':(CUP.on?CUP.variant:'off'); }
+function cfgMode(d){ const nx=CFG_MODES[(CFG_MODES.indexOf(cfgModeKey())+d+CFG_MODES.length)%CFG_MODES.length];
+  TIMED=(nx==='castle'); if(nx==='off'||nx==='castle') CUP.on=false; else { CUP.on=true; CUP.variant=nx; } try{ SFX.modeblip(nx!=='off'); }catch(_){} }
+function cfgModeName(){ const k=cfgModeKey(); return k==='off'?'EXHIBITION · ONE GAME':(k==='castle'?'CASTLE RULES · 3 PERIODS':(RAISE[k].name+' · BEST OF 7')); }
+function cfgCycle(d){ if(cfgRow===0){ cfgMode(d); SFX.cursor(); return; } if(cfgRow===1){ cfgV=(cfgV+d+CFG_VENUES.length)%CFG_VENUES.length; setTable(CFG_VENUES[cfgV].tbl); } else if(cfgRow===2){ cfgP=(cfgP+d+CFG_PUCKS.length)%CFG_PUCKS.length; const P=CFG_PUCKS[cfgP]; PUCKSTYLE=P.k; PUCKCOL=CFG_PCOL[P.k]||'#fff'; } else { cfgK=(cfgK+d+CFG_KNOCKS.length)%CFG_KNOCKS.length; } SFX.cursor(); }   // P.k IS the PuckArt style (incl. real 'lit' white) — no remap
 function cfgStart(){ const V=CFG_VENUES[cfgV], P=CFG_PUCKS[cfgP], K=CFG_KNOCKS[cfgK]; SFX.menu('mode_confirm',0.7);   // mirrors the proven ?go knocker path (all 8 verified)
   P1PICK=true; setMatchKnockers(K.k, KTEAM[K.k]||'bees');   // jailbreak picker = a real pick (table sets only the opponent); ice/royal play as QUEENS
   PUCKSTYLE=P.k; PUCKCOL=CFG_PCOL[P.k]||'#fff'; setTable(V.tbl); estAd=null;
@@ -2322,8 +2332,9 @@ function drawConfig(){ const u=Math.min(VW,VH), cx=VW/2, t=clock; ctx.clearRect(
   if(IMG.carpet){ const ir=IMG.carpet.width/IMG.carpet.height,br=VW/VH; let dw,dh,dx,dy; if(ir>br){dh=VH;dw=VH*ir;dx=(VW-dw)/2;dy=0;}else{dw=VW;dh=VW/ir;dx=0;dy=(VH-dh)/2;} ctx.drawImage(IMG.carpet,dx,dy,dw,dh); } else { ctx.fillStyle='#0a0618'; ctx.fillRect(0,0,VW,VH); }
   ctx.save(); ctx.textAlign='center';
   ctx.fillStyle='#ffd23f'; ctx.shadowColor='#ff7a1a'; ctx.shadowBlur=16; ctx.font=`900 ${Math.round(VH*0.05)}px "Helvetica Neue",Arial`; ctx.fillText('CUSTOM MATCH · JAILBREAK', cx, VH*0.13);
-  const rows=[['VENUE',CFG_VENUES[cfgV].name],['PUCK',CFG_PUCKS[cfgP].n],['KNOCKER',CFG_KNOCKS[cfgK].n]];
-  for(let i=0;i<3;i++){ const y=VH*(0.30+i*0.125), active=(i===cfgRow);
+  const vNote=(CUP.on&&!TIMED)?(CUP.variant==='hightable'?' (THE SERIES PLAYS HERE)':' (THE SERIES PICKS)'):'';
+  const rows=[['MODE',cfgModeName()],['VENUE',CFG_VENUES[cfgV].name+vNote],['PUCK',CFG_PUCKS[cfgP].n],['KNOCKER',CFG_KNOCKS[cfgK].n]];
+  for(let i=0;i<4;i++){ const y=VH*(0.27+i*0.11), active=(i===cfgRow);
     ctx.globalAlpha=1; ctx.fillStyle=active?'#27f6ff':'#7f97a8'; ctx.shadowBlur=0; ctx.font=`700 ${Math.round(VH*0.022)}px "Helvetica Neue",Arial`; ctx.fillText(rows[i][0], cx, y-VH*0.028);
     ctx.fillStyle=active?'#ffe23a':'#cbd8e6'; ctx.shadowColor=active?'#ff37c7':'#000'; ctx.shadowBlur=active?16:0; ctx.font=`900 ${Math.round(VH*0.044)}px "Helvetica Neue",Arial`; ctx.fillText((active?'◄  ':'    ')+rows[i][1]+(active?'  ►':''), cx, y+VH*0.018); }
   const kim=CFG_KIMG[CFG_KNOCKS[cfgK].k], pvY=VH*0.74; ctx.globalAlpha=1; ctx.shadowBlur=0;
@@ -2432,7 +2443,7 @@ function goFullscreen(){ try{ const el=document.documentElement; if(!document.fu
 function toggleFullscreen(){ try{ if(document.fullscreenElement){ document.exitFullscreen&&document.exitFullscreen(); } else goFullscreen(); }catch(_){} }
 cv.addEventListener('mousedown',e=>{if(REG){regDown(e.clientX,e.clientY);return;} if(INI.on&&state==='champion'){ iniTap(e.clientX,e.clientY); return; } if(AUTOFS&&!_fsTried){_fsTried=true;goFullscreen();}
   if(state==='select'){ if(e.clientX<innerWidth*0.30){selCycle(-1);} else if(e.clientX>innerWidth*0.70){selCycle(1);} else begin(); return; }   // SELECT: click ◄/► to cycle, centre to play
-  if(state==='config'){ if(e.clientY>innerHeight*0.86){ begin(); return; } const ry=Math.max(0,Math.min(2,Math.floor((e.clientY/innerHeight-0.24)/0.125))); cfgRow=ry; if(e.clientX<innerWidth*0.5)cfgCycle(-1); else cfgCycle(1); return; }   // CONFIG: click a row L/R to change it; bottom = PLAY
+  if(state==='config'){ if(e.clientY>innerHeight*0.86){ begin(); return; } const ry=Math.max(0,Math.min(3,Math.floor((e.clientY/innerHeight-0.215)/0.11))); cfgRow=ry; if(e.clientX<innerWidth*0.5)cfgCycle(-1); else cfgCycle(1); return; }   // CONFIG: click a row L/R to change it; bottom = PLAY
   mouseDown=true; var _wasLive=(state==='play');
   begin(); if(_wasLive){ pointer(e.clientX,e.clientY); grabMouse(); } });   // the click that STARTS a match must not set the play target (clicking a corner to begin used to zip the knocker there past faceoff's re-center); only steer on clicks during live play
 cv.addEventListener('mouseup',()=>dragC=-1); addEventListener('mouseup',()=>{mouseDown=false;});
@@ -2472,6 +2483,7 @@ addEventListener('keydown',e=>{ if(pauseNavKey(e)||iniKey(e)) return; if(e.key==
   // ESC on the WIN / CHAMPION screens leaves to the menu. Without this the only action there was a
   // rematch of the same venue, so a jailbreak session could never get back to the table picker.
   if(e.key==='Escape' && (state==='win'||state==='champion')){ e.preventDefault(); backToMenu(); return; }
+  if(e.key==='Escape' && HOMEURL && (REEL||state==='boot'||state==='splash'||state==='inter'||state==='board'||state==='title')){ e.preventDefault(); location.href=HOMEURL; return; }   // owner: ESC on the attract = back to the console
   if((e.key==='Escape'||e.key.toLowerCase()==='p') && (pausable() || !pauseEl.classList.contains('hidden'))){ e.preventDefault(); togglePause(); return; }   // PAUSE MENU (active match only, so 'win' rematch + title 2P toggle below are untouched)
   if((state==='title')&&e.key.toLowerCase()==='p'){twoP=!twoP;return;}if(state==='select'&&e.key==='ArrowLeft'){selCycle(-1);return;}if(state==='select'&&e.key==='ArrowRight'){selCycle(1);return;}if(state==='config'&&e.key==='ArrowLeft'){cfgCycle(-1);return;}if(state==='config'&&e.key==='ArrowRight'){cfgCycle(1);return;}if(state==='config'&&e.key==='ArrowUp'){cfgRowMove(-1);return;}if(state==='config'&&e.key==='ArrowDown'){cfgRowMove(1);return;}if(state==='select'&&(e.key==='ArrowUp'||e.key==='ArrowDown')){selBack();return;}if((state==='title'||(state==='select'&&selPhase!=='puck'))&&e.key.toLowerCase()==='c'){engineCycleMode();return;}if((state==='title')&&e.key.toLowerCase()==='t'){setTable(TKEYS[(TKEYS.indexOf(tbl)+1)%TKEYS.length]);return;}if(e.key.toLowerCase()==='m'&&!((twoP||CAB2)&&(state==='play'||state==='faceoff'||state==='serve'))){MONO=!MONO;banner(MONO?'MONOCHROME':'COLOR',0.8);return;}if(e.key.toLowerCase()==='y'){WAYS=WAYS===4?8:4;try{LS.setItem('sideStickWays',String(WAYS));}catch(_){}banner(WAYS+'-WAY STICK',1.0);return;}if(state==='play'&&!DEMO&&near.sup>=1&&(e.key===' '||e.key.toLowerCase()==='f')){e.preventDefault();bigUp(near,PTEAM);return;}if(state==='play'&&twoP&&!CAB2&&far.sup>=1&&(e.key==='Enter'||e.key==='/')){e.preventDefault();bigUp(far,OTEAM);return;}if(REG&&e.key.toLowerCase()==='s'){try{LS.setItem('sideRink.'+tbl,JSON.stringify(RINK));}catch(_){}const j=JSON.stringify({nearY:+RINK.nearY.toFixed(3),farY:+RINK.farY.toFixed(3),nearHalf:+RINK.nearHalf.toFixed(3),farHalf:+RINK.farHalf.toFixed(3),cx:+RINK.cx.toFixed(3)});console.log('RINKPRESET '+tbl+':  '+j);banner('SAVED '+(TNAME[tbl]||tbl),1.2);return;}if(REG&&e.key.toLowerCase()==='r'){try{LS.removeItem('sideRink.'+tbl);}catch(_){}location.reload();return;}if(e.key>='1'&&e.key<='3'&&(state==='title'||state==='win'))DIFF=+e.key-1;if(e.key===' '||e.key==='Enter'){e.preventDefault();if(AUTOFS&&!_fsTried){_fsTried=true;goFullscreen();}begin();}});
 addEventListener('keyup',e=>{if(e.key==='Shift')keyShift=false;keys[e.key]=false;});
@@ -2496,7 +2508,8 @@ function pauseNavPad(gp){ const ay=(gp.axes&&gp.axes[1])||0, up=ay<-0.55||!!(gp.
   const a=!!(gp.buttons[BTN.trap]&&gp.buttons[BTN.trap].pressed), b=!!(gp.buttons[BTN.blast]&&gp.buttons[BTN.blast].pressed);
   if(a&&!_pnA) pActivate(); if(b&&!_pnB) closePause(); _pnA=a; _pnB=b; }
 function pausable(){ return state==='play'||state==='faceoff'||state==='serve'||state==='goal'; }   // a live match, incl. the goal celebration (Esc there used to drop the mouse with no menu)
-function openPause(){ PAUSED=true; for(var k in keys)keys[k]=false; mouseDown=false; deckGrab=false; syncPauseToggles(); pauseEl.classList.remove('hidden'); const it=pItems(); pFocusSet(Math.max(0,it.indexOf(document.getElementById('presume')))); _pnA=_pnB=true; escCueOff(); }   // clear held input so nothing sticks across the pause
+let _pauseAt=0;
+function openPause(){ _pauseAt=performance.now(); PAUSED=true; for(var k in keys)keys[k]=false; mouseDown=false; deckGrab=false; syncPauseToggles(); pauseEl.classList.remove('hidden'); const it=pItems(); pFocusSet(Math.max(0,it.indexOf(document.getElementById('presume')))); _pnA=_pnB=true; escCueOff(); }   // clear held input so nothing sticks across the pause
 function closePause(){ PAUSED=false; pauseEl.classList.add('hidden'); }
 function togglePause(){ if(pauseEl.classList.contains('hidden'))openPause(); else closePause(); }
 // LEAVING A MATCH. There was no way out of one: the pause menu only toggled control schemes, and the
@@ -2504,9 +2517,12 @@ function togglePause(){ if(pauseEl.classList.contains('hidden'))openPause(); els
 // JAILBREAK especially that is a dead end -- you pick a table and then you are on it until you
 // reload the page. goSelect() is the existing route back (it rebuilds the list and lands on the
 // jailbreak picker when ?jail, the venue select otherwise), so both exits just call it.
-function backToMenu(){ if(SHELL){ closePause(); try{ parent.postMessage({ht:'menu'},'*'); }catch(_){} return; }   // the console owns the menus
+// HOME (Joe 2026-10-14): the console's ARCADE MODE opens the quarter-eater with ?home=console, so the cab's owner can get
+//   back: the pause menu's exit and ESC on the attract go HOME. A plain arcade boot (no ?home) stays a pure quarter-eater.
+const HOMEURL=(Q.get('home')==='console')?'console.html':null;
+function backToMenu(){ if(HOMEURL){ location.href=HOMEURL; return; } if(SHELL){ closePause(); try{ parent.postMessage({ht:'menu'},'*'); }catch(_){} return; }   // the console owns the menus
   if(HYSCORE){ hyAttract(); return; } closePause(); try{ resetSeries(); }catch(e){} goSelect(); }   // the quarter-eater has no menu: back = the attract
-(function(){ var b=document.getElementById('pmenu'); if(b){ b.addEventListener('click',backToMenu); b.textContent=SHELL?'↩ BACK TO HOME':(HYSCORE?'↩ QUIT TO ATTRACT':'↩ BACK TO MENU'); } })();
+(function(){ var b=document.getElementById('pmenu'); if(b){ b.addEventListener('click',backToMenu); b.textContent=(SHELL||HOMEURL)?'↩ BACK TO HOME':(HYSCORE?'↩ QUIT TO ATTRACT':'↩ BACK TO MENU'); } })();
 // ESC CUE (Joe 2026-10-14: "took a few seconds to realize escape opens the menu"): a small chip each time a match starts or
 //   the mouse is captured, opposite the GET BIG meter, gone after a few seconds. Phone has its own pause button.
 let _escT=0;
@@ -2624,7 +2640,7 @@ addEventListener('resize',tpadLayout); addEventListener('orientationchange',func
   };
 })();
 
-pauseEl.addEventListener('click',e=>{ if(e.target===pauseEl)closePause(); });   // click the dim backdrop to resume
+pauseEl.addEventListener('click',e=>{ if(e.target===pauseEl && performance.now()-_pauseAt>500) closePause(); });   // the half-second guard: on a phone the PAUSE tap's own follow-up click lands on this backdrop and shut the menu the instant it opened   // click the dim backdrop to resume
 // cab/deck wrapper talks to the game over postMessage: START, and the GET BIG deck button.
 addEventListener('message',e=>{ const d=e.data; if(!d||!d.bk)return;
   if(d.bk===' '||d.bk==='Enter'||d.bk==='start') begin();
@@ -2651,7 +2667,7 @@ function recWatch(){ const s=state;
   if(s!==_wState){ const inM=(s==='faceoff'||s==='play'||s==='serve'||s==='goal');
     if(inM&&!_wMatch) escCue();
     if(s==='win') recEmit({t:'game', won:TIMED?(scoreN>scoreF):(scoreN>=TARGET), n:scoreN, f:scoreF, tbl, twoP:!!twoP, mode:recMode()});
-    if(s==='champion'){ const p1=twoP?(CUP.win>=SERIES_WINS):true; recEmit({t:'series', won:p1, w:CUP.win, l:CUP.loss, twoP:!!twoP, variant:CAMP?'campaign':CUP.variant, tbl}); iniStart(p1); }
+    if(s==='champion'){ const p1=twoP?(CUP.win>=SERIES_WINS):true; recEmit({t:'series', won:p1, w:CUP.win, l:CUP.loss, twoP:!!twoP, variant:CAMP?'campaign':CUP.variant, tbl, team:PTEAM, playoff:!!champUnlock}); iniStart(p1); }
     _wMatch=inM; _wState=s; }
   const u=JSON.stringify(UNLOCKED); if(u!==_wUnl){ const was=JSON.parse(_wUnl); for(const k in UNLOCKED) if(UNLOCKED[k]&&!was[k]) recEmit({t:'unlock',key:k}); _wUnl=u; }
   if(campCleared!==_wCamp){ if(campCleared>_wCamp) recEmit({t:'camp',rung:campCleared}); _wCamp=campCleared; } }

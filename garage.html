@@ -112,4 +112,6 @@ addEventListener('keydown',function(e){ if(viewer.classList.contains('on') && (e
     for(var i=0;i<pads.length;i++){ var gp=pads[i]; if(!gp||!gp.buttons)continue; for(var b=0;b<gp.buttons.length;b++){ var p=!!gp.buttons[b].pressed,k=i+'_'+b; if(p&&!prev[k])closeViewer(); prev[k]=p; } } } else prev={}; requestAnimationFrame(poll); } poll(); })();
 document.getElementById('rung').textContent = JAIL ? 'JAILBREAK · all cabs unlocked' : (RUNG>=4?'Campaign complete — every cab unlocked.':('Cleared '+RUNG+'/4 rungs.'));
 if(JAIL) document.getElementById('saveBadge').textContent='JAILBREAK · ALL UNLOCKED';
+// CONSOLE SHELL (console.html, Joe 2026-10-14): ESC hands back to the console's HOME.
+if(new URLSearchParams(location.search).has('shell') && window.parent!==window) addEventListener('keydown',function(e){ if(e.key==='Escape'){ try{ parent.postMessage({ht:'menu'},'*'); }catch(_){} } });
 </script></body></html>
