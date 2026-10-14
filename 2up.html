@@ -92,8 +92,13 @@
 <script>
 (function(){
   var Q=new URLSearchParams(location.search);
-  var ROOM=Q.get('room')||'q', SOLO=Q.has('solo');
-  var PANELOFF=(Q.get('panel')==='off');   // PANEL VIEW toggle: ?panel=off hides the control-deck art so the split is a bare two-screen (deck ON by default)
+  // ?console = THE 2-UP CONSOLE (Joe 2026-10-14 — the app's 2-player function + the Pi two-stick cab): ONE top-level window,
+  //   two bare halves (P1's end | P2's mirrored end), no menu bar / deck art, sticks read through THIS window (padsrc=top)
+  //   so neither half can lose them to focus. On a Pi, one kiosk window spans both HDMI screens: each half = one monitor.
+  //   Table / mode / format come from the URL (?console&table=nachos&vs&castlerules) — see docs/CAB_2UP_PI.md.
+  var CONSOLE=Q.has('console');
+  var ROOM=Q.get('room')||(CONSOLE?('c'+Date.now().toString(36)):'q'), SOLO=Q.has('solo')||CONSOLE;   // console: a fresh room per boot so a stale window can't cross-talk
+  var PANELOFF=(Q.get('panel')==='off')||CONSOLE;   // PANEL VIEW toggle: ?panel=off hides the control-deck art so the split is a bare two-screen (deck ON by default)
   var C=window.HTCatalog;
   // selected venue: '' = the RIVALRY SPLIT (P1 queens end / P2 bee end). Otherwise both screens share the key.
   var VEN=Q.get('table')||'';
@@ -136,7 +141,8 @@
       +'&p1team='+p1team+'&p2team='+p2team+'&p1knock='+encodeURIComponent(p1k)+'&p2knock='+encodeURIComponent(p2k)
       +(MODE==='vs'?'&raiseit=standard'+(FORMAT==='timed'?'&castlerules=1':''):'')   // VS = best-of-7 series; host runs it, both screens show the series score. FORMAT=timed adds the Castle Rules clock; else OLD-TYME goal-target.
       +(split?'':'&carpetintro=1')   // the RIVALRY SPLIT keeps its per-end team arenas (each player their own barn); every OTHER 2-up venue is shared/neutral → the powered CARPET intro (no "both teams" arena)
-      +'&stick=8way&room='+encodeURIComponent(ROOM)+'&_cb='+Date.now();
+      +'&stick=8way&room='+encodeURIComponent(ROOM)+'&_cb='+Date.now()
+      +(CONSOLE?'&padsrc=top&noboot':'')+(Q.has('qa')?'&qa':'')+(Q.get('store')?'&store='+encodeURIComponent(Q.get('store')):'');   // console: pads via the top window, straight to the table
   }
 
   /* ---- WINDOW mode (real two-monitor cab) ---- */
@@ -256,7 +262,8 @@
         sep(); lbl('P2'); grp(KNOCKS, function(){return P2KN||defKn('p2');}, function(k){ P2KN=k; }); }
       else { P1KN=null; P2KN=null; }
     }
-    drawBar(); loadFrames();
+    if(CONSOLE){ bar.style.display='none'; document.body.style.cursor='none'; } else drawBar();   // the console has no mouse menu: the front-end / boot URL picks the match
+    loadFrames();
   }
 
   if(SOLO){ mountSolo(); }
