@@ -4,70 +4,71 @@
 
 *Just like Old-Tymes.*
 
-Grab your best knocker and get ready to blast away in side-view or top-down,
-breakaway-speed air hockey. Take your Throne as the **Valley Queens**, or win one
-for the Hivemind as the **Cohasset Bees**, at one of many venerable venues: the
-RIVALRY TABLE, HYSCORE FOREST, the HONEY HOLE, the THRONE ROOM, or the HIGH TABLE
-itself. Penalty Box Nachos is for true TURBO APEX game speed.
+Breakaway-speed air hockey, side-on or from overhead. Take the Throne as the
+**Valley Queens** or win one for the Hivemind as the **Cohasset Bees**, at the
+RIVALRY TABLE, the HONEY HOLE, the THRONE ROOM, or the HIGH TABLE itself —
+Penalty Box Nachos, the turbo apex, where the game runs fastest.
 
-A Castle Killscreen game by Anders & Partners LLC. Free, in your browser, nothing
-to install.
+Free, in your browser, nothing to install.
 
 ## How to play
 
-Your knocker is the near one. Score in the far goal.
+Your knocker is the near one. Put the puck in the far goal.
 
-**On a phone,** turn it sideways.
+**TRAP** catches the puck and winds up a shot for as long as you hold it.
+**BLAST** lunges forward: it fires a trapped puck, or flattens the other
+knocker. **GET BIG** lights up when your meter is full — your knocker grows for
+a few seconds.
 
-- Drag on the table to steer.
-- Left thumb: **TRAP** catches the puck and winds up a shot for as long as you
-  hold it. **GET BIG** lights up when your meter is full.
-- Right thumb: **BLAST** lunges forward and knocks the other knocker flat, or
-  fires the puck you've trapped. Its ring shows when it's ready again.
-- Rather use a stick? Tap **STICK** in the top corner for an 8-way thumbstick,
-  and all three buttons move to your right thumb.
-- Tap ❚❚ to pause.
+### On a phone
+
+Turn it sideways.
+
+- Steer with one thumb: drag anywhere on the table.
+- The other thumb works the buttons, stacked top to bottom: **TRAP**,
+  **GET BIG**, **BLAST**. The rings show your meter and BLAST's cooldown.
+- Left-handed? Tap ❚❚, then turn on **BUTTONS ON THE RIGHT**.
+- Prefer a stick? Tap **STICK** in the top corner for an 8-way thumbstick. The
+  stick and the buttons take a side each.
 - In Safari, tap Share, then **Add to Home Screen**. It opens full-screen like
   an app, and after your first game it plays offline.
 
-**On a computer:**
+### On a computer
 
 - Steer with the mouse, WASD or the arrow keys.
-- Hold the mouse button or **Z** to TRAP · **X** to GET BIG · **C** to BLAST.
-- **P** or Esc pauses. **M** switches between colour and black-and-white.
-- Two players on one keyboard: press **P** on the title screen. Player 2 steers
-  with O K L ; and uses comma for GET BIG, period for BLAST.
+- **TRAP**: hold the mouse button or **Z** · **GET BIG**: **X** · **BLAST**: **C**
+- **P** or **Esc** pauses. **M** switches colour / black-and-white.
+
+### With a controller
+
+Set the pad to X-input (on an 8BitDo, also set the lever to D-pad). Press
+**START**, then turn on **STICK** in the pause menu.
+
+**A** TRAP · **B** GET BIG · **RT** BLAST · **START** pause
 
 ## Ways to play
 
-- [HYSCORE][play]: the house cab at HYSCORE, the arcade off the 101 in the
-  Valley. A quarter-eater: it runs its attract until you drop a quarter, then
-  you play it out and run it back or walk.
-- [CAMPAIGN][camp]: the Old-Tyme climb. Win a series on each table to reach the
-  next, all the way up to the High Table.
-- [CASTLE RULES][castle]: three timed periods. Most goals at the horn wins; a tie
-  goes to sudden death.
-- [JAILBREAK][jail]: the cab behind the velvet rope. Every table, knocker and
-  puck, open from the start, plus **RAISE IT!**, a best-of-seven gauntlet
-  against a CPU that keeps getting better, for the Breakaway Cup.
-- [2 PLAYER][twoup]: split screen, each player at their own end of the table.
-  P1 steers with WASD and plays Z / X / C; P2 steers with O K L ; or the arrows,
-  comma for GET BIG, period for BLAST. Two pads work too.
-- [TOP DOWN][todown]: the same game from overhead. Steer with the mouse, or drag
-  on a phone.
+- [HYSCORE][play] — the house cab at HYSCORE, the arcade off the 101. A
+  quarter-eater: it runs its attract until you drop a quarter, then you play it
+  out and run it back or walk.
+- [CAMPAIGN][camp] — the Old-Tyme climb. Win a best-of-seven on each table to
+  reach the next, all the way up to the High Table.
+- [CASTLE RULES][castle] — three timed periods. Most goals at the horn wins; a
+  tie goes to sudden-death overtime.
+- [JAILBREAK][jail] — the cab behind the velvet rope. Every table, knocker and
+  puck, open from the start, plus **RAISE IT!**: a best-of-seven series against
+  a CPU that gets better every couple of games, for the Breakaway Cup.
+- [2 PLAYER][twoup] — split screen, each player at their own end. P1: WASD,
+  Z / X / C. P2: O K L ; or the arrows, comma for GET BIG, period for BLAST.
+  Two pads work too.
+- [HIGH-TABLE TO-GO!][todown] — the table from overhead. Steer with the mouse,
+  or drag a finger on a phone.
 
 Every table has its house knockers. Pick your own and the table brings the
 other end.
 
-Your progress and settings are kept in your own browser and never sent
+Settings and campaign progress stay in your own browser. Nothing is sent
 anywhere.
-
-## Controllers
-
-Set the pad to X-input. On an 8BitDo, also set the lever to D-pad. Then press
-**START** and turn on **STICK** in the pause menu.
-
-**A** is TRAP · **B** is GET BIG · **RT** is BLAST · **START** pauses.
 
 ## Credits
 
