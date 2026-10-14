@@ -139,13 +139,29 @@
 "use strict";
 
 /* ----- ART HOOKS — any table works here; pick with ?table= (nachos|rivalry|throne|throneuv|killscreen) -- */
-const _TBL={nachos:'table_nachos_top_land',rivalry:'table_rivalry_bg',bees:'table_bees_bg',throne:'table_throne_bg',throneuv:'table_throne_uv',garden:'table_garden_top',box:'table_box_top',killscreen:'table_killscreen_top'};
+const _TBL={nachos:'table_nachos_top_land',rivalry:'table_rivalry_bg',bees:'table_bees_bg',throne:'table_throne_bg',throneuv:'table_throne_uv',killscreen:'table_killscreen_top'};
 const _tbl=new URLSearchParams(location.search).get('table')||'nachos';
+// THE DRAWN TABLE (Joe 2026-10-14: "use the full look of the image while limiting the play area; the puck disappears into
+//   the goal lines as if sliding under those plastic pieces"). Each table plays on the art Joe TRACED in RINK LAB
+//   (lib/rink-geo.js corners / goalHalf / goalAxis / centerV) — the whole render is shown, the logical field (a 0..2 x b 0..1,
+//   physics unchanged) is mapped through that homography onto the painted surface. Rivalry / Honey Hole / Throne used to
+//   draw the cropped *_bg art; the traced full renders are *_top. null preset = the old flat-rect fallback.
+const TOPGEO={ nachos:'nachos_mouse', killscreen:'killscreen_mouse', throneuv:'throneuv_mouse', rivalry:'rivalry_top',
+               bees:'honey_top', throne:'throne_top' };
+function geoFor(key,flip){ const G=window.RinkGeo, id=TOPGEO[key], g=(G&&id&&G.ALL_PRESETS&&G.ALL_PRESETS[id])||null;
+  if(!g||!flip) return g;
+  // BGFLIP (rivalry, bees P1): the art is drawn MIRRORED left-right, so the traced surface is mirrored with it — corners swap
+  //   sides (x -> 1-x) and the painted centre line moves to 1-centerV. Same rink, same goals, just your own half at your end.
+  const C=g.corners, m=(q)=>[1-q[0],q[1]];
+  return { id:g.id+'~flip', view:g.view, mode:g.mode, image:g.image, goalHalf:g.goalHalf, goalAxis:g.goalAxis, goals:g.goals, flip:true,
+           centerV:(g.goalAxis!=='v' && g.centerV!=null) ? 1-g.centerV : g.centerV,
+           corners:{ tl:m(C.tr), tr:m(C.tl), br:m(C.bl), bl:m(C.br) } }; }
+let GEO=geoFor(_tbl);
 const DEMO=new URLSearchParams(location.search).has('demo');   // ?demo=1 = CPU-vs-CPU attract: auto-start, both mallets AI, loops
 const MUTE=new URLSearchParams(location.search).has('mute');   // ?mute=1 = silence SFX (attract reel supplies its own bed)
 let VENUE_TEAM = (_tbl==='bees') ? 'bees' : (_tbl==='throne'||_tbl==='throneuv') ? 'queens' : null;  // rivalry/nachos/default = neutral (both sirens); reset by the rink menu
 const ART = {
-  bg:            'sprites/'+(_TBL[_tbl]||_TBL.nachos)+'.png',  // default Penalty Box Nachos; any table via ?table=
+  bg:            (GEO&&GEO.image) || ('sprites/'+(_TBL[_tbl]||_TBL.nachos)+'.png'),  // the TRACED full render when the table has a preset; else the old art map
   knockerYellow: "sprites/knocker_yellow.png",  // Bees striker
   knockerPurple: "sprites/knocker_purple.png",  // Queens striker
   puck:          "sprites/puck_neutral.png",    // black puck, UV edge
@@ -154,7 +170,7 @@ const IMG = {};
 for (const k in ART){ if(ART[k]){ const im=new Image(); im.onload=()=>{ IMG[k]=im;
   if(k==='knockerYellow') IMG.knockerP1=IMG.knockerP1||im;   // defaults: P1 gold / P2 purple (menu overrides)
   if(k==='knockerPurple') IMG.knockerP2=IMG.knockerP2||im;
-  if(k==='bg') layout(); }; im.src=ART[k]; } }
+  if(k==='bg'){ findBoards(im); layout(); } }; im.src=ART[k]; } }
 
 /* ----- FIRST-STRIKE mash-up: grayscale anime slapshot ghost erupting in team color -------- */
 // key out the sprite's dark background box -> transparent (ramp alpha by luminance). file:// taint -> raw img fallback.
@@ -209,6 +225,18 @@ const celes=[];
 { const yb=new Image(); yb.onload=()=>IMG.knockerP1B=IMG.knockerP1B||yb; yb.src='sprites/knocker_yellow_bottom.png';
   const pb=new Image(); pb.onload=()=>IMG.knockerP2B=IMG.knockerP2B||pb; pb.src='sprites/knocker_purple_bottom.png'; }
 
+// SCOREBOARDS: some full renders carry chroma-green placeholder boards (Rivalry / Throne). Found once at load (image
+//   fractions) and drawn as the live score — the left board shows the left end's team. None found = the on-ice score.
+let BOARDS=[];
+function findBoards(im){ BOARDS=[]; try{ const W=256, H=Math.max(1,Math.round(W*im.naturalHeight/im.naturalWidth)), oc=document.createElement('canvas'); oc.width=W; oc.height=H;
+    const x=oc.getContext('2d'); x.drawImage(im,0,0,W,H); const d=x.getImageData(0,0,W,H).data, seen=new Uint8Array(W*H);
+    const g=(i)=>{ const r=d[i*4],gg=d[i*4+1],b=d[i*4+2]; return gg>140 && gg-r>60 && gg-b>60; };
+    for(let i=0;i<W*H;i++){ if(seen[i]||!g(i)) continue; let x0=W,y0=H,x1=0,y1=0,n=0; const st=[i]; seen[i]=1;
+      while(st.length){ const j=st.pop(), jx=j%W, jy=(j/W)|0; n++; x0=Math.min(x0,jx); x1=Math.max(x1,jx); y0=Math.min(y0,jy); y1=Math.max(y1,jy);
+        for(const k of [j-1,j+1,j-W,j+W]){ if(k>=0&&k<W*H&&!seen[k]&&Math.abs((k%W)-jx)<=1&&g(k)){ seen[k]=1; st.push(k); } } }
+      if(n>12 && (y1-y0)>=2 && (x1-x0)>=4) BOARDS.push([x0/W,y0/H,(x1+1)/W,(y1+1)/H]); }
+    BOARDS.sort((p,q)=>p[0]-q[0]); if(BOARDS.length>2) BOARDS=BOARDS.slice(0,2);
+  }catch(e){ BOARDS=[]; } }   // file:// taints the canvas -> no boards, the on-ice score stays
 /* ----- canvas / layout ----------------------------------------------------- */
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 let DPR=1, VW=0, VH=0;
@@ -224,6 +252,7 @@ let GOAL=0.13;                        // half-width of the goal mouth (units of 
 // per-table goal-mouth half-width, exactly as LOCKED in RINK LAB (lib/rink-geo.js). Prefers the
 // mouse-clicker presets (this engine), falls back to the top-view presets, then a sane default.
 function goalHalfFor(key){
+  const g=geoFor(key); if(g&&g.goalHalf) return g.goalHalf;   // the preset traced on the art actually drawn
   const G=window.RinkGeo; if(!G) return 0.13;
   const P=G.MOUSE_PRESETS||{}, T=G.RINK_PRESETS||{};
   const pre = ({ nachos:P.nachos_mouse||T.penalty_box_top, throne:P.throneuv_mouse||T.throne_top,
@@ -264,12 +293,48 @@ function layout(){
   else      { bh = Math.min(maxH, maxW*2); bw = bh/2; }
   bx = ax+(aw-bw)/2; by = ay+(ah-bh)/2;                     // centred on the table
   shortPx = Math.min(bw,bh); unit = shortPx;
+  if(GEO && IMG.bg && IMG.bg.naturalWidth){                 // DRAWN TABLE: the art fills the screen, the field IS the painted surface
+    aw = Math.min(VW, VH*iAR); ah = aw/iAR; ax=(VW-aw)/2; ay=(VH-ah)/2;   // contain, no pad: the whole render, nothing cropped
+    let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+    for(const [a,b] of [[0,0],[2,0],[2,1],[0,1],[1,0],[1,1]]){ const q=S(a,b); x0=Math.min(x0,q[0]); y0=Math.min(y0,q[1]); x1=Math.max(x1,q[0]); y1=Math.max(y1,q[1]); }
+    bx=x0; by=y0; bw=x1-x0; bh=y1-y0;                       // the surface's bounding box (HUD / banner placement)
+    unit=shortPx=Math.min(bw,bh);                            // HUD / banner / fx scale = the surface's short side (as before). Mallets + puck are drawn at localUnit() -- the ice under them -- so their footprint fits the painted surface
+  }
 }
+// map the logical field onto the traced surface. t = a/2 along the goal axis, warped so the logical centre (a=1) lands on
+//   the PAINTED centre line (preset.centerV); b runs across. goalAxis 'u' = goals on the left/right ends, 'v' = top/bottom.
+function geoCV(){ return (GEO&&GEO.centerV!=null)?GEO.centerV:0.5; }
+function warpT(t){ const c=geoCV(); return t<=0.5 ? t*2*c : c+(t-0.5)*2*(1-c); }
+function unwarpT(u){ const c=geoCV(); return u<=c ? (u/c)*0.5 : 0.5+((u-c)/(1-c))*0.5; }
+// px per logical unit at (a,b) = the SMALLEST singular value of the mapping's Jacobian: the radius of the largest circle that
+//   fits inside the image of a logical disc. Mallets/puck are drawn at r*localUnit, and the engine keeps their logical disc
+//   inside the field, so the DRAWN disc stays on the painted surface even on a slanted/trapezoid edge.
+function localUnit(a,b){ const e=0.02, p=S(a,b), qa=S(a+e,b), qb=S(a,b+e);
+  const j11=(qa[0]-p[0])/e, j21=(qa[1]-p[1])/e, j12=(qb[0]-p[0])/e, j22=(qb[1]-p[1])/e;
+  const T=j11*j11+j12*j12+j21*j21+j22*j22, D=j11*j22-j12*j21;
+  return Math.sqrt(Math.max(0,(T-Math.sqrt(Math.max(0,T*T-4*D*D)))/2)); }
+// the painted playing surface as a canvas path (sampled along each edge so trapezoid/homography edges stay true)
+function surfacePath(pad){ const n=18, e=pad||0; ctx.beginPath();
+  for(let i=0;i<=n;i++){ const q=S(-e+(2+2*e)*i/n,0); i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]); }
+  for(let i=1;i<=n;i++){ const q=S(2+e,i/n); ctx.lineTo(q[0],q[1]); }
+  for(let i=1;i<=n;i++){ const q=S(2+e-(2+2*e)*i/n,1); ctx.lineTo(q[0],q[1]); }
+  for(let i=1;i<n;i++){ const q=S(-e,1-i/n); ctx.lineTo(q[0],q[1]); } ctx.closePath(); }
 window.addEventListener('resize', layout);
 layout();
 
-function S(a,b){ return land ? [bx + (a/2)*bw, by + b*bh] : [bx + b*bw, by + (a/2)*bh]; }
-function inv(x,y){ return land ? [((x-bx)/bw)*2, (y-by)/bh] : [((y-by)/bh)*2, (x-bx)/bw]; }
+function S(a,b){
+  if(GEO && aw>0){ const t=warpT(a/A_MAX), uv=(GEO.goalAxis==='v')?[b,t]:[t,b], f=window.RinkGeo.rinkToScreen(GEO,uv[0],uv[1]); return [ax+f[0]*aw, ay+f[1]*ah]; }
+  return land ? [bx + (a/2)*bw, by + b*bh] : [bx + b*bw, by + (a/2)*bh]; }
+// image-fraction -> rink (u,v). RinkGeo.screenToRink is the homography inverse; a 'trapezoid' preset (Honey Hole) DRAWS with the
+//   bilinear map, so refine with a few Newton steps on that map — the hand lands exactly where the mallet is drawn.
+function geoInv(fx,fy){ const G=window.RinkGeo, r=G.screenToRink(GEO,fx,fy); if(GEO.mode!=='trapezoid') return r;
+  let uu=r[0], vv=r[1]; for(let i=0;i<6;i++){ const e=1e-4, p=G.rinkToScreen(GEO,uu,vv), pu=G.rinkToScreen(GEO,uu+e,vv), pv=G.rinkToScreen(GEO,uu,vv+e);
+    const a=(pu[0]-p[0])/e, c=(pu[1]-p[1])/e, b=(pv[0]-p[0])/e, d=(pv[1]-p[1])/e, det=a*d-b*c; if(Math.abs(det)<1e-9) break;
+    const dx=fx-p[0], dy=fy-p[1]; uu+=( d*dx-b*dy)/det; vv+=(-c*dx+a*dy)/det; }
+  return [uu,vv]; }
+function inv(x,y){
+  if(GEO && aw>0){ const r=geoInv((x-ax)/aw,(y-ay)/ah), tv=(GEO.goalAxis==='v')?r[1]:r[0], bv=(GEO.goalAxis==='v')?r[0]:r[1]; return [unwarpT(tv)*A_MAX, bv]; }
+  return land ? [((x-bx)/bw)*2, (y-by)/bh] : [((y-by)/bh)*2, (x-bx)/bw]; }
 function u(v){ return v*unit; }
 
 /* ----- entities + match state ---------------------------------------------- */
@@ -294,7 +359,7 @@ function banner(text, col, dur, sub){ GAME.msg=text; GAME.msgCol=col||'#fff'; GA
 
 function resetPuck(dir){
   puck.a=1; puck.b=.5; puck.va=0; puck.vb=0; puck.trail.length=0;
-  puck.owner=null; puck.contest=0;
+  puck.owner=null; puck.contest=0; puck.sink=null;
   serve=0.95; serveDir=dir||(Math.random()<.5?-1:1);
 }
 // air hockey has no face-off — we use it only to START a period; after that, possession is
@@ -370,7 +435,7 @@ const drop=document.getElementById('drop');
 ['dragleave','drop'].forEach(ev=>window.addEventListener(ev,e=>{e.preventDefault();if(ev==='dragleave'&&e.relatedTarget)return;drop.classList.remove('on');}));
 window.addEventListener('drop',e=>{
   const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0];
-  if(f&&/^image\//.test(f.type)){ const r=new FileReader(); r.onload=()=>{ const im=new Image(); im.onload=()=>IMG.bg=im; im.src=r.result; }; r.readAsDataURL(f); }
+  if(f&&/^image\//.test(f.type)){ const r=new FileReader(); r.onload=()=>{ const im=new Image(); im.onload=()=>{ GEO=null; BOARDS=[]; IMG.bg=im; layout(); }; im.src=r.result; }; r.readAsDataURL(f); }   // a dropped image has no trace: flat-rect fallback
 });
 
 /* ----- simulation ---------------------------------------------------------- */
@@ -389,9 +454,10 @@ function driveKnocker(k, dt){
       } else { tx=home; ty=0.5; }
     } else { tx=k.pa; ty=k.pb; }   // player idle: rest in place
   }
-  const loA = (k===yk)? KR : 1.0;   const hiA = (k===yk)? 1.0 : 2-KR;
+  const KRC=KR*1.04;                                     // the drawn top-down knocker is ~1.03 KR wide: clamp the FOOTPRINT, not just the centre, inside the painted surface
+  const loA = (k===yk)? KRC : 1.0;   const hiA = (k===yk)? 1.0 : 2-KRC;
   tx=Math.max(loA, Math.min(hiA, tx));
-  ty=Math.max(KR, Math.min(B_MAX-KR, ty));
+  ty=Math.max(KRC, Math.min(B_MAX-KRC, ty));
   const ease = aiMode ? 8.5 : 24;
   const na=k.a+(tx-k.a)*Math.min(1,ease*dt);
   const nb=k.b+(ty-k.b)*Math.min(1,ease*dt);
@@ -478,24 +544,36 @@ function step(dt){
     puck.a+=puck.va*h; puck.b+=puck.vb*h;
     if(puck.b<PR){ puck.b=PR; puck.vb=Math.abs(puck.vb); burst(puck.a,puck.b,'#27f6ff',.6); }
     if(puck.b>B_MAX-PR){ puck.b=B_MAX-PR; puck.vb=-Math.abs(puck.vb); burst(puck.a,puck.b,'#27f6ff',.6); }
+    if(puck.sink){   // SLIDING UNDER THE GOAL PIECE: past the goal line it rides on (drawn clipped to the painted surface, so it
+      //   disappears under the plastic), then the goal registers. ~0.05-0.13s; nothing can touch it in the slot.
+      const dir=puck.sink==='P'?-1:1; if(puck.va*dir<0.9) puck.va=0.9*dir;
+      puck.b=Math.max(0.5-GOAL+PR*0.5, Math.min(0.5+GOAL-PR*0.5, puck.b));
+      if(puck.a<-PR*1.6 || puck.a>A_MAX+PR*1.6){ const w=puck.sink; puck.sink=null; goal(w); return; }
+      continue; }
     const inBand = Math.abs(puck.b-0.5) < GOAL;
     if(puck.a<PR){
-      if(inBand && GAME.state==='play'){ goal('P'); return; }
+      if(inBand && GAME.state==='play'){ if(GEO){ puck.sink='P'; continue; } goal('P'); return; }
       puck.a=PR; puck.va=Math.abs(puck.va); caromWall();
     }
     if(puck.a>A_MAX-PR){
-      if(inBand && GAME.state==='play'){ goal('Y'); return; }
+      if(inBand && GAME.state==='play'){ if(GEO){ puck.sink='Y'; continue; } goal('Y'); return; }
       puck.a=A_MAX-PR; puck.va=-Math.abs(puck.va); caromWall();
     }
     collide(yk); collide(pk);
+    // DRAWN TABLE: a knocker shoving the puck against a rail used to leave its centre up to a full puck past the rail at
+    //   frame end (the next substep clamped it) — on the traced art that reads as the puck vanishing INTO the rail. Hold the
+    //   POSITION on the surface right here (velocity untouched, the rail bounce next substep is unchanged). The goal mouth
+    //   stays open: inside the band the puck may still be pushed over the line and slide under the goal piece.
+    if(GEO){ puck.b=Math.max(PR, Math.min(B_MAX-PR, puck.b));
+      if(Math.abs(puck.b-0.5)>=GOAL) puck.a=Math.max(PR, Math.min(A_MAX-PR, puck.a)); }
   }
   puck.va*=0.998; puck.vb*=0.998;
-  if(GAME.state==='play'){ const spN=Math.hypot(puck.va,puck.vb);   // anti-trap: a pinned/near-still puck gets nudged toward center so the CPU can't get stuck trapping
+  if(GAME.state==='play' && !puck.sink){ const spN=Math.hypot(puck.va,puck.vb);   // anti-trap: a pinned/near-still puck gets nudged toward center so the CPU can't get stuck trapping
     if(spN<0.22){ puck.stuckT=(puck.stuckT||0)+dt; if(puck.stuckT>1.1){ puck.va=(puck.a<1?1:-1)*1.3; puck.vb=(Math.random()-.5)*1.2; puck.stuckT=0; } }
     else puck.stuckT=0; }
   // CORNER-DWELL watchdog: the speed anti-trap above misses a knocker PINNING the puck in a corner (it
   // jitters WITH speed, so spN>0.22 never fires) — the "puck trapped in the CPU corner" bug. Force it out.
-  if(GAME.state==='play'){
+  if(GAME.state==='play' && !puck.sink){
     const inCorner = (puck.a<0.34 || puck.a>A_MAX-0.34) && (puck.b<0.24 || puck.b>B_MAX-0.24);
     if(inCorner){ puck.cornerT=(puck.cornerT||0)+dt;
       if(puck.cornerT>0.8){ const dx=(puck.a<1?1:-1), dy=(puck.b<0.5?1:-1);
@@ -507,6 +585,13 @@ function step(dt){
   puck.trail.push([puck.a,puck.b]); if(puck.trail.length>16) puck.trail.shift();
 }
 
+// ?qa: read-only hooks for tools/_qa/topdown_surface.mjs (the drawn-table containment + goal-slide check). Inert without ?qa.
+if(new URLSearchParams(location.search).has('qa')) window.__td={
+  peek:()=>({state:GAME.state, geo:GEO?GEO.id:null, y:{a:yk.a,b:yk.b}, p:{a:pk.a,b:pk.b}, puck:{a:puck.a,b:puck.b,sink:puck.sink||null}, sY:scoreY, sP:scoreP, goal:GOAL, boards:BOARDS.length, KR, PR}),
+  S:(a,b)=>S(a,b), unitAt:(a,b)=>localUnit(a,b),
+  poly:()=>{ const out=[], n=24; for(let i=0;i<=n;i++)out.push(S(2*i/n,0)); for(let i=1;i<=n;i++)out.push(S(2,i/n)); for(let i=1;i<=n;i++)out.push(S(2-2*i/n,1)); for(let i=1;i<n;i++)out.push(S(0,1-i/n)); return out; },
+  ev:(src)=>eval(src),   // QA only: read/poke engine state (pin mallets, freeze the sim for a screenshot)
+  shoot:(end,b)=>{ GAME.state='play'; serve=0; puck.sink=null; puck.b=b==null?0.5:b; puck.a=end>0?1.6:0.4; puck.va=end>0?2.4:-2.4; puck.vb=0; pk.a=1.0; pk.b=0.08; yk.a=1.0; yk.b=0.92; } };
 function goal(who){
   const yWin = who==='Y';
   if(yWin){ scoreY++; bigFlash((yk.col||'#ffe23a')); } else { scoreP++; bigFlash((pk.col||'#b14cff')); }
@@ -557,6 +642,9 @@ function draw(time){
   ctx.fillStyle=rg; ctx.fillRect(0,0,VW,VH);
 
   // ---- table surface ----
+  if(GEO && IMG.bg){ if(GEO.flip){ ctx.save(); ctx.translate(ax+aw/2,0); ctx.scale(-1,1); ctx.translate(-(ax+aw/2),0); }   // BGFLIP: mirrored art (GEO is mirrored to match)
+    ctx.drawImage(IMG.bg, ax, ay, aw, ah); if(GEO.flip) ctx.restore(); }   // DRAWN TABLE: the whole render, undimmed and unclipped — its own rails + goal pieces ARE the rink
+  else {
   ctx.save(); neonRoundRectPath(bx,by,bw,bh,u(.06)); ctx.clip();
   if(IMG.bg){ if(BGFLIP){ ctx.save(); ctx.translate(ax+aw/2, ay+ah/2); if(land) ctx.scale(-1,1); else ctx.scale(1,-1); ctx.translate(-(ax+aw/2), -(ay+ah/2)); }
     ctx.drawImage(IMG.bg, ax, ay, aw, ah);   // the WHOLE table, at its own aspect -- no crop
@@ -573,6 +661,7 @@ function draw(time){
     ctx.save(); ctx.globalAlpha=.14*gl; ctx.fillStyle='#7fe9ff'; ctx.shadowColor='#27f6ff'; ctx.shadowBlur=8;
     ctx.beginPath(); ctx.arc(p[0],p[1],m.s,0,6.28); ctx.fill(); ctx.restore(); }
   ctx.restore();
+  }
 
   // ---- RINK STRUCTURE (boards + goal mouths) — ALWAYS drawn. The venue table-art bg is a
   //      decorative crest only (no rails / no goal mouths baked in), so without this the boards
@@ -591,20 +680,22 @@ function draw(time){
   // ---- BREAKAWAY veil (dim everything but the seam, puck + strikers drawn after = bright) ----
   if(GAME.breakaway>0){
     const k=Math.min(1,GAME.breakaway/0.5);
-    ctx.save(); neonRoundRectPath(bx,by,bw,bh,u(.06)); ctx.clip();
-    ctx.fillStyle='rgba(2,2,8,'+(0.62*k)+')'; ctx.fillRect(bx,by,bw,bh); ctx.restore();
+    ctx.save(); if(GEO&&IMG.bg) surfacePath(); else neonRoundRectPath(bx,by,bw,bh,u(.06)); ctx.clip();
+    ctx.fillStyle='rgba(2,2,8,'+(0.62*k)+')'; ctx.fillRect(0,0,VW,VH); ctx.restore();
     neonLine(1,0.04,1,0.96,'#ff37c7',3.5,30);   // seam stays lit
   }
 
   // ---- puck trail (tinted by possession) ----
   const trailCol = puck.contest>0 ? (Math.floor(time/80)%2?(yk.col||'#ffe23a'):(pk.col||'#b14cff'))
                  : puck.owner==='Y' ? (yk.col||'#ffe23a') : puck.owner==='P' ? (pk.col||'#b14cff') : '#bfffff';
+  const GCLIP=!!(GEO&&IMG.bg); if(GCLIP){ ctx.save(); surfacePath(); ctx.clip(); }   // puck + trail live ON the painted surface: past the goal line they're under the goal piece
   for(let i=0;i<puck.trail.length;i++){ const t=puck.trail[i], al=(i/puck.trail.length); const p=S(t[0],t[1]);
     ctx.save(); ctx.globalAlpha=al*.4; ctx.fillStyle=trailCol; ctx.shadowColor=trailCol; ctx.shadowBlur=14*al;
     ctx.beginPath(); ctx.arc(p[0],p[1],u(PR)*al,0,6.28); ctx.fill(); ctx.restore(); }
+  if(GCLIP) ctx.restore();
 
   // ---- knockers ----
-  drawKnocker(yk, pulse); drawKnocker(pk, pulse);
+  for(const k of [yk,pk]){ const U0=unit; if(GEO&&IMG.bg) unit=localUnit(k.a,k.b); drawKnocker(k, pulse); unit=U0; }   // sized by the ice under it
 
   // ---- first-strike mash-up ghosts ----
   for(let i=strikes.length-1;i>=0;i--){ const g=strikes[i]; g.t+=0.016;
@@ -623,7 +714,9 @@ function draw(time){
     const fr=Math.min(CELE.frames-1,Math.floor(kk*CELE.frames)),fw=img.width/CELE.frames,fh=img.height; const c=S(g.a,g.b),size=u(0.72);
     ctx.save(); ctx.globalAlpha=Math.max(0,1-kk*0.2)*0.85; ctx.translate(c[0],c[1]-size*0.12); ctx.drawImage(img,fr*fw,0,fw,fh,-size/2,-size/2,size,size); ctx.restore(); }   // celebration ghost, normal composite
   // ---- puck + possession aura ----
-  drawPuck(pulse);
+  { const U0=unit; if(GCLIP){ unit=localUnit(Math.max(0,Math.min(2,puck.a)),puck.b); ctx.save(); surfacePath(); ctx.clip();
+      if(puck.sink){ const past=puck.sink==='P'?-puck.a:puck.a-A_MAX; ctx.globalAlpha=Math.max(0,Math.min(1,1-(past+PR)/(PR*2.6))); } }   // slides under the plastic + fades
+    drawPuck(pulse); if(GCLIP) ctx.restore(); unit=U0; }
 
   // serve / face-off countdown ring
   if(serve>0 && serve<2){ const c=S(1,.5); ctx.save(); ctx.globalAlpha=.55; ctx.strokeStyle='#ffcf2a'; ctx.lineWidth=3; ctx.shadowColor='#ffae00'; ctx.shadowBlur=14;   // gold, no white bloom
@@ -640,10 +733,10 @@ function draw(time){
 
   // ---- big goal flash ----
   if(flash.col){ flash.t+=0.016; const k=flash.t/0.6; if(k<1){ ctx.save(); ctx.globalAlpha=(1-k)*.3; ctx.fillStyle=flash.col;
-      neonRoundRectPath(bx,by,bw,bh,u(.06)); ctx.fill(); ctx.restore(); } else flash.col=null; }
+      if(GEO&&IMG.bg) surfacePath(); else neonRoundRectPath(bx,by,bw,bh,u(.06)); ctx.fill(); ctx.restore(); } else flash.col=null; }
 
   // ---- rail + score + overlays ----
-  neonRoundRect(bx,by,bw,bh,u(.06),'#27f6ff',Math.max(3,u(.012)),24*pulse);
+  if(!(GEO&&IMG.bg)) neonRoundRect(bx,by,bw,bh,u(.06),'#27f6ff',Math.max(3,u(.012)),24*pulse);   // the neon frame is the fallback's boundary; the art's rails are the real one
   drawScore();
   if(GAME.state==='attract') drawAttract();
   if(GAME.state==='win'){ ctx.save(); ctx.fillStyle='rgba(2,2,10,.5)'; ctx.fillRect(0,0,VW,VH); ctx.restore(); }
@@ -652,6 +745,7 @@ function draw(time){
 
 // THE RINK — boards (perimeter rail) + the two goal mouths. Drawn over the venue art every frame.
 function drawRink(pulse){
+  if(GEO && IMG.bg) return;   // the traced art has its own rails + goal pieces (the neon rink is the flat-rect fallback)
   ctx.save();
   ctx.lineJoin='round';
   // BOARDS: a bright rounded rail hugging the play field so the boundary reads (was missing entirely)
@@ -749,6 +843,14 @@ function drawPuck(pulse){
 }
 
 function drawScore(){
+  if(GEO && IMG.bg && BOARDS.length===2){   // the render's own scoreboards: left board = the left end (gold P1), right = P2
+    ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle';
+    const BS=GEO.flip ? BOARDS.map(B=>[1-B[2],B[1],1-B[0],B[3]]).sort((p,q)=>p[0]-q[0]) : BOARDS;   // mirrored art -> mirrored boards
+    BS.forEach((B,i)=>{ const x=ax+B[0]*aw, y=ay+B[1]*ah, w=(B[2]-B[0])*aw, h=(B[3]-B[1])*ah, col=i?(pk.col||'#b14cff'):(yk.col||'#ffe23a');
+      ctx.fillStyle='#05060b'; ctx.fillRect(x-1,y-1,w+2,h+2);
+      ctx.shadowColor=col; ctx.shadowBlur=h*0.5; ctx.fillStyle=col; ctx.font=`800 ${Math.round(h*0.82)}px "Helvetica Neue",Arial`;
+      ctx.fillText(i?scoreP:scoreY, x+w/2, y+h*0.54); ctx.shadowBlur=0; });
+    ctx.restore(); return; }
   ctx.save(); ctx.font=`800 ${Math.round(unit*.16)}px "Helvetica Neue",Arial`; ctx.textBaseline='top'; ctx.textAlign='center';
   const yp=S(0.18,0.5), pp=S(1.82,0.5);
   ctx.shadowColor=(yk.col||'#ffe23a'); ctx.shadowBlur=20; ctx.fillStyle=(yk.col||'#ffe23a'); ctx.fillText(scoreY, yp[0], yp[1]-unit*.08);
@@ -847,9 +949,10 @@ function coverDraw(im,x,y,w,h){
     const p2=new Image(); p2.onload=()=>IMG.knockerP2=p2; p2.src=C.knockerSprite(opp,'top'); pk.col=opp.col;
     yk.lbl=K.name; pk.lbl=opp.name;   // the score labels name the knockers actually playing (were hard-coded BEES / QUEENS)
     const b2=new Image(); b2.onload=()=>IMG.knockerP2B=b2; b2.src=C.knockerBottom(opp,'top');   // P2 underside
-    const bg=new Image(); bg.onload=()=>{ IMG.bg=bg; layout(); }; bg.src=R.bg;
+    BGFLIP=(R.key==='rivalry' && K.team==='bees');   // your half is YOUR end (see BGFLIP) — set before GEO, which mirrors with it
+    GEO=geoFor(R.key,BGFLIP);                // the traced preset for this table -> its FULL render (not the cropped catalog bg)
+    const bg=new Image(); bg.onload=()=>{ IMG.bg=bg; findBoards(bg); layout(); }; bg.src=(GEO&&GEO.image)||R.bg;
     if(P){ const pk2=new Image(); pk2.onload=()=>IMG.puck=pk2; pk2.src=P.img; }   // the chosen puck colour
-    BGFLIP=(R.key==='rivalry' && K.team==='bees');   // your half is YOUR end (see BGFLIP)
     VENUE_TEAM=R.venue;
     GOAL=goalHalfFor(R.key);                 // apply the RINK LAB locked goal-mouth width for this table
     menu.classList.add('hidden');
@@ -866,6 +969,7 @@ function coverDraw(im,x,y,w,h){
   if(new URLSearchParams(location.search).has('shell') && window.parent!==window) window.addEventListener('keydown',e=>{ if(e.key==='Escape'){ try{ parent.postMessage({ht:'menu'},'*'); }catch(_){} } });
   // ATTRACT (?demo): skip the front-end, drop straight into a self-playing CPU-vs-CPU match that loops.
   if(DEMO){ pick.rink = C.rinkTop(_tbl) || C.RINKS_TOP[0]; pick.knock = C.knock('bees'); pick.puck = C.puck('neutral'); hideHint(); launch(); }
+  else if(new URLSearchParams(location.search).has('go')){ pick.rink = C.rinkTop(_tbl) || C.RINKS_TOP[0]; pick.puck = C.puck('neutral'); launch(); }   // ?go (as in side.html): skip the front end straight into a match on ?table= — you on the gold knocker
 })();
 
 /* ===== BOOT IDENT — the killscreen slapshot cold-open. Small by design (~1.9s), tap/key to skip.

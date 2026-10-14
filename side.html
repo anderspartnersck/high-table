@@ -245,16 +245,16 @@ const CABON=SHELL || (LS.mode==='persist' && !!window.HTCabinet);
 let TMODE=false, _tpadIR=0;
 let PADHAND='L'; try{ if(LS.getItem('htPadHand')==='R') PADHAND='R'; }catch(_){} { const h=(new URLSearchParams(location.search).get('hand')||'').toLowerCase(); if(h==='right'||h==='r') PADHAND='R'; else if(h==='left'||h==='l') PADHAND='L'; }   // PHONE PAD buttons side (pause menu flop)   // PHONE PAD: touch device held landscape (see tpadLayout)
 const TSTICK={on:false,x:0,y:0};   // PHONE THUMBSTICK: on = stick layout; x,y = snapped 8-way direction (-1..1, y<0 = pushed up)
-const TBL={nachos:'table_nachos_side',bees:'table_bees_side',queens:'table_queens_side',throne:'table_throne_side',bee:'table_bee_side',garden:'table_garden_side',box:'table_box_side',prime:'table_prime_side',killscreen:'table_killscreen_side'};
+const TBL={nachos:'table_nachos_side',bees:'table_bees_side',queens:'table_queens_side',throne:'table_throne_side',bee:'table_bee_side',killscreen:'table_killscreen_side'};
 let tbl=Q.get('table')||'bee';
 function venueOf(t){return (t==='bees')?'bees':(t==='queens'||t==='throne')?'queens':null;}
 let VENUE=venueOf(tbl);
 // The roster, in build order. The RIVALRY table plays from BOTH ends as two games:
 // BEE AFRAID (bee end, table_bee_side) + QUEENS RANSOM (queens end, table_queens_side).
-const TKEYS=['bee','queens','bees','throne','nachos','killscreen','garden','box','prime'];
-const TNAME={bee:'RIVALRY · BEES',queens:'RIVALRY · QUEENS',bees:'THE HONEY HOLE',throne:'THE THRONE ROOM',nachos:'THE HIGH TABLE',killscreen:'CASTLE KILLSCREEN',garden:'GENERICA GARDEN',box:'GENERICA BOX',prime:'GENERICA PRIME'};
+const TKEYS=['bee','queens','bees','throne','nachos','killscreen'];
+const TNAME={bee:'RIVALRY · BEES',queens:'RIVALRY · QUEENS',bees:'THE HONEY HOLE',throne:'THE THRONE ROOM',nachos:'THE HIGH TABLE',killscreen:'CASTLE KILLSCREEN'};
 // goal celebration per table: 'home' = home-team horn / away groan · 'both' = both teams horn (the RIVALRY ends) · 'none' = NO sirens, just intensity (PENALTY BOX NACHOS)
-const CELEB={bee:'both',queens:'both',bees:'home',throne:'home',nachos:'none',garden:'none',box:'none',prime:'none'};
+const CELEB={bee:'both',queens:'both',bees:'home',throne:'home',nachos:'none'};
 // VENUE ESTABLISHING SHOTS (Joe 2026-06-19): a real arena/storefront exterior opens each match, switched by
 //   the table. The rivalry ends get the big arenas (BEE AFRAID → Brady Garden, QUEENS RANSOM → the Queens
 //   arena); the bar venues carry several graded variants and pick one at RANDOM per match (alternate/randomise).
@@ -278,7 +278,7 @@ const SCOREBOARD={
   throne:{L:0.444,R:0.565,cy:0.066,h:0.066,scr:'green'},
   nachos:{L:0.433,R:0.566,cy:0.200,h:0.052,scr:'green'},   // RE-MEASURED 2026-10-07 on the 0925 re-render (was 0.446/0.559 @0.231 — old art; digits sat under the panels)
   killscreen:{L:0.426,R:0.575,cy:0.205,h:0.056,scr:'green'},   // RE-MEASURED 2026-10-07 on the 0925 KS SIDE REDO (was cy 0.132 — digits floated above the panels)   // CASTLE KILLSCREEN bonus — baked twin green LED windows (blob-scanned off table_killscreen_side.png 2026-09-01; digits were falling through to the floating fallback bug, leaving the panels empty)
-  bees:  {L:0.435,R:0.578,cy:0.106,h:0.082,scr:'orange'} };   // generica (garden/box/prime) have no painted window -> self-contained fallback bug
+  bees:  {L:0.435,R:0.578,cy:0.106,h:0.082,scr:'orange'} };   // a table with no painted window -> the self-contained fallback bug
 // P2 (MIRROR2 / 2-UP client) renders the _side2 art, whose baked windows can sit differently from _side1.
 // Override ONLY where they differ materially (throne_side2 panels are ~0.03 lower); killscreen/nachos _side2
 // are within tolerance so they reuse the _side1 coords. Measured off table_*_side2.png 2026-09-01.
@@ -392,8 +392,8 @@ const SFX=(()=>{ const lib={},names=['slap','bomb','wave_off','bees_goal','queen
 //   Menus → title up.  PUCK-SELECT screen → mS up + hold.  In-game → the VENUE'S bed up (BEDFOR[tbl], NOT the
 //   player's team — so the Honey Hole leans BEES + the Throne Room leans QUEENS regardless of who's playing).
 //   A long melodic cue (game-start) sets menuCueDuck → ALL beds duck to 0 under it then swell back. 2-UP: HOST only.
-const BEDFOR={ bee:'bees', bees:'bees', nachos:'bees', garden:'bees', prime:'bees',      // per-TABLE gameplay bed (the venue's house), tunable
-               queens:'queens', throne:'queens', box:'queens', killscreen:'bees' };       // Honey Hole=bees · Throne Room=queens (Joe 2026-07-08)
+const BEDFOR={ bee:'bees', bees:'bees', nachos:'bees',      // per-TABLE gameplay bed (the venue's house), tunable
+               queens:'queens', throne:'queens', killscreen:'bees' };       // Honey Hole=bees · Throne Room=queens (Joe 2026-07-08)
 const Music=(()=>{ if(Q.has('mute')||Q.get('cab2')==='p2') return {kick(){},update(){}};
   const XF=1.2;   // seamless-loop crossfade seconds — the second copy fades in over the seam so the loop never hard-cuts
   function Bed(src){ let A=null,B=null,cur=null,lvl=0,tgt=0,go=false;
@@ -490,15 +490,12 @@ const RINKPRESET={
   throne: {...DEFRINK},   // THE THRONE ROOM    — TODO measure (build pass 2)
   nachos: {...DEFRINK},   // PENALTY BOX NACHOS — TODO measure (build pass 3, the weird one)
   killscreen: {...DEFRINK},   // CASTLE KILLSCREEN bonus — homography (killscreen_side_1) does the real work; linear fallback only
-  garden: {nearY:0.708,farY:0.271,nearHalf:0.436,farHalf:0.178,cx:0.500},   // GENERICA GARDEN (rivalry clone)
-  box:    {nearY:0.832,farY:0.287,nearHalf:0.354,farHalf:0.136,cx:0.500},   // GENERICA BOX (penalty-box clone)
-  prime:  {nearY:0.800,farY:0.260,nearHalf:0.400,farHalf:0.180,cx:0.500},   // GENERICA PRIME (ideal)
 };
 function presetFor(name){ return RINKPRESET[name]||DEFRINK; }
 const RINK={...presetFor(tbl)};
 // HOMOGRAPHY (per-rink, lib/rink-geo.js) — opt-in via ?homo=1; auto-falls-back to the linear trapezoid.
 var HOMO = !Q.has('nohomo') && !!(window.RinkGeo);   // homography DEFAULT-ON (Joe's traced rinks); ?nohomo = old linear trapezoid
-var HMAP = {bee:'rivalry_bee',queens:'rivalry_queens',bees:'honey_side_1',throne:'throne_side_1',nachos:'nachos_side_1',killscreen:'killscreen_side_1',garden:'generica_garden',box:'generica_box',prime:'generica_prime'};
+var HMAP = {bee:'rivalry_bee',queens:'rivalry_queens',bees:'honey_side_1',throne:'throne_side_1',nachos:'nachos_side_1',killscreen:'killscreen_side_1'};
 // P2 (MIRROR2) renders the OPPOSITE end. When a table has a real _side_2 render (killscreen/nachos/throne), use
 //   its OWN art + traced geometry instead of mirroring the _side_1 art; else fall back to the _side_1 mirror.
 function side2Key(name){ var k=HMAP[name]||''; var k2=k.replace(/_side_1$/,'_side_2'); return (k2!==k && window.RinkGeo&&window.RinkGeo.SIDE_PRESETS&&window.RinkGeo.SIDE_PRESETS[k2])?k2:null; }   // k2===k (rivalry_bee/_queens: no _side_1 suffix) is NOT a far-end preset -- it used to request a nonexistent table_bee_side2.png on P2's screen
@@ -874,7 +871,7 @@ try{ const f=JSON.parse(LS.getItem('htFeel')); if(f){ if(f.GLIDE)Object.assign(G
 window.HT_FEEL={ GLIDE, REACH, AIR, CONTACT, GEOM, KDEPTH, BLAST, KNOCK, TRAP, pause(){ PAUSED=!PAUSED; return PAUSED; }, paused(){ return PAUSED; }, save(){ try{ LS.setItem('htFeel',JSON.stringify({GLIDE,REACH,AIR:{on:AIR.on,push:AIR.push,roll:AIR.roll},CONTACT,GEOM,KDEPTH,BLAST,KNOCK,TRAP})); }catch(e){} } };
 // PER-TABLE knocker scale (Joe 2026-06-19: "they're all different — a feature, not a bug"). Each table can carry
 //   its own knocker size to match its art/feel; setTable loads it into GEOM.krMul (the FEEL LAB still overrides live).
-const KRTBL={ bee:1.0, queens:1.0, bees:1.0, throne:1.0, nachos:1.0, killscreen:1.0, garden:1.0, box:1.0, prime:1.0 };
+const KRTBL={ bee:1.0, queens:1.0, bees:1.0, throne:1.0, nachos:1.0, killscreen:1.0 };
 function glideKnocker(k, tX, tY, dt){
   const ox=k.X, oy=k.Y; k.gvX=k.gvX||0; k.gvY=k.gvY||0;
   const sup = nearSupport(k.X,k.Y);                          // thin air past your reach = heavy + sluggish
@@ -1469,7 +1466,7 @@ function drawScoreboard(){
   if(c && BG.ok){ const lx=BG.dx+c.L*BG.dw, rx=BG.dx+c.R*BG.dw, my=BG.dy+c.cy*BG.dh, dh=c.h*BG.dh;     // matte into the BAKED twin windows
     if(SBREG){ ctx.save(); ctx.strokeStyle='#ff37c7'; ctx.lineWidth=2; const ww=Math.abs(rx-lx)*0.9; ctx.strokeRect(lx-ww/2,my-dh/2,ww,dh); ctx.strokeRect(rx-ww/2,my-dh/2,ww,dh); ctx.fillStyle='#ff37c7'; ctx.font='12px monospace'; ctx.textAlign='center'; ctx.fillText('L '+tbl,lx,my-dh/2-6); ctx.fillText('R',rx,my-dh/2-6); ctx.restore(); }
     scoreDigit(sL, lx, my, dh, pL, c.scr); scoreDigit(sR, rx, my, dh, pR, c.scr); return; }
-  // FALLBACK self-contained bug (generica tables with no painted window)
+  // FALLBACK self-contained bug (a table with no painted score window)
   const w=Math.min(VW*0.2,VH*0.30), h=VH*0.058, x=VW/2-w/2, y=VH*0.05, cx=VW/2, r=h*0.24, sep=w*0.42, tab=h*0.42, my=y+h/2, sz=h*0.62;   // y 0.02->0.05: pull the float readout off the top edge so it isn't clipped on the wireframe Generica tables (2026-09-01)
   ctx.save();
   ctx.fillStyle='rgba(6,5,14,0.96)'; rr(x,y,w,h,r); ctx.fill();
@@ -2130,7 +2127,7 @@ const REELSEG=[   // wipe = the transition used to ENTER each beat (carpet / com
   {k:'inter', act:'montage',  dur:HOCK, wipe:'carpet'},   // comic hockey montage
   {k:'inter', act:'goalie',   dur:2.6,  wipe:'comet'},    // GOALIE GLOVE SAVE highlight (2-frame robbery)
   {k:'demo',  tbl:'nachos', knock:'house', team:'bees', dur:18, wipe:'clash'},      // PENALTY BOX NACHOS = THE HIGH TABLE (neutral house knocker)
-  {k:'demo',  rot:['killscreen','garden','box','prime'], dur:12, wipe:'clash'},   // the OTHER tables, one per loop: CASTLE KILLSCREEN (bonus) + the three GENERICA (Joe 2026-10-14: feature the different tables)
+  {k:'demo',  rot:['killscreen','bees','throne'], dur:12, wipe:'clash'},   // the OTHER tables, one per loop: CASTLE KILLSCREEN (bonus) + the two home tables (GENERICA retired 1014) (Joe 2026-10-14: feature the different tables)
   {k:'inter', act:'clash',    dur:3.8,  wipe:'comet'},    // HIVEMIND vs THE QUEENS' TABLE (team logos, zapped in)
   {k:'demo',  tbl:'bees', knock:'bees', team:'bees', dur:12, wipe:'clash'},         // THE HONEY HOLE: bees vs bees (TABLE_PAIR)
   {k:'inter', act:'overture', dur:3.0,  wipe:'comet'} ];  // silhouette overture, then loop
@@ -2198,7 +2195,7 @@ function drawBoard(){ const u=Math.min(VW,VH), cx=VW/2, t=interT; ctx.clearRect(
 CUP.hist=[];
 function seriesLog(won){ const n=CUP.win+CUP.loss; if(CUP.hist.length!==n) CUP.hist=CUP.hist.slice(0,n);   // re-sync if a series restarted underneath
   CUP.hist.push({won:won, n:scoreN, f:scoreF, t:tbl}); }
-const SB_SHORT={bee:'BEES END',queens:'QUEENS END',bees:'HONEY HOLE',throne:'THRONE ROOM',nachos:'HIGH TABLE',killscreen:'KILLSCREEN',garden:'GARDEN',box:'BOX',prime:'PRIME'};
+const SB_SHORT={bee:'BEES END',queens:'QUEENS END',bees:'HONEY HOLE',throne:'THRONE ROOM',nachos:'HIGH TABLE',killscreen:'KILLSCREEN'};
 const SB_DIFF=['ROOKIE','PRO','ALL-STAR'];
 function seriesVenue(k){ if(CAMP) return CAMP_RUNGS[Math.min(3,campCleared)].tbl; if(CAB2||twoP) return tbl;
   const v=RAISE[CUP.variant]; if(CUP.variant==='standard' && k===6) return 'nachos'; return v.route[k%v.route.length]; }
@@ -2280,9 +2277,6 @@ const SELALL=[
   {tbl:'throne', name:'THE THRONE ROOM',knock:'queens', team:'queens', jail:true},
   {tbl:'bees',   name:'BEE AFRAID',     knock:'queens', team:'queens', jail:true, tag:'QUEENS @ THE HONEY HOLE'},
   {tbl:'throne', name:'QUEENS RANSOM',  knock:'bees',   team:'bees',   jail:true, tag:'BEES @ THE THRONE ROOM'},
-  {tbl:'garden', name:'GENERICA GARDEN',knock:'turf',   team:'bees',   jail:true},
-  {tbl:'box',    name:'GENERICA BOX',   knock:'ice',    team:'queens', jail:true},
-  {tbl:'prime',  name:'GENERICA PRIME', knock:'house',  team:'bees',   jail:true},
   {tbl:'killscreen', name:'CASTLE KILLSCREEN', knock:'house', team:'bees', bonus:true, tag:'BONUS · CASTLE KILLSCREEN'} ];   // secret bonus table — shows in jail, or in arcade once UNLOCKED.killscreen (beat THE HIGH TABLE)
 let SELLIST=SELALL.filter(s=>(SELJAIL||!s.jail)&&(!s.bonus||SELJAIL||UNLOCKED.killscreen));
 function rebuildSelList(){ SELLIST=SELALL.filter(s=>(SELJAIL||!s.jail)&&(!s.bonus||SELJAIL||UNLOCKED.killscreen)); if(selIdx>=SELLIST.length)selIdx=0; }   // re-run when a bonus table unlocks mid-run so the arcade SELECT surfaces it
@@ -2309,7 +2303,7 @@ function selConfirm(){
   SFX.menu('mode_confirm',0.7);   // PUCK beat -> game (comic cut-out smash) — confirm cue, stops any lingering menu cue
   transition('comic',()=>{ if(CUP.on){ CUP.win=0; CUP.loss=0; CUP.inPlayoff=false; CUP.playoff=null; applySeries(); } playEntry(s); selPhase='venue'; }); }
 // ===== JAILBREAK CUSTOM MATCH — full VENUE + PUCK + KNOCKER selector (the jailbroken game; arcade 1-up keeps SELLIST) =====
-const CFG_VENUES=[{tbl:'nachos',name:'THE HIGH TABLE'},{tbl:'bee',name:'RIVALRY · BEES'},{tbl:'queens',name:'RIVALRY · QUEENS'},{tbl:'bees',name:'THE HONEY HOLE'},{tbl:'throne',name:'THE THRONE ROOM'},{tbl:'garden',name:'GENERICA GARDEN'},{tbl:'box',name:'GENERICA BOX'},{tbl:'prime',name:'GENERICA PRIME'},{tbl:'killscreen',name:'★ CASTLE KILLSCREEN'}];   // JAILBREAK grants the bonus table outright (UNLOCKED.killscreen); it was fully wired (TBL/TNAME/RINK) but missing from this picker — now selectable in jail (Joe 2026-07-08)
+const CFG_VENUES=[{tbl:'nachos',name:'THE HIGH TABLE'},{tbl:'bee',name:'RIVALRY · BEES'},{tbl:'queens',name:'RIVALRY · QUEENS'},{tbl:'bees',name:'THE HONEY HOLE'},{tbl:'throne',name:'THE THRONE ROOM'},{tbl:'killscreen',name:'★ CASTLE KILLSCREEN'}];   // JAILBREAK grants the bonus table outright (UNLOCKED.killscreen); it was fully wired (TBL/TNAME/RINK) but missing from this picker — now selectable in jail (Joe 2026-07-08)
 const CFG_PUCKS=[{k:'lit',n:'CLASSIC'},{k:'classic',n:'NEON'},{k:'hive',n:'HONEYCOMB'},{k:'royal',n:'ROYAL'},{k:'zebra',n:'ZEBRA'},{k:'energy',n:'ENERGY'},{k:'contested',n:'CONTESTED'}];   // FLAME puck dropped (Joe 2026-06-30)   // the plain WHITE puck ('lit' style) IS the default CLASSIC; the pink 'classic'-style puck = NEON (was: white force-mapped to the pink puck, so it never showed)
 const CFG_KNOCKS=[{k:'white',n:'WHITE',sp:'knocker_white_34',flat:true},{k:'bees',n:'BEES',sp:'knocker_yellow_34',flat:false},{k:'queens',n:'QUEENS',sp:'knocker_purple_34',flat:false},{k:'ice',n:'ICE',sp:'knocker_blue_34',flat:true},{k:'turf',n:'TURF',sp:'knocker_green_34',flat:true},{k:'red',n:'RED',sp:'knocker_red_34',flat:true},{k:'orange',n:'ORANGE',sp:'knocker_orange_34',flat:true},{k:'royal',n:'ROYAL',sp:'knocker_royal_34',flat:true}];
 const CFG_KIMG={}; CFG_KNOCKS.forEach(K=>{ const im=new Image(); im.src='sprites/'+K.sp+'.png'; CFG_KIMG[K.k]=im; });
@@ -2379,7 +2373,7 @@ function begin(){
   if(state==='config'){ cfgStart(); return; }                    // JAILBREAK custom match -> play the chosen venue/puck/knocker
 
   if(state==='select'){ selConfirm(); return; }                  // SELECT -> drop into the game
-  if(state==='title'){ if(CAMP) campBegin(); else if(DIRECT) startMatch(); else goSelect(); } }   // CAMPAIGN climbs; cab/shell boots straight in; otherwise -> the in-game SELECT
+  if(state==='title'){ if(CAMP) campBegin(); else if(DIRECT){ if(CUP.on&&!CAB2) applySeries(); startMatch(); } else goSelect(); } }   // CAMPAIGN climbs; cab/shell boots straight in; otherwise -> the in-game SELECT
 // shell hand-off (index.html): ?go auto-starts; ?diff=0..2 sets level; ?p2=1 = 2-player; ?demo=1 = CPU-vs-CPU attract.
 (function(){ try{ if(!DIRECT && !Q.has('noboot')){ state='boot'; bootT=0; bootSmash=false; try{Music.kick();}catch(_){} }   // fresh launch (no ?go/demo/cab2) plays the self-contained boot intro over the bed; cabs/?go boot straight in
   if(TUNE)tuneHUD(); if(Q.get('p2'))twoP=true; var d=Q.get('diff'); if(d!=null&&d!=='')DIFF=Math.max(0,Math.min(2,+d|0));
@@ -2441,9 +2435,12 @@ if(CAB2==='p2'){   // 2-UP CLIENT: forward EVERY key to the host (it owns both p
 let _fsTried=false; const AUTOFS=Q.has('fs');   // auto-fullscreen on first input is now OPT-IN (?fs) — so a square/windowed launch stays at its window size and the game resizes with it
 function goFullscreen(){ try{ const el=document.documentElement; if(!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen(); }catch(_){} }
 function toggleFullscreen(){ try{ if(document.fullscreenElement){ document.exitFullscreen&&document.exitFullscreen(); } else goFullscreen(); }catch(_){} }
+// SELECT / JAILBREAK picker taps + clicks (one path for mouse and touch). SELECT: ◄ / ► thirds cycle, centre plays.
+//   CONFIG: a row's left/right half cycles it, the bottom strip plays.
+function menuTap(x,y){ if(state==='select'){ if(x<innerWidth*0.30){selCycle(-1);} else if(x>innerWidth*0.70){selCycle(1);} else begin(); return; }
+  if(y>innerHeight*0.86){ begin(); return; } cfgRow=Math.max(0,Math.min(3,Math.floor((y/innerHeight-0.215)/0.11))); cfgCycle(x<innerWidth*0.5?-1:1); }
 cv.addEventListener('mousedown',e=>{if(REG){regDown(e.clientX,e.clientY);return;} if(INI.on&&state==='champion'){ iniTap(e.clientX,e.clientY); return; } if(AUTOFS&&!_fsTried){_fsTried=true;goFullscreen();}
-  if(state==='select'){ if(e.clientX<innerWidth*0.30){selCycle(-1);} else if(e.clientX>innerWidth*0.70){selCycle(1);} else begin(); return; }   // SELECT: click ◄/► to cycle, centre to play
-  if(state==='config'){ if(e.clientY>innerHeight*0.86){ begin(); return; } const ry=Math.max(0,Math.min(3,Math.floor((e.clientY/innerHeight-0.215)/0.11))); cfgRow=ry; if(e.clientX<innerWidth*0.5)cfgCycle(-1); else cfgCycle(1); return; }   // CONFIG: click a row L/R to change it; bottom = PLAY
+  if(state==='select'||state==='config'){ menuTap(e.clientX,e.clientY); return; }   // CONFIG: click a row L/R to change it; bottom = PLAY
   mouseDown=true; var _wasLive=(state==='play');
   begin(); if(_wasLive){ pointer(e.clientX,e.clientY); grabMouse(); } });   // the click that STARTS a match must not set the play target (clicking a corner to begin used to zip the knocker there past faceoff's re-center); only steer on clicks during live play
 cv.addEventListener('mouseup',()=>dragC=-1); addEventListener('mouseup',()=>{mouseDown=false;});
@@ -2470,7 +2467,8 @@ if(PLOCK){
 }
 let steerId=null;   // the finger that steers = the first one that landed on the table; others are ignored until it lifts
 function steerTouch(list){ for(var i=0;i<list.length;i++){ if(list[i].identifier===steerId) return list[i]; } return null; }
-cv.addEventListener('touchstart',e=>{e.preventDefault();if(INI.on&&state==='champion'){ const t0=e.changedTouches[0]; iniTap(t0.clientX,t0.clientY); return; }if(AUTOFS&&!_fsTried){_fsTried=true;goFullscreen();}begin();if(steerId!==null&&steerTouch(e.touches))return;const t=e.changedTouches[0];steerId=t.identifier;pointer(t.clientX,t.clientY);},{passive:false});
+cv.addEventListener('touchstart',e=>{e.preventDefault();if(INI.on&&state==='champion'){ const t0=e.changedTouches[0]; iniTap(t0.clientX,t0.clientY); return; }if(AUTOFS&&!_fsTried){_fsTried=true;goFullscreen();}if(state==='config'||state==='select'){ const t0=e.changedTouches[0]; menuTap(t0.clientX,t0.clientY); return; }   // phone: tap a picker row L/R like the mouse (any tap used to just start an exhibition)
+begin();if(steerId!==null&&steerTouch(e.touches))return;const t=e.changedTouches[0];steerId=t.identifier;pointer(t.clientX,t.clientY);},{passive:false});
 cv.addEventListener('touchmove',e=>{e.preventDefault();const t=steerTouch(e.changedTouches);if(t)pointer(t.clientX,t.clientY);},{passive:false});
 ['touchend','touchcancel'].forEach(ev=>cv.addEventListener(ev,e=>{ if(steerTouch(e.changedTouches)) steerId=null; }));
 addEventListener('keydown',e=>{ if(pauseNavKey(e)||iniKey(e)) return; if(e.key==='Shift')keyShift=true;keys[e.key]=true;
@@ -2485,7 +2483,7 @@ addEventListener('keydown',e=>{ if(pauseNavKey(e)||iniKey(e)) return; if(e.key==
   if(e.key==='Escape' && (state==='win'||state==='champion')){ e.preventDefault(); backToMenu(); return; }
   if(e.key==='Escape' && HOMEURL && (REEL||state==='boot'||state==='splash'||state==='inter'||state==='board'||state==='title')){ e.preventDefault(); location.href=HOMEURL; return; }   // owner: ESC on the attract = back to the console
   if((e.key==='Escape'||e.key.toLowerCase()==='p') && (pausable() || !pauseEl.classList.contains('hidden'))){ e.preventDefault(); togglePause(); return; }   // PAUSE MENU (active match only, so 'win' rematch + title 2P toggle below are untouched)
-  if((state==='title')&&e.key.toLowerCase()==='p'){twoP=!twoP;return;}if(state==='select'&&e.key==='ArrowLeft'){selCycle(-1);return;}if(state==='select'&&e.key==='ArrowRight'){selCycle(1);return;}if(state==='config'&&e.key==='ArrowLeft'){cfgCycle(-1);return;}if(state==='config'&&e.key==='ArrowRight'){cfgCycle(1);return;}if(state==='config'&&e.key==='ArrowUp'){cfgRowMove(-1);return;}if(state==='config'&&e.key==='ArrowDown'){cfgRowMove(1);return;}if(state==='select'&&(e.key==='ArrowUp'||e.key==='ArrowDown')){selBack();return;}if((state==='title'||(state==='select'&&selPhase!=='puck'))&&e.key.toLowerCase()==='c'){engineCycleMode();return;}if((state==='title')&&e.key.toLowerCase()==='t'){setTable(TKEYS[(TKEYS.indexOf(tbl)+1)%TKEYS.length]);return;}if(e.key.toLowerCase()==='m'&&!((twoP||CAB2)&&(state==='play'||state==='faceoff'||state==='serve'))){MONO=!MONO;banner(MONO?'MONOCHROME':'COLOR',0.8);return;}if(e.key.toLowerCase()==='y'){WAYS=WAYS===4?8:4;try{LS.setItem('sideStickWays',String(WAYS));}catch(_){}banner(WAYS+'-WAY STICK',1.0);return;}if(state==='play'&&!DEMO&&near.sup>=1&&(e.key===' '||e.key.toLowerCase()==='f')){e.preventDefault();bigUp(near,PTEAM);return;}if(state==='play'&&twoP&&!CAB2&&far.sup>=1&&(e.key==='Enter'||e.key==='/')){e.preventDefault();bigUp(far,OTEAM);return;}if(REG&&e.key.toLowerCase()==='s'){try{LS.setItem('sideRink.'+tbl,JSON.stringify(RINK));}catch(_){}const j=JSON.stringify({nearY:+RINK.nearY.toFixed(3),farY:+RINK.farY.toFixed(3),nearHalf:+RINK.nearHalf.toFixed(3),farHalf:+RINK.farHalf.toFixed(3),cx:+RINK.cx.toFixed(3)});console.log('RINKPRESET '+tbl+':  '+j);banner('SAVED '+(TNAME[tbl]||tbl),1.2);return;}if(REG&&e.key.toLowerCase()==='r'){try{LS.removeItem('sideRink.'+tbl);}catch(_){}location.reload();return;}if(e.key>='1'&&e.key<='3'&&(state==='title'||state==='win'))DIFF=+e.key-1;if(e.key===' '||e.key==='Enter'){e.preventDefault();if(AUTOFS&&!_fsTried){_fsTried=true;goFullscreen();}begin();}});
+  if((state==='title')&&e.key.toLowerCase()==='p'){twoP=!twoP;return;}if(state==='select'&&e.key==='ArrowLeft'){selCycle(-1);return;}if(state==='select'&&e.key==='ArrowRight'){selCycle(1);return;}if(state==='config'&&e.key==='ArrowLeft'){cfgCycle(-1);return;}if(state==='config'&&e.key==='ArrowRight'){cfgCycle(1);return;}if(state==='config'&&e.key==='ArrowUp'){cfgRowMove(-1);return;}if(state==='config'&&e.key==='ArrowDown'){cfgRowMove(1);return;}if(state==='select'&&(e.key==='ArrowUp'||e.key==='ArrowDown')){selBack();return;}if(!CAMP&&(state==='title'||(state==='select'&&selPhase!=='puck'))&&e.key.toLowerCase()==='c'){engineCycleMode();return;}if((state==='title')&&e.key.toLowerCase()==='t'){setTable(TKEYS[(TKEYS.indexOf(tbl)+1)%TKEYS.length]);return;}if(e.key.toLowerCase()==='m'&&!((twoP||CAB2)&&(state==='play'||state==='faceoff'||state==='serve'))){MONO=!MONO;banner(MONO?'MONOCHROME':'COLOR',0.8);return;}if(e.key.toLowerCase()==='y'){WAYS=WAYS===4?8:4;try{LS.setItem('sideStickWays',String(WAYS));}catch(_){}banner(WAYS+'-WAY STICK',1.0);return;}if(state==='play'&&!DEMO&&near.sup>=1&&(e.key===' '||e.key.toLowerCase()==='f')){e.preventDefault();bigUp(near,PTEAM);return;}if(state==='play'&&twoP&&!CAB2&&far.sup>=1&&(e.key==='Enter'||e.key==='/')){e.preventDefault();bigUp(far,OTEAM);return;}if(REG&&e.key.toLowerCase()==='s'){try{LS.setItem('sideRink.'+tbl,JSON.stringify(RINK));}catch(_){}const j=JSON.stringify({nearY:+RINK.nearY.toFixed(3),farY:+RINK.farY.toFixed(3),nearHalf:+RINK.nearHalf.toFixed(3),farHalf:+RINK.farHalf.toFixed(3),cx:+RINK.cx.toFixed(3)});console.log('RINKPRESET '+tbl+':  '+j);banner('SAVED '+(TNAME[tbl]||tbl),1.2);return;}if(REG&&e.key.toLowerCase()==='r'){try{LS.removeItem('sideRink.'+tbl);}catch(_){}location.reload();return;}if(e.key>='1'&&e.key<='3'&&(state==='title'||state==='win'))DIFF=+e.key-1;if(e.key===' '||e.key==='Enter'){e.preventDefault();if(AUTOFS&&!_fsTried){_fsTried=true;goFullscreen();}begin();}});
 addEventListener('keyup',e=>{if(e.key==='Shift')keyShift=false;keys[e.key]=false;});
 // ---- PAUSE MENU wiring (live control toggles; PAUSED freezes the sim, render keeps going, NOTHING resets) ----
 const pauseEl=document.getElementById('pause');
@@ -2922,9 +2920,6 @@ function cabReport(){ try{ if(parent===window) return; }catch(_){ return; }   //
     {key:'bees',   name:'THE HONEY HOLE',    side:'sprites/table_bees_side.png',   team:'bees'},
     {key:'throne', name:'THE THRONE ROOM',   side:'sprites/table_throne_side.png', team:'queens'},
     {key:'nachos', name:'THE HIGH TABLE',    side:'sprites/table_nachos_side.png', team:'none'},
-    {key:'garden', name:'GENERICA GARDEN',   side:'sprites/table_garden_side.png',team:'none'},
-    {key:'box',    name:'GENERICA BOX',      side:'sprites/table_box_side.png',   team:'none'},
-    {key:'prime',  name:'GENERICA PRIME',    side:'sprites/table_prime_side.png', team:'none'},
   ];
   // CHOOSE YOUR PUCK — the colour the drop squashes into. Uses the existing puck art.
   const PSEL=[
@@ -2976,7 +2971,7 @@ function cabReport(){ try{ if(parent===window) return; }catch(_){ return; }   //
   //   bridged from poll() via window.__jailNav). A table card boots straight in with that table's default
   //   knocker+puck; FULL SELECT drops into the normal knocker→rink→puck flow; labs open their tool page.
   const JDEF={ bee:{k:'bees',p:'bees'}, queens:{k:'queens',p:'queens'}, bees:{k:'bees',p:'bees'}, throne:{k:'queens',p:'queens'},
-               nachos:{k:'house',p:'lit'}, garden:{k:'turf',p:'zebra'}, box:{k:'ice',p:'energy'}, prime:{k:'house',p:'neutral'} };
+               nachos:{k:'house',p:'lit'} };
   const JLABS=[ {n:'FEEL LAB',u:'FEEL%20LAB.html'}, {n:'PUCK LAB',u:'PUCK%20LAB.html'}, {n:'RINK LAB',u:'RINK%20LAB.html'},
                 {n:'STICK MAP',u:'gamepad_mapper.html'}, {n:'JUMBOTRON',u:'jumbotron.html'}, {n:'2-UP · 2 SCREENS',u:'queens_2up.html'} ];
   let jailItems=[], jailSel=0;

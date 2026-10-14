@@ -108,9 +108,9 @@
   // VS games can be played in either format: OLD-TYME (first-to-N goals) or TIMED (Castle Rules clock, 3×75s).
   var FORMAT=Q.has('castlerules')?'timed':'', FORMATS=[{key:'',name:'OLD-TYME'},{key:'timed',name:'TIMED · CASTLE RULES'}];
 
-  // venues offered (skip the generica test tables in this launcher)
+  // venues offered
   var VENUES=[{key:'',name:'RIVALRY SPLIT',team:'none'}].concat(
-    (C?C.RINKS_SIDE:[]).filter(function(R){return !R.generica;}).map(function(R){return {key:R.key,name:R.name,team:R.team,high:R.high};}));
+    (C?C.RINKS_SIDE:[]).map(function(R){return {key:R.key,name:R.name,team:R.team,high:R.high};}));
   // OPEN-MODE pickers: any puck, any per-player knocker. The RIVALRY SPLIT brand-locks knockers to its ends.
   var PUCKLBL={lit:'CLASSIC',neutral:'NEON'};   // the white 'lit' puck IS the CLASSIC; the pink one is NEON (match the jailbreak picker)
   var PUCKS=(C&&C.PUCKS?C.PUCKS:[]).map(function(p){return {key:p.key,name:PUCKLBL[p.key]||p.name};});
