@@ -600,7 +600,18 @@ let pendBanner=null, pendBannerD=0;   // a banner ARMED to show only AFTER the e
 let estImg=null, est0=1.7;           // chosen establishing still (mono→colour→live grade) + its start time
 let estAd=null;                      // {name,tag} for a TAGGED edition (jailbreak away-games / the apex) — the readable table AD on the establish card; null = plain venue card
 function pickVenueEst(){ const a=VENUE_EST[tbl]; if(!a||!a.length) return null; const ld=a.filter(k=>IMG[k]); const pool=ld.length?ld:a; return pool[Math.floor(Math.random()*pool.length)]; }
-let DEMO=Q.has('demo'); const CLEAN=Q.has('clean');   // ?demo=1 = CPU-vs-CPU attract (loops, any input -> real game); ?clean hides the PRESS START HUD for footage grabs
+let DEMO=Q.has('demo'); const CLEAN=Q.has('clean');
+const AUTOQA=Q.has('autoqa');
+// QA STRIKER (AUTOQA only): a hand-like attacker, NOT the CPU brain -- two copies of the goal-tending CPU wall each other
+//   forever. Gets behind the puck on its own half and drives it at the far mouth, sags to its own mouth otherwise, and
+//   taps TRAP / BLAST now and then, all through the HUMAN paths (near.TX/TY -> glideKnocker, deckGrab, deckBlast).
+function autoNear(dt){ const HALF=AR*0.5;
+  if(puck.Y<HALF){ const gx=0.5+(Math.random()-0.5)*0.2, dx=gx-puck.X, dy=AR-puck.Y, L=Math.hypot(dx,dy)||1;
+    if(near.Y>puck.Y-0.03){ near.TX=puck.X-dx/L*0.12; near.TY=puck.Y-0.16; }       // get behind it first
+    else { near.TX=puck.X+dx/L*0.10; near.TY=puck.Y+dy/L*0.10; }                    // then drive THROUGH it toward the mouth
+    if(Math.random()<0.004) deckBlast=true;
+    deckGrab = Math.random()<0.002 ? !deckGrab : (deckGrab && Math.random()<0.98);   // the odd TRAP-and-hold
+  } else { near.TX=0.5+(puck.X-0.5)*0.4; near.TY=0.22; deckGrab=false; } }   // QA ONLY (tools/_qa/cpu_modes.mjs): the NEAR mallet plays on the demo brain so every mode can run to its end headless; the far CPU + all mode logic are the shipped code. Inert without the flag.   // ?demo=1 = CPU-vs-CPU attract (loops, any input -> real game); ?clean hides the PRESS START HUD for footage grabs
 // ATTRACT REEL (Joe 2026-06-26): the cinematics are now INTERSTITIALS between live CPU demo on the two headline
 //   tables. Sequence loops: title -> clash -> RIVALRY demo -> comic montage -> THE HIGH TABLE demo -> overture.
 let REEL=false, reelIdx=-1, reelT=0, splashIdle=0, interAct='clash', interT=0, interDur=4;
@@ -643,7 +654,7 @@ function seriesTable(){ const v=RAISE[CUP.variant];
 let CUP={ on:Q.has('cup')||Q.has('raiseit'), variant:(Q.get('raiseit')||'standard'), win:0, loss:0, inPlayoff:false, playoff:null };
 if(!RAISE[CUP.variant]) CUP.variant='standard';
 let TARGET=7, champT=0;              // TARGET = goals to win this match (the series sets it per game); champT = trophy-cinematic clock
-let mouseDown=false, puckHeld=null, grabT=0, grabCool=0, grabPrev=false, blastPrev=false, bigPrev1=false, farBigPrev=false, deckGrab=false, deckBlast=false;   // TRAP = hold (mouse / C / deck) to catch+charge · BLAST = tap (V / X / deck) to fire / lunge
+let mouseDown=false, puckHeld=null, grabT=0, grabCool=0, grabPrev=false, blastPrev=false, bigPrev1=false, farBigPrev=false, deckGrab=false, deckBlast=false, trapArmed=false;   // TRAP = hold (mouse / C / deck) to catch+charge · BLAST = tap (V / X / deck) to fire / lunge
 addEventListener('blur',function(){ mouseDown=false; if(typeof keys==='object')for(var k in keys)keys[k]=false; });   // clear stuck input on focus loss
 let DIFF=1; const DIFFS=[{n:'ROOKIE',spd:5.0,lead:0.0},{n:'PRO',spd:7.5,lead:0.06},{n:'ALL-STAR',spd:10.5,lead:0.14}];
 let twoP=false; const keys={};
@@ -1005,6 +1016,7 @@ function step(dt){
     near.Y=Math.min(blastTipNear(), near.Y+BLAST.lungeV*dt);                       // drive forward (clamp to the PAINTED centre + reach, not flat AR*0.5)
     near.X+=(near.TX-near.X)*Math.min(1,10*dt); near.X=Math.max(KR,Math.min(1-KR,near.X));
     near.vX=(near.X-oxx)/dt; near.vY=(near.Y-oyy)/dt; near.gvX=near.vX; near.gvY=near.vY; }
+  else if(AUTOQA){ autoNear(dt); glideKnocker(near, near.TX, Math.max(KR,Math.min(1.0,near.TY)), dt); }   // QA autopilot steers like a hand (see autoNear)
   else glideKnocker(near, near.TX, Math.max(KR,Math.min(1.0,near.TY)), dt);            // mass on the cushion — carries + overshoots; clamp to near half
   // CPU: guard far goal, pounce when the puck is on its half
   if(CAB2==='p1'){ // 2-UP HOST: far is P2, gliding toward the target sent from the other screen
@@ -1049,6 +1061,7 @@ function step(dt){
     const margin=Math.max(0, scoreF-scoreN);
     let ease=Math.max(0.62, 1-margin*0.11);                  // each goal of lead slows + dulls the CPU
     if(settle>0) ease=Math.min(ease,0.55);                   // post-goal grace: sit back, let the player re-orient
+    if(AUTOQA && Q.has('qaweak')) ease*=0.3;                 // QA ONLY: a slowed CPU so the autopilot can reach the series-WIN / playoff / champion paths
     // ---- DECISION TREE (Joe 2026-06-19): protect the mouth first, be wary of rushing centre, and when it
     //   DOES engage a playable puck, vary the clear (blast / carom / poke / hold) via rollFarPlan. The fast-
     //   shot interception is left as-is (reading a live shot is the part that should stay reactive).
@@ -1096,10 +1109,14 @@ function step(dt){
   bigPrev1 = bigRaw1;
   var blastEdge = (blastRaw && !blastPrev) || deckBlast; deckBlast=false; blastPrev=blastRaw;   // a TAP (or the one-shot deck pulse)
   var blastN = blastRaw || blastEdge;                                                           // level — used to fire a held puck
-  if(puckHeld!=='near' && grabN && !grabPrev && grabCool<=0 && state==='play'){   // RISING EDGE only — must release before re-trapping (no stuck-hold loop)
+  // HOLD-TO-TRAP (Joe 2026-10-14, phone test: holding TRAP and waiting for the puck never caught -- it was a press-instant-only
+  //   rising edge). A press ARMS the trap; while still held it catches the first puck that reaches the mallet. ONE catch per
+  //   press: after it you must let go to re-arm (the old "no stuck-hold loop" rule). Same for Z / mouse / deck / pad / phone.
+  if(grabN && !grabPrev) trapArmed=true; else if(!grabN) trapArmed=false;
+  if(puckHeld!=='near' && grabN && trapArmed && grabCool<=0 && state==='play'){
     var tkr=KR*GEOM.krMul*((near.big>0)?1.9:1)*kgain(near.Y/AR), tKYF=CONTACT.kyStretch||1;   // MATCH the real contact geometry: perspective-scaled + elliptical, so TRAP grabs exactly where the mallet touches (was a stale flat PR+KR circle → trap range didn't line up with the mallet you see)
     var dd=Math.hypot(puck.X-near.X, (puck.Y-near.Y)/tKYF);
-    if(dd<(PR+tkr)*TRAP.catch && puck.Y<1.05){ puckHeld='near'; grabT=0; shake=6; ghost(PTEAM,puck.X,puck.Y,0.7); teamBurst(PTEAM,puck.X,puck.Y,6,0.8); teamHit(PTEAM,0.5); banner('TRAP!',0.5); }   // goalie-sprawl flash = the catch (deliberate, not per-hit)
+    if(dd<(PR+tkr)*TRAP.catch && puck.Y<1.05){ puckHeld='near'; grabT=0; trapArmed=false; shake=6; ghost(PTEAM,puck.X,puck.Y,0.7); teamBurst(PTEAM,puck.X,puck.Y,6,0.8); teamHit(PTEAM,0.5); banner('TRAP!',0.5); }   // goalie-sprawl flash = the catch (deliberate, not per-hit)
   }
   grabPrev=grabN;
   // OPEN-PLAY BLAST = the WEAPON: a forward LUNGE on a regenerate cooldown. Clanks the other mallet (stun+flip →
@@ -2257,6 +2274,8 @@ function engineCycleMode(){ const order=SELJAIL?['off','standard','homecooked','
   SFX.modeblip(nx!=='off');   // ↕ mode toggle = a simple SYNTH INDICATOR bleep only (rising = a mode ON, falling = back to EXHIBITION). Deliberately does NOT touch the bed — the menu theme keeps playing uninterrupted (Joe 2026-07-08)
   if(typeof __syncMode==='function')__syncMode();   // keep the DOM mode chip in sync when toggled by C-key/stick
   banner(TIMED?'CASTLE RULES · 3 PERIODS':(CUP.on?RAISE[CUP.variant].name:'EXHIBITION'),0.9); }
+if(AUTOQA) window.__htAuto={ peek:()=>({state,DEMO,TIMED,FREE,CAMP,campCleared,cupOn:CUP.on,variant:CUP.variant,w:CUP.win,l:CUP.loss,playoff:CUP.inPlayoff,n:scoreN,f:scoreF,target:TARGET,diff:DIFF,tbl,period,ot:otSudden,perClock,
+  pX:puck.X,pY:puck.Y,pv:Math.hypot(puck.vX,puck.vY),fX:far.X,fY:far.Y,nX:near.X,nY:near.Y,champ:champTeam,unlock:champUnlock,bonus:champBonus}), begin:()=>begin() };   // QA read-only
 function begin(){
   if(TRANS.on) return;   // ignore input mid-transition — MUST be first: held-key auto-repeat / stick+key in one window were re-entering the reel/splash branches below and re-firing the clash wipe + SFX.hit (double impact). The boot intro isn't a transition() so this never blocks skipping it.
   if(HYSCORE && (REEL||state==='inter'||state==='board'||state==='splash')){ hyCoin(); return; }   // QUARTER-EATER: the coin goes straight into a match
@@ -2440,6 +2459,7 @@ addEventListener('resize',tpadLayout); addEventListener('orientationchange',func
   chip.addEventListener('pointerdown',e=>{ e.preventDefault(); buzz(); applyStick(!TSTICK.on); });
   if(Q.has('qa')) window.__htPad={ peek:()=>({state,TX:near.TX,TY:near.TY,grab:deckGrab,blastCD:near.blastCD,big:near.big,sup:near.sup,held:puckHeld,bg:[BG.dx,BG.dw,BG.dh],st:[TSTICK.x,TSTICK.y]}),
     prime:()=>{ near.sup=1; near.blastCD=0; },
+    puckTo:(dx,dy,vx,vy)=>{ puck.X=near.X+dx; puck.Y=near.Y+dy; puck.vX=vx||0; puck.vY=vy||0; },   // QA: roll a puck at the near mallet
     series:(w,l,hist,n,f,v)=>{ CUP.on=true; CUP.inPlayoff=false; CUP.variant=v||'standard'; CUP.win=w; CUP.loss=l; CUP.hist=hist; scoreN=n; scoreF=f; TIMED=false; TARGET=n>f?n:f; state='win'; } };   // QA: stage a between-games screen   // ?qa: headless phone-pad test hook (tools/_qa/phone_pad.mjs)
   { let on=Q.has('tstick'); try{ if(!on) on=localStorage.getItem('htTouchStick')==='1'; }catch(_){} applyStick(on); }
   let src='';

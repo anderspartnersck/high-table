@@ -79,8 +79,6 @@ Music & SFX by **Taylor Lyons** and **Joseph Coleman**.
 
 ---
 
-<sub>Generated from the private Castle Killscreen tree. Edit there, not here.</sub>
-
 <sub>RESPEK LOGIC ART UREA</sub>
 
 [play]: https://anderspartnersck.github.io/high-table/
