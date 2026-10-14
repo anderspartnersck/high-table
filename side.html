@@ -97,7 +97,12 @@
   #pause .ctog .hk{color:#7f97a8;font-size:10.5px;letter-spacing:.04em;margin-top:3px}
   #pause .ctog .txt{flex:1}
   #pause .appOnly{display:none} body.htapp #pause .appOnly{display:flex}   /* closed boxes only (the app / the Pi cab): saved progress lives on the device, so it gets a reset */
-  #pause .tonly{display:none} body.tmode #pause .tonly{display:flex} body.tmode #pause .ctog[data-ctrl]{display:none}   /* phone: the HAND flop replaces the desktop input toggles */
+  #pause .tonly{display:none} body.tmode #pause .tonly{display:flex} body.tmode #pause .ctog[data-ctrl]{display:none}
+  #pause .ctog.pf,#pause button.pf{outline:2px solid #27f6ff;outline-offset:2px}   /* stick / arrow-key focus (a stick-only cab can now drive the pause menu) */
+  #pause .pnav{margin-top:12px;color:#5f7688;font:700 10px/1.4 ui-monospace,monospace;letter-spacing:.12em;text-align:center}
+  #esccue{position:fixed;top:14px;right:16px;z-index:12;pointer-events:none;color:#cfe6ff;font:800 12px/1 'Helvetica Neue',Arial;letter-spacing:.18em;
+    padding:8px 12px;border:1px solid rgba(39,246,255,.35);border-radius:16px;background:rgba(4,8,16,.62);opacity:0;transition:opacity .6s}
+  #esccue.on{opacity:1} #esccue b{color:#ffe23a} body.handR #esccue{right:auto;left:16px}   /* the cue sits opposite the GET BIG meter */   /* phone: the HAND flop replaces the desktop input toggles */
   #pause .pbtns{display:flex;gap:9px;margin-top:18px}
   #pause button{flex:1;padding:13px 0;border:1px solid #2a3550;border-radius:9px;background:#121828;color:#cfe6ff;font:800 12px/1 ui-monospace,monospace;letter-spacing:.1em;cursor:pointer}
   #pause button:hover{border-color:#ffe23a;color:#fff}
@@ -170,6 +175,7 @@
 <canvas id="c"></canvas>
 <div id="tpad"><div class="col L" id="tcolL"><div id="tzone"><canvas id="tstickcv"></canvas></div><div class="tb trap" id="tbTrap"><div class="ring"></div><img alt=""><span class="lb">TRAP</span></div><div class="tb big" id="tbBig"><div class="ring"></div><img alt=""><span class="lb">GET BIG</span></div><div class="tb blast" id="tbBlast"><div class="ring"></div><img src="sprites/btn_blast.png" alt=""><span class="lb">BLAST</span></div></div><div class="col R" id="tcolR"></div><div id="tpause">&#10074;&#10074;</div><div id="tchip">STICK</div></div>
 <div id="trot"><div class="ph"></div>TURN YOUR PHONE<br><span style="font-size:13px;color:#9fb6c8;font-weight:700">the high table plays sideways</span></div>
+<div id="esccue"><b>ESC</b> · MENU</div>
 <div id="hint"><b>P1</b> mouse or <kbd>WASD</kbd> · <kbd>Z</kbd> TRAP · <kbd>X</kbd> GET BIG · <kbd>C</kbd> BLAST &nbsp;·&nbsp; <b>P2</b> <kbd>OKL;</kbd> · <kbd>,</kbd> GET BIG · <kbd>.</kbd> BLAST &nbsp;·&nbsp; score in the far goal</div>
 
 <!-- FRONT-END: title -> knocker select -> rink select -->
@@ -212,13 +218,15 @@
     <div class="ctog" data-ctrl="mouse"><div class="box"><i></i></div><div class="txt"><div class="nm">MOUSE</div><div class="hk">move the cursor to steer · click TRAP</div></div></div>
     <div class="ctog" data-ctrl="keyboard"><div class="box"><i></i></div><div class="txt"><div class="nm">KEYBOARD</div><div class="hk">WASD / arrows to steer · Z TRAP · X GET BIG · C BLAST</div></div></div>
     <div class="ctog" data-ctrl="stick"><div class="box"><i></i></div><div class="txt"><div class="nm">STICK (F300 / pad)</div><div class="hk">left stick / d-pad · A TRAP · B BLAST · RT GET BIG</div></div></div>
-    <div class="ctog tonly" id="phand"><div class="box"><i></i></div><div class="txt"><div class="nm">BUTTONS ON THE RIGHT</div><div class="hk">left-handed: TRAP · GET BIG · BLAST move to the right thumb, steer with the left</div></div></div>
-    <div class="ctog appOnly" id="preset"><div class="box" style="background:#3a1420"><i></i></div><div class="txt"><div class="nm">RESET SAVED PROGRESS</div><div class="hk">tap twice · wipes campaign progress + settings on this machine · keeps the controller map</div></div></div>
+    <div class="ctog" id="phand"><div class="box"><i></i></div><div class="txt"><div class="nm">FLOP THE HUD · BUTTONS ON THE RIGHT</div><div class="hk" id="phandhk">left-handed: TRAP · GET BIG · BLAST move to the right thumb, steer with the left</div></div></div>
+    <div class="ctog appOnly" id="preset"><div class="box" style="background:#3a1420"><i></i></div><div class="txt"><div class="nm">RESET SAVED PROGRESS</div><div class="hk">tap twice · wipes campaign progress + settings on this machine · keeps the controller map and the filing cabinet (that wipe lives in the console's SETTINGS, behind an are-you-sure)</div></div></div>
     <div class="pbtns"><button class="primary" id="presume">▶ RESUME</button><button id="pmenu">↩ BACK TO MENU</button></div>
+    <div class="pnav" id="pnav">↑ ↓ MOVE · ENTER / A PICK · ESC / START RESUME</div>
   </div>
 </div>
 
 <script src="lib/store.js?v=1"></script>
+<script src="lib/cabinet.js?v=1"></script>
 <script src="lib/rink-geo.js"></script>
 <script src="lib/pucks.js?v=noglow1"></script>
 <script src="lib/ghost.js?v=1"></script>
@@ -229,6 +237,11 @@
 "use strict";
 const LS=window.HTStore||{getItem(){return null;},setItem(){},removeItem(){},mode:'session'};   // ALL storage goes through lib/store.js (web = saves nothing; app/cab = persists)
 const Q=new URLSearchParams(location.search);
+// CONSOLE SHELL + FILING CABINET (Joe 2026-10-14). SHELL = running inside console.html (it owns the menus + records; we post
+//   events up). CABON = this box keeps a record: the shell, or a closed box (Pi cab / app, lib/store.js persist). The public
+//   web build is neither -> no records, no initials, nothing changes there.
+const SHELL=Q.has('shell') && window.parent!==window;
+const CABON=SHELL || (LS.mode==='persist' && !!window.HTCabinet);
 let TMODE=false, _tpadIR=0;
 let PADHAND='L'; try{ if(LS.getItem('htPadHand')==='R') PADHAND='R'; }catch(_){} { const h=(new URLSearchParams(location.search).get('hand')||'').toLowerCase(); if(h==='right'||h==='r') PADHAND='R'; else if(h==='left'||h==='l') PADHAND='L'; }   // PHONE PAD buttons side (pause menu flop)   // PHONE PAD: touch device held landscape (see tpadLayout)
 const TSTICK={on:false,x:0,y:0};   // PHONE THUMBSTICK: on = stick layout; x,y = snapped 8-way direction (-1..1, y<0 = pushed up)
@@ -568,7 +581,7 @@ venueGoal();
 //   the LIVE table breathes: gentle currents roll across it over time, and the puck / an idle knocker
 //   drift on their OWN. Free-flow glide rides ON TOP of this; it is not faked with easing. Toggle G;
 //   every power-on re-randomises the field. Tune: AIR.push = current strength, AIR.roll = breathing.
-const AIR={ on:true, push:0.55, roll:0.55 };
+const AIR={ on:Q.get('air')!=='0', push:0.55, roll:0.55 };   // ?air=0 = the TABLE OFF cheat from the console
 let _aPh=[0,0,0,0]; function airSeed(){ _aPh=[Math.random()*6.283,Math.random()*6.283,Math.random()*6.283,Math.random()*6.283]; } airSeed();
 function airAt(x,y,t){ if(!AIR.on) return [0,0]; const yy=y/AR, T=t*AIR.roll;
   const fx=(Math.sin(yy*6.3+T+_aPh[0]) + 0.6*Math.sin(x*9.1-T*0.8+_aPh[1]) + 0.4*Math.cos((x+yy)*7.7+T*1.2+_aPh[2]))/2;
@@ -630,6 +643,7 @@ const SERIES_WINS=4;
 const AWAY={ bee_afraid:{name:'BEE AFRAID',venue:'bees',knock:'queens',puck:'queens',blurb:'QUEENS @ THE HONEY HOLE'},
              queens_ransom:{name:'QUEENS RANSOM',venue:'throne',knock:'bees',puck:'bees',blurb:'BEES @ THE THRONE ROOM'} };
 const UNLOCKED={ bee_afraid:Q.has('jail'), queens_ransom:Q.has('jail'), killscreen:Q.has('jail') };   // session-scoped: ?jail grants all; else earned via playoff; wiped on reload. killscreen = the CASTLE KILLSCREEN bonus table, earned by BEATING THE HIGH TABLE.
+(Q.get('unlocks')||'').split(',').forEach(function(k){ if(k in UNLOCKED) UNLOCKED[k]=true; });   // the console passes what this box has EARNED (filing cabinet)
 let champUnlock=null, champUnlockKey=null, champTeam=null, champBonus=null;   // name+key of an unlocked away-game; champTeam = the team the trophy screen crowns (2P: the player who took the series). champBonus='killscreen' when the just-won clinch was on THE HIGH TABLE -> victory-lap into the bonus table.
 function nextLocked(){ if(!UNLOCKED.bee_afraid)return 'bee_afraid'; if(!UNLOCKED.queens_ransom)return 'queens_ransom'; return null; }
 // ===== OLD-TYME CAMPAIGN (1P ladder · side project): win a best-of-7 on each table to unlock the next room;
@@ -643,7 +657,7 @@ const CAMP_RUNGS=[
   {tbl:'throne', name:'THE THRONE ROOM'},
   {tbl:'bees',   name:'THE HONEY HOLE'},
   {tbl:'nachos', name:'PENALTY BOX · THE HIGH TABLE'} ];
-function campLoad(){ if(Q.has('campreset')){ try{LS.removeItem('htCampRung');}catch(e){} return 0; } try{ return Math.max(0,Math.min(4,+(LS.getItem('htCampRung')||0))); }catch(e){ return 0; } }
+function campLoad(){ if(Q.has('campreset')){ try{LS.removeItem('htCampRung');}catch(e){} return 0; } let r=0; try{ r=Math.max(0,Math.min(4,+(LS.getItem('htCampRung')||0))); }catch(e){ r=0; } const q=+(Q.get('camprung')||0); return Math.max(r, Math.max(0,Math.min(4,q|0))); }   // ?camprung = the console's cabinet rung
 function campSave(){ try{ LS.setItem('htCampRung',campCleared); }catch(e){} }
 let campCleared=CAMP?campLoad():0;   // tables beaten (0..4); 4 = OLD-TYME FREEPLAY unlocked
 // ===== CASTLE RULES (timed 3-period match · "Castle Rules High Table"): 3 periods × 75s, clock runs only in
@@ -974,13 +988,13 @@ function step(dt){
   if(state==='board'){ if(!TRANS.on){ interT+=dt; if(interT>=interDur) reelAdvance(); } return; }    // ATTRACT leaderboard
   if(state==='config') return;   // JAILBREAK custom-match picker — static (clock-animated in drawConfig), no sim
   if(REEL && !TRANS.on && reelIdx>=0 && REELSEG[reelIdx] && REELSEG[reelIdx].k==='demo'){ reelT+=dt; if(reelT>=REELSEG[reelIdx].dur && (state==='play'||state==='serve'||state==='faceoff')) reelAdvance(); }   // cut the live demo to the next beat
-  if(HYSCORE){ if(state==='win'||state==='champion'){ hyIdle+=dt; if(hyIdle>25){ hyIdle=0; hyAttract(); return; } } else hyIdle=0; }   // nobody fed it another quarter -> attract
+  if(HYSCORE){ if((state==='win'||state==='champion')&&!INI.on){ hyIdle+=dt; if(hyIdle>25){ hyIdle=0; hyAttract(); return; } } else hyIdle=0; }   // nobody fed it another quarter -> attract
   if(state==='splash'){ splashIdle+=dt; if(!DIRECT && !REEL && splashIdle>7){ reelStart(); } return; }   // the title holds its full beat before the attract (HYSCORE included)   // SPLASH idles to the ATTRACT REEL; clock-animated in drawSplash, no sim
   if(state==='title'||state==='select'){ menuSim(dt); return; }   // MENU: a little air-hockey demo (knockers bat the pucks) — then skip the game physics/SFX entirely
   if(estT>0)estT=Math.max(0,estT-dt);
   else if(pendBanner!==null && (state==='play'||state==='faceoff'||state==='serve'||state==='goal')){ banner(pendBanner,pendBannerD); pendBanner=null; }   // the establishing beat just cleared -> reveal the staggered RAISE IT · GAME N banner
   {const zt = estT>0 ? 1.0+0.11*(estT/est0) : (keyShift?1.1:1); ZOOM+=(zt-ZOOM)*Math.min(1,6*dt);}   // establishing push-in eases out to normal
-  if(state==='champion'){ champT+=dt; return; }   // LIFT THE CUP cinematic — sim frozen
+  if(state==='champion'){ champT+=dt; if(INI.on){ INI.t+=dt; if(INI.t>45) iniCommit(); } return; }   // LIFT THE CUP cinematic — sim frozen (initials auto-save after 45s, arcade style)
   if(state==='faceoff'){
     moveKnocker(near,0.5,0.30,6,dt);                                      // player mallet settles home for the lead-in
     const ready = foT>FO_DROP;
@@ -1637,9 +1651,9 @@ function drawChampion(){ const bees=(champTeam||PTEAM)==='bees', col=bees?'#ffe2
   ctx.fillStyle=gg; ctx.beginPath(); ctx.arc(VW/2,VH*0.52,VH*0.4,0,6.28); ctx.fill(); ctx.restore();
   drawTrophy(VW/2, VH*0.50 + Math.sin(t*1.6)*VH*0.012);
   ctx.fillStyle=col; ctx.shadowColor=col; ctx.shadowBlur=22; const chU=champUnlock?('★ '+champUnlock+(CAMP?' UNLOCKED':' — THIS RUN')):((bees?'THE BEES':'THE QUEENS')+' — CHAMPIONS'); fitFont(chU,900,VH*0.06,VW*0.9);
-  ctx.fillText(chU, VW/2, VH*0.82);
+  ctx.fillText(chU, VW/2, INI.on?VH*0.725:VH*0.82);   // lifted clear of the initials plate
   ctx.shadowBlur=0; ctx.fillStyle='#9fb6c8'; ctx.font=`700 ${Math.round(VH*0.03)}px "Helvetica Neue",Arial`;
-  if(Math.floor(t*1.6)%2===0) ctx.fillText('tap to continue', VW/2, VH*0.90);
+  if(INI.on) drawInitials(col); else if(Math.floor(t*1.6)%2===0) ctx.fillText('tap to continue', VW/2, VH*0.90);
   ctx.restore(); }
 // THE REF (Joe 2026-06-19, "ghost the red-stripe ref to drop it") — a ghosted, striped linesman's forearm
 //   reaches in from above centre and grips the puck through GET READY, then snaps up and fades on the
@@ -2002,7 +2016,7 @@ function draw(){
     ctx.fillText(otSudden?'OT':(mm+':'+(ss<10?'0':'')+ss),VW/2,_cy);
     ctx.font=`800 ${Math.round(VH*0.024)}px "Helvetica Neue",Arial`;ctx.fillStyle='#9fb6c8';ctx.shadowBlur=0;ctx.fillText(otSudden?'NEXT GOAL WINS':('PERIOD '+period+' / '+PERIODS),VW/2,_cy+VH*0.037);ctx.restore();}
   if(!TMODE&&state!=='title'&&state!=='select'&&state!=='boot'&&state!=='champion'){
-    const w=VW*0.24, x=VW*0.04, y=VH*0.175, bh=VH*0.02, rd=near.sup>=1, fc=rd?'#ffe23a':'#37c0ff', blink=rd&&(Math.floor(clock*3)%2===0);
+    const w=VW*0.24, x=PADHAND==='R'?VW*0.96-w:VW*0.04, y=VH*0.175, bh=VH*0.02, rd=near.sup>=1, fc=rd?'#ffe23a':'#37c0ff', blink=rd&&(Math.floor(clock*3)%2===0);
     ctx.save();
     ctx.fillStyle='rgba(4,4,12,0.58)'; rr(x-VW*0.014,y-VH*0.05,w+VW*0.028,VH*0.078,9); ctx.fill();   // dark backing plate so it reads over the table
     ctx.textAlign='left'; ctx.textBaseline='alphabetic'; ctx.font=`900 ${Math.round(VH*0.028)}px "Helvetica Neue",Arial`;
@@ -2232,6 +2246,7 @@ function winPress(){   // win-screen tap: advance the series / fire the unlock p
       applySeries(); startMatch(); return; }                                   // win the game, play the next one
     CUP.loss++;
     if(CUP.loss>=SERIES_WINS){                                                 // 4 losses
+      if(!twoP) recEmit({t:'series',won:false,w:CUP.win,l:CUP.loss,twoP:false,variant:CAMP?'campaign':CUP.variant,tbl});
       if(CAMP){ campLoseSeries(); return; }                                    // CAMPAIGN: series lost -> run the same rung back
       if(twoP){ champTeam=OTEAM; champUnlock=null; champUnlockKey=null; state='champion'; champT=0; victoryCue(champTeam); return; }   // 2P: P2 / far takes the series
       CUP.on=false; CUP.win=0; CUP.loss=0; }                                   // 1P: eliminated by the CPU -> a plain rematch
@@ -2347,6 +2362,7 @@ function begin(){
   if(state==='boot'){ try{SFX.stopKill();}catch(e){} menuCueDuck=0; state='splash'; bootT=0; splashIdle=0; try{Music.kick();}catch(e){} return; }   // any input skips the boot intro -> SPLASH TITLE (cut the killscreen sting so it can't bleed)
   if(state==='splash'){ SFX.menu('player_select',0.6); transition('clash',()=>{ state='title'; },0.9,()=>{try{SFX.hit(0.85);}catch(e){}}); return; }   // SPLASH -> the carpet MENU (clash wipe; impact at the collision)
   if(DEMO){ DEMO=false; resetSeries(); startMatch(); return; }   // any input drops the attract demo into a real game
+  if(state==='champion'&&INI.on){ iniNext(); return; }   // the trophy screen is taking initials
   if(state==='champion'){ const aw=champUnlockKey, bonus=champBonus; resetSeries(); state='title'; if(aw) startAwayEngine(aw); else if(bonus==='killscreen') startBonusEngine(); return; }   // dismiss the trophy; victory-lap into a just-unlocked away-game (or the CASTLE KILLSCREEN bonus table)
   if(state==='win'){ winPress(); return; }
   if(state==='config'){ cfgStart(); return; }                    // JAILBREAK custom match -> play the chosen venue/puck/knocker
@@ -2414,7 +2430,7 @@ if(CAB2==='p2'){   // 2-UP CLIENT: forward EVERY key to the host (it owns both p
 let _fsTried=false; const AUTOFS=Q.has('fs');   // auto-fullscreen on first input is now OPT-IN (?fs) — so a square/windowed launch stays at its window size and the game resizes with it
 function goFullscreen(){ try{ const el=document.documentElement; if(!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen(); }catch(_){} }
 function toggleFullscreen(){ try{ if(document.fullscreenElement){ document.exitFullscreen&&document.exitFullscreen(); } else goFullscreen(); }catch(_){} }
-cv.addEventListener('mousedown',e=>{if(REG){regDown(e.clientX,e.clientY);return;} if(AUTOFS&&!_fsTried){_fsTried=true;goFullscreen();}
+cv.addEventListener('mousedown',e=>{if(REG){regDown(e.clientX,e.clientY);return;} if(INI.on&&state==='champion'){ iniTap(e.clientX,e.clientY); return; } if(AUTOFS&&!_fsTried){_fsTried=true;goFullscreen();}
   if(state==='select'){ if(e.clientX<innerWidth*0.30){selCycle(-1);} else if(e.clientX>innerWidth*0.70){selCycle(1);} else begin(); return; }   // SELECT: click ◄/► to cycle, centre to play
   if(state==='config'){ if(e.clientY>innerHeight*0.86){ begin(); return; } const ry=Math.max(0,Math.min(2,Math.floor((e.clientY/innerHeight-0.24)/0.125))); cfgRow=ry; if(e.clientX<innerWidth*0.5)cfgCycle(-1); else cfgCycle(1); return; }   // CONFIG: click a row L/R to change it; bottom = PLAY
   mouseDown=true; var _wasLive=(state==='play');
@@ -2438,15 +2454,15 @@ cv.addEventListener('mousemove',e=>{if(REG){if(e.buttons)regMove(e.clientX,e.cli
     pointer(vcur.x,vcur.y); return; }
   vcur=null; pointer(e.clientX,e.clientY);});
 if(PLOCK){
-  document.addEventListener('pointerlockchange',()=>{ if(document.pointerLockElement!==cv){ vcur=null; if(!PAUSED && (state==='play'||state==='faceoff'||state==='serve')) openPause(); } });   // left the game -> pause, like stepping away from a cab
+  document.addEventListener('pointerlockchange',()=>{ if(document.pointerLockElement!==cv){ vcur=null; if(!PAUSED && pausable()) openPause(); } else escCue(); });   // left the game -> pause, like stepping away from a cab
   setInterval(()=>{ if(document.pointerLockElement===cv && !lockable()) { try{ document.exitPointerLock(); }catch(_){} } }, 150);   // off the play screens (win / menus / pause) the mouse is yours again
 }
 let steerId=null;   // the finger that steers = the first one that landed on the table; others are ignored until it lifts
 function steerTouch(list){ for(var i=0;i<list.length;i++){ if(list[i].identifier===steerId) return list[i]; } return null; }
-cv.addEventListener('touchstart',e=>{e.preventDefault();if(AUTOFS&&!_fsTried){_fsTried=true;goFullscreen();}begin();if(steerId!==null&&steerTouch(e.touches))return;const t=e.changedTouches[0];steerId=t.identifier;pointer(t.clientX,t.clientY);},{passive:false});
+cv.addEventListener('touchstart',e=>{e.preventDefault();if(INI.on&&state==='champion'){ const t0=e.changedTouches[0]; iniTap(t0.clientX,t0.clientY); return; }if(AUTOFS&&!_fsTried){_fsTried=true;goFullscreen();}begin();if(steerId!==null&&steerTouch(e.touches))return;const t=e.changedTouches[0];steerId=t.identifier;pointer(t.clientX,t.clientY);},{passive:false});
 cv.addEventListener('touchmove',e=>{e.preventDefault();const t=steerTouch(e.changedTouches);if(t)pointer(t.clientX,t.clientY);},{passive:false});
 ['touchend','touchcancel'].forEach(ev=>cv.addEventListener(ev,e=>{ if(steerTouch(e.changedTouches)) steerId=null; }));
-addEventListener('keydown',e=>{if(e.key==='Shift')keyShift=true;keys[e.key]=true;
+addEventListener('keydown',e=>{ if(pauseNavKey(e)||iniKey(e)) return; if(e.key==='Shift')keyShift=true;keys[e.key]=true;
   if(TUNE){ let t=true;
     if(e.key==='[')GLIDE.accel=Math.max(20,GLIDE.accel-10); else if(e.key===']')GLIDE.accel+=10;
     else if(e.key===';')GLIDE.damp=Math.max(1,GLIDE.damp-1); else if(e.key==="'")GLIDE.damp+=1;
@@ -2456,13 +2472,31 @@ addEventListener('keydown',e=>{if(e.key==='Shift')keyShift=true;keys[e.key]=true
   // ESC on the WIN / CHAMPION screens leaves to the menu. Without this the only action there was a
   // rematch of the same venue, so a jailbreak session could never get back to the table picker.
   if(e.key==='Escape' && (state==='win'||state==='champion')){ e.preventDefault(); backToMenu(); return; }
-  if((e.key==='Escape'||e.key.toLowerCase()==='p') && ((state==='play'||state==='faceoff'||state==='serve') || !pauseEl.classList.contains('hidden'))){ e.preventDefault(); togglePause(); return; }   // PAUSE MENU (active match only, so 'win' rematch + title 2P toggle below are untouched)
+  if((e.key==='Escape'||e.key.toLowerCase()==='p') && (pausable() || !pauseEl.classList.contains('hidden'))){ e.preventDefault(); togglePause(); return; }   // PAUSE MENU (active match only, so 'win' rematch + title 2P toggle below are untouched)
   if((state==='title')&&e.key.toLowerCase()==='p'){twoP=!twoP;return;}if(state==='select'&&e.key==='ArrowLeft'){selCycle(-1);return;}if(state==='select'&&e.key==='ArrowRight'){selCycle(1);return;}if(state==='config'&&e.key==='ArrowLeft'){cfgCycle(-1);return;}if(state==='config'&&e.key==='ArrowRight'){cfgCycle(1);return;}if(state==='config'&&e.key==='ArrowUp'){cfgRowMove(-1);return;}if(state==='config'&&e.key==='ArrowDown'){cfgRowMove(1);return;}if(state==='select'&&(e.key==='ArrowUp'||e.key==='ArrowDown')){selBack();return;}if((state==='title'||(state==='select'&&selPhase!=='puck'))&&e.key.toLowerCase()==='c'){engineCycleMode();return;}if((state==='title')&&e.key.toLowerCase()==='t'){setTable(TKEYS[(TKEYS.indexOf(tbl)+1)%TKEYS.length]);return;}if(e.key.toLowerCase()==='m'&&!((twoP||CAB2)&&(state==='play'||state==='faceoff'||state==='serve'))){MONO=!MONO;banner(MONO?'MONOCHROME':'COLOR',0.8);return;}if(e.key.toLowerCase()==='y'){WAYS=WAYS===4?8:4;try{LS.setItem('sideStickWays',String(WAYS));}catch(_){}banner(WAYS+'-WAY STICK',1.0);return;}if(state==='play'&&!DEMO&&near.sup>=1&&(e.key===' '||e.key.toLowerCase()==='f')){e.preventDefault();bigUp(near,PTEAM);return;}if(state==='play'&&twoP&&!CAB2&&far.sup>=1&&(e.key==='Enter'||e.key==='/')){e.preventDefault();bigUp(far,OTEAM);return;}if(REG&&e.key.toLowerCase()==='s'){try{LS.setItem('sideRink.'+tbl,JSON.stringify(RINK));}catch(_){}const j=JSON.stringify({nearY:+RINK.nearY.toFixed(3),farY:+RINK.farY.toFixed(3),nearHalf:+RINK.nearHalf.toFixed(3),farHalf:+RINK.farHalf.toFixed(3),cx:+RINK.cx.toFixed(3)});console.log('RINKPRESET '+tbl+':  '+j);banner('SAVED '+(TNAME[tbl]||tbl),1.2);return;}if(REG&&e.key.toLowerCase()==='r'){try{LS.removeItem('sideRink.'+tbl);}catch(_){}location.reload();return;}if(e.key>='1'&&e.key<='3'&&(state==='title'||state==='win'))DIFF=+e.key-1;if(e.key===' '||e.key==='Enter'){e.preventDefault();if(AUTOFS&&!_fsTried){_fsTried=true;goFullscreen();}begin();}});
 addEventListener('keyup',e=>{if(e.key==='Shift')keyShift=false;keys[e.key]=false;});
 // ---- PAUSE MENU wiring (live control toggles; PAUSED freezes the sim, render keeps going, NOTHING resets) ----
 const pauseEl=document.getElementById('pause');
-function syncPauseToggles(){ pauseEl.querySelectorAll('.ctog[data-ctrl]').forEach(t=>{ t.classList.toggle('on',!!CTRL[t.getAttribute('data-ctrl')]); }); const ph=document.getElementById('phand'); if(ph) ph.classList.toggle('on',PADHAND==='R'); }
-function openPause(){ PAUSED=true; for(var k in keys)keys[k]=false; mouseDown=false; deckGrab=false; syncPauseToggles(); pauseEl.classList.remove('hidden'); }   // clear held input so nothing sticks across the pause
+function syncPauseToggles(){ pauseEl.querySelectorAll('.ctog[data-ctrl]').forEach(t=>{ t.classList.toggle('on',!!CTRL[t.getAttribute('data-ctrl')]); }); const ph=document.getElementById('phand'); if(ph) ph.classList.toggle('on',PADHAND==='R');
+  const hk=document.getElementById('phandhk'); if(hk) hk.textContent=TMODE?'left-handed: TRAP · GET BIG · BLAST move to the right thumb, steer with the left':'the GET BIG meter moves to the right side (the phone pad flops the same way)';
+  try{ document.body.classList.toggle('handR',PADHAND==='R'); }catch(_){} }
+// PAUSE NAV (Joe 2026-10-14): arrows / stick move a focus ring over the visible rows + buttons; ENTER / A picks; ESC / START / B resumes.
+let pFocus=0;
+function pItems(){ return Array.prototype.filter.call(pauseEl.querySelectorAll('.ctog, button'), el=>el.offsetParent!==null); }
+function pFocusSet(i){ const it=pItems(); if(!it.length) return; pFocus=(i+it.length)%it.length; it.forEach((el,j)=>el.classList.toggle('pf',j===pFocus)); }
+function pActivate(){ const el=pItems()[pFocus]; if(el) el.click(); }
+function pauseNavKey(e){ if(pauseEl.classList.contains('hidden')) return false; const k=e.key;
+  if(k==='ArrowUp'||k==='ArrowLeft'||k==='w'||k==='W'){ e.preventDefault(); pFocusSet(pFocus-1); return true; }
+  if(k==='ArrowDown'||k==='ArrowRight'||k==='s'||k==='S'||k==='Tab'){ e.preventDefault(); pFocusSet(pFocus+1); return true; }
+  if(k==='Enter'||k===' '){ e.preventDefault(); pActivate(); return true; }
+  return false; }   // Esc / P fall through to the toggle below
+let _pnY=0,_pnA=false,_pnB=false;
+function pauseNavPad(gp){ const ay=(gp.axes&&gp.axes[1])||0, up=ay<-0.55||!!(gp.buttons[12]&&gp.buttons[12].pressed), dn=ay>0.55||!!(gp.buttons[13]&&gp.buttons[13].pressed), y=up?-1:dn?1:0;
+  if(y&&y!==_pnY) pFocusSet(pFocus+y); _pnY=y;
+  const a=!!(gp.buttons[BTN.trap]&&gp.buttons[BTN.trap].pressed), b=!!(gp.buttons[BTN.blast]&&gp.buttons[BTN.blast].pressed);
+  if(a&&!_pnA) pActivate(); if(b&&!_pnB) closePause(); _pnA=a; _pnB=b; }
+function pausable(){ return state==='play'||state==='faceoff'||state==='serve'||state==='goal'; }   // a live match, incl. the goal celebration (Esc there used to drop the mouse with no menu)
+function openPause(){ PAUSED=true; for(var k in keys)keys[k]=false; mouseDown=false; deckGrab=false; syncPauseToggles(); pauseEl.classList.remove('hidden'); const it=pItems(); pFocusSet(Math.max(0,it.indexOf(document.getElementById('presume')))); _pnA=_pnB=true; escCueOff(); }   // clear held input so nothing sticks across the pause
 function closePause(){ PAUSED=false; pauseEl.classList.add('hidden'); }
 function togglePause(){ if(pauseEl.classList.contains('hidden'))openPause(); else closePause(); }
 // LEAVING A MATCH. There was no way out of one: the pause menu only toggled control schemes, and the
@@ -2470,9 +2504,16 @@ function togglePause(){ if(pauseEl.classList.contains('hidden'))openPause(); els
 // JAILBREAK especially that is a dead end -- you pick a table and then you are on it until you
 // reload the page. goSelect() is the existing route back (it rebuilds the list and lands on the
 // jailbreak picker when ?jail, the venue select otherwise), so both exits just call it.
-function backToMenu(){ if(HYSCORE){ hyAttract(); return; } closePause(); try{ resetSeries(); }catch(e){} goSelect(); }   // the quarter-eater has no menu: back = the attract
-(function(){ var b=document.getElementById('pmenu'); if(b) b.addEventListener('click',backToMenu); })();
-{ const pr=document.getElementById('preset'); if(pr&&document.body&&document.body.classList){ document.body.classList.toggle('htapp',!!(window.HTStore&&HTStore.mode==='persist'));   // the closed boxes that save: the app + the cab (a Pi quarter-eater runs from file:/localhost) = an operator reset
+function backToMenu(){ if(SHELL){ closePause(); try{ parent.postMessage({ht:'menu'},'*'); }catch(_){} return; }   // the console owns the menus
+  if(HYSCORE){ hyAttract(); return; } closePause(); try{ resetSeries(); }catch(e){} goSelect(); }   // the quarter-eater has no menu: back = the attract
+(function(){ var b=document.getElementById('pmenu'); if(b){ b.addEventListener('click',backToMenu); b.textContent=SHELL?'↩ BACK TO HOME':(HYSCORE?'↩ QUIT TO ATTRACT':'↩ BACK TO MENU'); } })();
+// ESC CUE (Joe 2026-10-14: "took a few seconds to realize escape opens the menu"): a small chip each time a match starts or
+//   the mouse is captured, opposite the GET BIG meter, gone after a few seconds. Phone has its own pause button.
+let _escT=0;
+function escCueOff(){ const c=document.getElementById('esccue'); if(c&&c.classList) c.classList.remove('on'); }
+function escCue(){ const c=document.getElementById('esccue'); if(!c||!c.classList||TMODE||DEMO||REEL||CAB2==='p2') return;
+  c.innerHTML=(CTRL.stick&&!CTRL.mouse&&!CTRL.keyboard)?'<b>START</b> · MENU':'<b>ESC</b> · MENU'; c.classList.add('on'); clearTimeout(_escT); _escT=setTimeout(escCueOff,4200); }
+{ const pr=document.getElementById('preset'); if(pr&&document.body&&document.body.classList){ document.body.classList.toggle('htapp',!!(window.HTStore&&HTStore.mode==='persist')&&!SHELL);   // inside the console, SETTINGS owns resets   // the closed boxes that save: the app + the cab (a Pi quarter-eater runs from file:/localhost) = an operator reset
     let armed=0; pr.addEventListener('click',()=>{ const now=performance.now(); if(now-armed>2500){ armed=now; banner('TAP AGAIN TO RESET',1.2); return; }
       armed=0; try{ HTStore.reset(); }catch(_){} campCleared=0; banner('SAVED PROGRESS RESET',1.2); }); } }   // two taps, so a stray thumb can't wipe it
 pauseEl.querySelectorAll('.ctog[data-ctrl]').forEach(t=>{ t.addEventListener('click',()=>{ const k=t.getAttribute('data-ctrl'); CTRL[k]=!CTRL[k]; saveCtrl(); syncPauseToggles(); banner((CTRL[k]?'':'NO ')+k.toUpperCase(),0.7); }); });
@@ -2514,7 +2555,7 @@ addEventListener('resize',tpadLayout); addEventListener('orientationchange',func
   press(bT, ()=>{ clearTimeout(trapGrace); deckGrab=true; }, ()=>{ clearTimeout(trapGrace); if(puckHeld==='near') trapGrace=setTimeout(()=>{ deckGrab=false; },220); else deckGrab=false; });
   press(bB, ()=>{ if(state==='play'&&!PAUSED&&near.sup>=1){ bigUp(near,PTEAM); pop(bB); } });
   press(bX, ()=>{ if(state==='play'&&!PAUSED){ deckBlast=true; if(near.blastCD<=0||puckHeld==='near') pop(bX); } });
-  bP.addEventListener('pointerdown',e=>{ e.preventDefault(); if(state==='play'||state==='faceoff'||state==='serve'||PAUSED) togglePause(); });
+  bP.addEventListener('pointerdown',e=>{ e.preventDefault(); if(pausable()||PAUSED) togglePause(); });
   // ---- THUMBSTICK (8-way). Floating origin: wherever the thumb lands in the zone is centre; past a small
   //   deadzone the drag snaps to one of 8 directions. Drawn from Joe's stick renders: fixed base, a shaft
   //   from the hole, the ball leaning that way (forward = up and a touch smaller, back = down and bigger).
@@ -2598,6 +2639,51 @@ addEventListener('message',e=>{ const d=e.data; if(!d||!d.bk)return;
 // CHEATS API for the cab shell (read state for the menu UI + toggle). The cab can also postMessage {bk:'air'}.
 window.HT_CHEAT={ airOn(){return AIR.on;}, monoOn(){return MONO;}, air(){AIR.on=!AIR.on; if(AIR.on)airSeed(); banner(AIR.on?'TABLE ON · AIR':'TABLE OFF',0.9); return AIR.on;}, mono(){MONO=!MONO; banner(MONO?'MONOCHROME':'COLOR',0.8); return MONO;} };
 let _rdy=false, _sn=-1, _sf=-1;
+// ===== FILING CABINET hooks (Joe 2026-10-14) ===================================================================
+//   recWatch() runs each frame and turns state CHANGES into records — no edits to the win paths themselves. Records go
+//   to the console (postMessage) when SHELL, else straight into lib/cabinet.js on a closed box. Never on the web, never
+//   for demos / the attract reel.
+function recEmit(ev){ if(!CABON||DEMO||REEL) return; if(SHELL){ try{ parent.postMessage({ht:'rec',ev:ev},'*'); }catch(_){} return; } try{ HTCabinet.record(ev); }catch(_){} }
+function recMode(){ return CAMP?'campaign':(twoP?'vs':(tbl==='killscreen'?'bonus':(TIMED?'castle':(CUP.on||CUP.inPlayoff?'raiseit':'exhibition')))); }
+let _wState=null, _wMatch=false, _wCamp=null, _wUnl=null;
+function recWatch(){ const s=state;
+  if(_wUnl===null){ _wUnl=JSON.stringify(UNLOCKED); _wCamp=campCleared; }   // baseline: what the run STARTED with isn't news
+  if(s!==_wState){ const inM=(s==='faceoff'||s==='play'||s==='serve'||s==='goal');
+    if(inM&&!_wMatch) escCue();
+    if(s==='win') recEmit({t:'game', won:TIMED?(scoreN>scoreF):(scoreN>=TARGET), n:scoreN, f:scoreF, tbl, twoP:!!twoP, mode:recMode()});
+    if(s==='champion'){ const p1=twoP?(CUP.win>=SERIES_WINS):true; recEmit({t:'series', won:p1, w:CUP.win, l:CUP.loss, twoP:!!twoP, variant:CAMP?'campaign':CUP.variant, tbl}); iniStart(p1); }
+    _wMatch=inM; _wState=s; }
+  const u=JSON.stringify(UNLOCKED); if(u!==_wUnl){ const was=JSON.parse(_wUnl); for(const k in UNLOCKED) if(UNLOCKED[k]&&!was[k]) recEmit({t:'unlock',key:k}); _wUnl=u; }
+  if(campCleared!==_wCamp){ if(campCleared>_wCamp) recEmit({t:'camp',rung:campCleared}); _wCamp=campCleared; } }
+// INITIALS — three arcade letters on the trophy screen (closed box / console only). ↑↓ or stick spins the letter, → / any
+//   button = next, ← = back, type a letter to set it. Tap a slot: top half up, bottom half down; tap elsewhere = next. ESC skips.
+const INICH='ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.', INI={on:false,c:[0,0,0],i:0,t:0,what:'',score:'',flash:0};
+function iniStart(p1won){ if(!CABON||DEMO||REEL) return; let last='AAA'; try{ const h=(window.HTCabinet&&HTCabinet.get().hall)||[]; if(h[0]) last=(h[0].ini+'AAA').slice(0,3); }catch(_){}
+  INI.c=last.split('').map(ch=>Math.max(0,INICH.indexOf(ch))); INI.i=0; INI.t=0; INI.on=true;
+  INI.what=CAMP?('CAMPAIGN · '+(campCleared>=4?'CLEARED':((CAMP_RUNGS[Math.max(0,campCleared-1)]||{}).name||''))):(twoP?('VS · '+(p1won?'P1':'P2')):(champUnlock?('UNLOCKED '+champUnlock):(RAISE[CUP.variant]?RAISE[CUP.variant].name:'RAISE IT')));
+  const w=Math.max(CUP.win,CUP.loss), l=Math.min(CUP.win,CUP.loss); INI.score=(w||l)?(w+'-'+l):''; }
+function iniSpin(d){ INI.c[INI.i]=(INI.c[INI.i]+d+INICH.length)%INICH.length; INI.t=0; try{SFX.cursor();}catch(_){} }
+function iniNext(){ INI.t=0; if(INI.i<2){ INI.i++; try{SFX.cursor();}catch(_){} } else iniCommit(); }
+function iniCommit(){ if(!INI.on) return; const ini=INI.c.map(i=>INICH[i]).join(''), o={ini, what:INI.what, tbl, score:INI.score};
+  if(SHELL){ try{ parent.postMessage({ht:'ini',o},'*'); }catch(_){} } else { try{ HTCabinet.addInitials(o); }catch(_){} }
+  INI.on=false; champT=Math.max(champT,2); banner(ini+' · INTO THE HALL',1.4); try{SFX.clack(0.5);}catch(_){} }
+function iniKey(e){ if(!INI.on||state!=='champion') return false; const k=e.key;
+  if(k==='ArrowUp'){ iniSpin(1); } else if(k==='ArrowDown'){ iniSpin(-1); } else if(k==='ArrowRight'||k==='Enter'||k===' '){ iniNext(); }
+  else if(k==='ArrowLeft'||k==='Backspace'){ INI.i=Math.max(0,INI.i-1); } else if(k==='Escape'){ INI.on=false; banner('NO INITIALS',0.9); }
+  else if(k.length===1&&INICH.indexOf(k.toUpperCase())>=0){ INI.c[INI.i]=INICH.indexOf(k.toUpperCase()); iniNext(); } else return false;
+  e.preventDefault(); return true; }
+let _iniY=0; function iniPad(gp){ const ay=(gp.axes&&gp.axes[1])||0, y=(ay<-0.55||(gp.buttons[12]&&gp.buttons[12].pressed))?1:((ay>0.55||(gp.buttons[13]&&gp.buttons[13].pressed))?-1:0); if(y&&y!==_iniY) iniSpin(y); _iniY=y; }
+function iniGeom(){ const s=VH*0.085, gap=s*1.25, y=VH*0.885; return {s,gap,y,x0:VW/2-gap}; }
+function iniTap(x,y){ const g=iniGeom(); for(let i=0;i<3;i++){ const cx=g.x0+i*g.gap; if(Math.abs(x-cx)<g.s*0.55&&Math.abs(y-g.y)<g.s*0.9){ INI.i=i; iniSpin(y<g.y?1:-1); return; } } iniNext(); }
+function drawInitials(col){ const g=iniGeom(); ctx.save(); ctx.textAlign='center'; ctx.shadowBlur=0;
+  ctx.fillStyle='rgba(2,2,10,.82)'; ctx.fillRect(0,VH*0.76,VW,VH*0.24);
+  ctx.fillStyle='#cfe6ff'; ctx.font=`800 ${Math.round(VH*0.026)}px "Helvetica Neue",Arial`; ctx.fillText('ENTER YOUR INITIALS'+(INI.what?' · '+INI.what:''), VW/2, VH*0.795);
+  ctx.font=`900 ${Math.round(g.s)}px "Helvetica Neue",Arial`; ctx.textBaseline='middle';
+  for(let i=0;i<3;i++){ const cx=g.x0+i*g.gap, on=i===INI.i;
+    ctx.fillStyle=on?'rgba(255,255,255,.10)':'rgba(255,255,255,.04)'; rr(cx-g.s*0.45,g.y-g.s*0.62,g.s*0.9,g.s*1.24,10); ctx.fill();
+    ctx.fillStyle=on?col:'#eaf6ff'; ctx.shadowColor=col; ctx.shadowBlur=on?22:0; ctx.fillText(INICH[INI.c[i]], cx, g.y+g.s*0.04); ctx.shadowBlur=0;
+    if(on&&Math.floor(champT*3)%2===0){ const f=ctx.font; ctx.font=`900 ${Math.round(g.s*0.3)}px "Helvetica Neue",Arial`; ctx.fillStyle=col; ctx.fillText('▲',cx,g.y-g.s*0.78); ctx.fillText('▼',cx,g.y+g.s*0.80); ctx.font=f; } }
+  ctx.restore(); }
 function cabReport(){ try{ if(parent===window) return; }catch(_){ return; }   // only when embedded in a cab shell (node/headless has no parent)
   const k=(CAB2==='p2')?far:near; const rdy=(state==='play'&&k.sup>=1);
   if(rdy!==_rdy){ _rdy=rdy; try{ parent.postMessage({ht:'ready',on:rdy},'*'); }catch(_){} }   // LOCAL player's GET BIG readiness (far on the client) -> each solo deck glows
@@ -2628,7 +2714,7 @@ function cabReport(){ try{ if(parent===window) return; }catch(_){ return; }   //
   if(Q.get('padprop')!=null) PADPROP=Q.get('padprop')!=='0';
   // 4-WAY vs 8-WAY restrictor: 4-way keeps ONLY the dominant axis (no diagonals) so "straight up" doesn't bleed sideways = smoother cardinal moves. ?stick=4way, or press Y to toggle live; persists in LS.
   var WAYS=8; try{ var _w=LS.getItem('sideStickWays'); if(_w==='4'||_w==='8') WAYS=+_w; }catch(_){}   // 8-WAY default (knocker needs the diagonals); press Y for 4-way restrictor, or ?stick=4way
-  if(Q.get('stick')==='4way') WAYS=4; else if(Q.get('stick')==='8way') WAYS=8;
+  if(Q.get('stick')==='4way'||Q.get('ways')==='4') WAYS=4; else if(Q.get('stick')==='8way'||Q.get('ways')==='8') WAYS=8;   // ?ways = the console's STICK setting
   function only4(dx,dy,ax,ay){ if(WAYS===4 && dx && dy){ if(Math.abs(ax)>=Math.abs(ay)) dy=0; else dx=0; } return [dx,dy]; }
   // 3-BUTTON CAB defaults — A=TRAP (catch/hold) · B=BLAST (fire) · RT=GET BIG (team power). Overridable by the saved map (highTableGamepad).
   var BTN={trap:(M&&M.buttons&&M.buttons.trap!=null)?M.buttons.trap:0, big:(M&&M.buttons&&M.buttons.big!=null)?M.buttons.big:1, blast:(M&&M.buttons&&M.buttons.blast!=null)?M.buttons.blast:7, start:(M&&M.buttons&&M.buttons.start!=null)?M.buttons.start:9};   // A=TRAP · B=GET BIG · RT=BLAST (Joe's cab layout, F300 + 8BitDo)
@@ -2722,7 +2808,9 @@ function cabReport(){ try{ if(parent===window) return; }catch(_){ return; }   //
       }
       var any=false; for(var j=0;j<gp.buttons.length;j++){ if(gp.buttons[j]&&gp.buttons[j].pressed){ any=true; break; } }
       var bst=!!(gp.buttons[BTN.start]&&gp.buttons[BTN.start].pressed);   // START opens/closes the PAUSE MENU mid-match (stick-only cabs need it)
-      if(bst&&!prevStart&&((state==='play'||state==='faceoff'||state==='serve')||!pauseEl.classList.contains('hidden'))){ togglePause(); } prevStart=bst;
+      if(bst&&!prevStart&&(pausable()||!pauseEl.classList.contains('hidden'))){ togglePause(); } prevStart=bst;
+      if(!pauseEl.classList.contains('hidden')) pauseNavPad(gp);
+      if(INI.on&&state==='champion') iniPad(gp);   // stick spins the initials letter   // stick / A / B drive the pause menu (a stick-only cab had no way to reach the rows)
       if(STICK8){   // 3-BUTTON CAB: TRAP (hold) · BLAST (tap) · GET BIG
         var bt=function(i){return !!(gp.buttons[i]&&gp.buttons[i].pressed);};
         deckGrab=bt(BTN.trap);
@@ -3001,7 +3089,7 @@ function frame(t){const rdt=last?Math.max(1e-4,Math.min(0.033,(t-last)/1000)):0.
     viewCtx.filter = MONO?MONO_FILTER:'none'; viewCtx.drawImage(ocv,0,0); viewCtx.filter='none';   // the mono/colour blit
     if(MONO)viewCtx.filter=MONO_FILTER; drawTrans(rdt); viewCtx.filter='none';   // stylized carpet/comic transition over the top — grayscale it too in MONO so scene-change wipes/dots don't flash full colour
     if(CAB2==='p1') broadcastState();
-    cabReport(); }
+    cabReport(); recWatch(); }
   requestAnimationFrame(frame);}
 requestAnimationFrame(frame);
 })();
