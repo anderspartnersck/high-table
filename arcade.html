@@ -11,7 +11,7 @@
     SPLASH     — bees-gold + queens-purple logos burst — THE RIVALRY
     DEMO       — live CPU-vs-CPU (side.html?demo)
     LEADERBOARD— the HALL OF FLIGHT high scores, sliding in hot
-    MOUSE      — live mouse-clicker (table_temp_engine.html?demo) + ONE-TIMER MOBILE ad
+    MOUSE      — live top-down (table_temp_engine.html?demo) = HIGH-TABLE TO-GO!
     ADS        — the tables + the cabs (INSERT COIN)
   Music swells/stings on the title + board cuts. Modes get teed up in the MENU.
   Self-contained; serve over localhost (it iframes side.html + table_temp_engine.html).
@@ -109,7 +109,7 @@
 <button id="back">❮ MENU</button>
 <div id="cut"></div>
 
-<script src="lib/catalog.js"></script>
+<script src="lib/catalog.js?v=2"></script>
 <script>
 (function(){
 "use strict";
@@ -130,7 +130,7 @@ function gradBg(c0,c1){ var CW=cv.width,CH=cv.height,g=ctx.createRadialGradient(
    splash: bees-gold + queens-purple logos burst — THE RIVALRY
    demo  : live CPU-vs-CPU (side.html?demo)
    board : the high-score wall
-   mouse : live mouse-clicker (table_temp_engine.html?demo) + ONE-TIMER MOBILE ad
+   mouse : live top-down (table_temp_engine.html?demo) = HIGH-TABLE TO-GO!
    ads   : the tables + cabs                                                              */
 // Calm cross-dissolving loop: logo → live demo → the TABLE ADS (venues + editions, each readable for ≥3s) →
 // leaderboard. The ads are back (Joe 2026-06-26): the attract has to actually sell the tables/editions.
@@ -139,7 +139,7 @@ var REEL=[
  {t:'demo',  dur:14.0, vol:0.5, sting:'mode'},
  {t:'ads',   dur:ADS_DUR, vol:0.5, sting:'logo'},
  {t:'demo',  dur:12.0, vol:0.5, sting:'mode'},     // a 2nd live table per loop (DEMO_ROT rotates every table)
- {t:'mouse', dur:12.0, vol:0.5, sting:'mode'},     // top-down live demo (TOP_ROT, incl. CASTLE KILLSCREEN red vs blue)
+ {t:'mouse', dur:12.0, vol:0.5, sting:'mode', cap:'<b>HIGH-TABLE TO-GO!</b><small>the table from above · play it with a mouse or a phone</small>'},     // top-down live demo (TOP_ROT, incl. CASTLE KILLSCREEN red vs blue) -- branded HIGH-TABLE TO-GO! (Joe 2026-10-14; the caption was empty)
  {t:'board', dur:7.0, vol:0.5, sting:'logo'},
 ];
 
@@ -430,7 +430,7 @@ function show(s){ scr=s; var attract=s==='title';
 // (the reel supplies music + its own PRESS text). Idempotent; blanked when the scene leaves.
 // ATTRACT TABLE ROTATION (Joe 2026-10-07): CPU vs CPU on EVERY table with its default knocker pairing (side.html /
 //   table_temp_engine.html TABLE_PAIR) instead of only the menu's current venue. Advances once per demo beat.
-var DEMO_ROT=['bee','throne','queens','bees','nachos'], demoN=0, TOP_ROT=['killscreen','rivalry','nachos'], topN=0;
+var DEMO_ROT=['bee','throne','queens','bees','nachos'], demoN=0, TOP_ROT=['killscreen','rivalry','nachos','bees','throne'], topN=0;
 function setDemoFrame(on,kind){ if(!gameEl)return;
   if(on){ var want=kind==='mouse'?'mouse':'side';
     if(gameEl.getAttribute('data-demo')!==want){ var v=DEMO_ROT[(demoN++)%DEMO_ROT.length];

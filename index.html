@@ -219,7 +219,7 @@
 <script src="lib/rink-geo.js"></script>
 <script src="lib/pucks.js?v=noglow1"></script>
 <script src="lib/ghost.js?v=1"></script>
-<script src="lib/catalog.js?v=1"></script>
+<script src="lib/catalog.js?v=2"></script>
 <script src="lib/menu.js?v=1"></script>
 <script>
 (()=>{
@@ -2062,22 +2062,37 @@ const REELSEG=[   // wipe = the transition used to ENTER each beat (carpet / com
   {k:'board', dur:6.5,                  wipe:'comet'},    // HYSCORE leaderboard
   {k:'demo',  tbl:'queens', knock:'queens', team:'queens', dur:12, wipe:'clash'},   // RIVALRY (queens end): queens vs bees (TABLE_PAIR)
   {k:'inter', act:'ads', dur:ADS_DUR,   wipe:'comet'},    // THE VENUES + MODES — the "sell the table/modes" pod (incl. VS · 2P)
+  {k:'inter', act:'togo', dur:12, wipe:'comet'},         // HIGH-TABLE TO-GO! — the live TOP-DOWN build over the reel (Joe 2026-10-14: feature the top-down mode)
   {k:'demo',  tbl:'throne', knock:'queens', team:'queens', dur:12, wipe:'clash'},   // THE THRONE ROOM: queens vs queens (TABLE_PAIR)
   {k:'inter', act:'montage',  dur:HOCK, wipe:'carpet'},   // comic hockey montage
   {k:'inter', act:'goalie',   dur:2.6,  wipe:'comet'},    // GOALIE GLOVE SAVE highlight (2-frame robbery)
   {k:'demo',  tbl:'nachos', knock:'house', team:'bees', dur:18, wipe:'clash'},      // PENALTY BOX NACHOS = THE HIGH TABLE (neutral house knocker)
+  {k:'demo',  rot:['killscreen','garden','box','prime'], dur:12, wipe:'clash'},   // the OTHER tables, one per loop: CASTLE KILLSCREEN (bonus) + the three GENERICA (Joe 2026-10-14: feature the different tables)
   {k:'inter', act:'clash',    dur:3.8,  wipe:'comet'},    // HIVEMIND vs THE QUEENS' TABLE (team logos, zapped in)
   {k:'demo',  tbl:'bees', knock:'bees', team:'bees', dur:12, wipe:'clash'},         // THE HONEY HOLE: bees vs bees (TABLE_PAIR)
   {k:'inter', act:'overture', dur:3.0,  wipe:'comet'} ];  // silhouette overture, then loop
 function reelStart(){ REEL=true; DEMO=true; try{Music.kick();}catch(e){} reelIdx=0; reelStartSeg(REELSEG[0]); }
+// HIGH-TABLE TO-GO! beat: the real top-down engine (?demo, muted) in a click-through iframe over the reel, rotating its tables.
+const TOGO_ROT=['nachos','killscreen','rivalry','bees','throne']; let togoN=0, togoEl=null, togoCap=null;
+function togoShow(on){ if(!PADOK) return;   // headless harness: no DOM
+  if(on&&!togoEl){ togoEl=document.createElement('iframe'); togoEl.setAttribute('aria-hidden','true'); togoEl.tabIndex=-1;
+      togoEl.style.cssText='position:fixed;inset:0;width:100%;height:100%;border:0;z-index:3;pointer-events:none;opacity:0;transition:opacity .45s;background:#05030c';
+      togoCap=document.createElement('div'); togoCap.style.cssText='position:fixed;left:0;right:0;bottom:9vh;z-index:4;pointer-events:none;text-align:center;opacity:0;transition:opacity .45s;font:italic 900 clamp(22px,5vw,58px)/1.05 "Helvetica Neue",Arial;color:#27f6ff;letter-spacing:.03em;text-shadow:0 0 22px rgba(39,246,255,.7),0 3px 14px #000';
+      togoCap.innerHTML='HIGH-TABLE TO-GO!<div style="font:800 clamp(11px,1.7vw,19px)/1.4 \'Helvetica Neue\',Arial;font-style:normal;color:#fff;letter-spacing:.18em;margin-top:.5em">THE TABLE FROM ABOVE · MOUSE OR PHONE</div>';
+      document.body.appendChild(togoEl); document.body.appendChild(togoCap); }
+  if(!togoEl) return;
+  if(on){ togoEl.src='table_temp_engine.html?demo=1&mute=1&table='+TOGO_ROT[(togoN++)%TOGO_ROT.length]; setTimeout(function(){ if(togoEl&&interAct==='togo'&&REEL){ togoEl.style.opacity='1'; togoCap.style.opacity='1'; } },450); }
+  else { togoEl.style.opacity='0'; togoCap.style.opacity='0'; setTimeout(function(){ if(togoEl&&!(interAct==='togo'&&REEL)) togoEl.src='about:blank'; },500); } }   // blank it so the engine stops running
 function reelStartSeg(s){ reelT=0; interT=0; interAct=s.act||'splash'; interDur=s.dur||4; DEMO=true;
+  if(togoEl && s.act!=='togo') togoShow(false); if(s.act==='togo') togoShow(true);
+  if(s.k==='demo' && s.rot){ const t=s.rot[(s._n=(s._n||0))%s.rot.length]; s._n++; const pr=TABLE_PAIR[t]||['house','turf']; s.tbl=t; s.knock=pr[0]; s.team=KTEAM[pr[0]]||'bees'; }   // rotating slot: next table each loop, its house knocker pairing
   if(s.k==='demo'){ resetSeries(); playEntry({tbl:s.tbl,knock:s.knock||'house',team:s.team||'bees'}); estT=Math.min(estT,0.8); DIFF=2;
     scoreN=2+Math.floor(Math.random()*3); scoreF=2+Math.floor(Math.random()*3); }   // ALL-STAR pace + drop in MID-GAME (live 2-4 scoreboard) so the demo reads as a real match in progress, not a 0-0 warm-up
   else if(s.k==='board'){ state='board'; } else { state='inter'; } }
 function reelAdvance(){ if(!REEL) return; const next=(reelIdx+1)%REELSEG.length, s=REELSEG[next], w=s.wipe||'carpet';
   const wsfx = (w==='clash') ? (()=>{ try{SFX.resume();SFX.hit(0.85);}catch(e){} }) : (()=>{ try{SFX.resume();SFX.cut();}catch(e){} });   // clash = crest-collision impact; comet/carpet = a slap — fired at the wipe's visual peak
   transition(w, ()=>{ reelIdx=next; reelStartSeg(s); }, (w==='clash')?0.9:0.82, wsfx); }
-function reelExit(){ REEL=false; DEMO=false; reelIdx=-1; splashIdle=0; }   // any input -> drop back to the menu
+function reelExit(){ REEL=false; DEMO=false; reelIdx=-1; splashIdle=0; if(togoEl) togoShow(false); }   // any input -> drop back to the menu
 function adFont(txt,w,px,maxW){ px=Math.round(px); ctx.font=w+' '+px+'px "Helvetica Neue",Arial'; while(px>11&&ctx.measureText(txt).width>maxW){ px-=2; ctx.font=w+' '+px+'px "Helvetica Neue",Arial'; } }   // shrink-to-fit so ad copy never clips
 function drawAds(sT,dur){ const CW=VW,CH=VH, n=ADS.length||1, per=(dur||ADS_DUR)/n, idx=Math.min(n-1,Math.floor(sT/per)), lt=sT-idx*per, ad=ADS[idx]||{}, im=ADIMG[ad.k];
   ctx.fillStyle='#05030c'; ctx.fillRect(0,0,CW,CH);
@@ -2091,7 +2106,10 @@ function drawAds(sT,dur){ const CW=VW,CH=VH, n=ADS.length||1, per=(dur||ADS_DUR)
   ctx.textAlign='start'; ctx.textBaseline='alphabetic'; }
 function drawInter(){ ctx.clearRect(0,0,VW,VH); const t=interT;
   if(interAct==='clash') drawTeamClash(t,interDur); else if(interAct==='overture') drawOverture(t,interDur);
-  else if(interAct==='film') drawClashFilm(t,interDur); else if(interAct==='montage') drawHockey(Math.min(t,HOCK-0.001)); else if(interAct==='goalie') drawGoalieSave(t,interDur); else if(interAct==='ads') drawAds(t,interDur); else drawSplash(); }
+  else if(interAct==='film') drawClashFilm(t,interDur); else if(interAct==='montage') drawHockey(Math.min(t,HOCK-0.001)); else if(interAct==='goalie') drawGoalieSave(t,interDur); else if(interAct==='ads') drawAds(t,interDur); else if(interAct==='togo') drawTogo(t,interDur); else drawSplash(); }
+function drawTogo(t,T){ ctx.fillStyle='#05030c'; ctx.fillRect(0,0,VW,VH);   // under the live iframe: the beat's own backdrop + brand (shows before the frame fades in / headless)
+  if(togoEl && togoEl.style.opacity==='1' && t>T-0.55) togoShow(false);   // clear the live frame before the wipe out, so the transition reads
+  ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle'; adFont('HIGH-TABLE TO-GO!','italic 900',VH*0.09,VW*0.9); ctx.fillStyle='#27f6ff'; ctx.shadowColor='#27f6ff'; ctx.shadowBlur=26; ctx.fillText('HIGH-TABLE TO-GO!',VW/2,VH*0.46); ctx.restore(); }
 // RENDERED CLASH FILM — crossfades through the 6 rendered hive-vs-crown clash frames (Ken-Burns + energy flash) = a real animated interstitial
 function drawClashFilm(t,T){ ctx.fillStyle='#05030c'; ctx.fillRect(0,0,VW,VH); const n=CLASHFILM.length; if(!n)return;
   const prog=(t/Math.max(0.001,T))*n, fi=Math.max(0,Math.min(n-1,Math.floor(prog))), fr=prog-Math.floor(prog), ni=Math.min(n-1,fi+1), z=1.05+0.05*Math.sin(t*0.7);
@@ -2459,6 +2477,7 @@ addEventListener('resize',tpadLayout); addEventListener('orientationchange',func
   chip.addEventListener('pointerdown',e=>{ e.preventDefault(); buzz(); applyStick(!TSTICK.on); });
   if(Q.has('qa')) window.__htPad={ peek:()=>({state,TX:near.TX,TY:near.TY,grab:deckGrab,blastCD:near.blastCD,big:near.big,sup:near.sup,held:puckHeld,bg:[BG.dx,BG.dw,BG.dh],st:[TSTICK.x,TSTICK.y]}),
     prime:()=>{ near.sup=1; near.blastCD=0; },
+    reelJump:(i)=>{ if(REEL){ reelIdx=i-1; reelAdvance(); } }, reel:()=>({REEL,reelIdx,k:REELSEG[reelIdx]&&REELSEG[reelIdx].k,act:interAct,tbl,togo:togoEl?togoEl.src:null}),
     puckTo:(dx,dy,vx,vy)=>{ puck.X=near.X+dx; puck.Y=near.Y+dy; puck.vX=vx||0; puck.vY=vy||0; },   // QA: roll a puck at the near mallet
     series:(w,l,hist,n,f,v)=>{ CUP.on=true; CUP.inPlayoff=false; CUP.variant=v||'standard'; CUP.win=w; CUP.loss=l; CUP.hist=hist; scoreN=n; scoreF=f; TIMED=false; TARGET=n>f?n:f; state='win'; } };   // QA: stage a between-games screen   // ?qa: headless phone-pad test hook (tools/_qa/phone_pad.mjs)
   { let on=Q.has('tstick'); try{ if(!on) on=localStorage.getItem('htTouchStick')==='1'; }catch(_){} applyStick(on); }
