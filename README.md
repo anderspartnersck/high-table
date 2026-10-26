@@ -73,7 +73,7 @@ cab at closing time.
 
 ## Credits
 
-Created by **Joseph Coleman**, with Claude and ChatGPT.
+Created by **Joseph Coleman**, with Claude, ChatGPT, and Blender.
 A Castle Killscreen game by Anders & Partners LLC.
 
 Music & SFX by **Taylor Lyons** and **Joseph Coleman**.
