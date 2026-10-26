@@ -1,0 +1,318 @@
+{
+ "version": 1,
+ "note": "per-state trimmed atlases; draw scale = d/ref (knocker) or R/unit_px (puck); dest = p - anchor*scale; cell i at ((i%cols)*(cell+gutter), floor(i/cols)*(cell+gutter))",
+ "knocker": {
+  "elev_deg": [
+   8,
+   10,
+   12,
+   14,
+   16,
+   18,
+   20,
+   22,
+   24,
+   26,
+   28,
+   30,
+   32,
+   34
+  ],
+  "elev": {
+   "cell": [
+    348,
+    341
+   ],
+   "cols": 11,
+   "gutter": 2,
+   "n": 14,
+   "ref": 384.0,
+   "anchor": [
+    174.0,
+    243.07999999999998
+   ],
+   "files": {
+    "knocker_green": "knocker_green_elev.webp",
+    "knocker_red": "knocker_red_elev.webp",
+    "knocker_yellow": "knocker_yellow_elev.webp",
+    "knocker_purple": "knocker_purple_elev.webp",
+    "knocker_blue": "knocker_blue_elev.webp",
+    "knocker_white": "knocker_white_elev.webp",
+    "knocker_orange": "knocker_orange_elev.webp",
+    "knocker_royal": "knocker_royal_elev.webp"
+   },
+   "sheet": [
+    3848,
+    684
+   ]
+  },
+  "tumble": {
+   "cell": [
+    261,
+    300
+   ],
+   "cols": 15,
+   "gutter": 2,
+   "n": 48,
+   "ref": 288.0,
+   "anchor": [
+    130.5,
+    212.31
+   ],
+   "files": {
+    "knocker_green": "knocker_green_tumble.webp",
+    "knocker_red": "knocker_red_tumble.webp",
+    "knocker_yellow": "knocker_yellow_tumble.webp",
+    "knocker_purple": "knocker_purple_tumble.webp",
+    "knocker_blue": "knocker_blue_tumble.webp",
+    "knocker_white": "knocker_white_tumble.webp",
+    "knocker_orange": "knocker_orange_tumble.webp",
+    "knocker_royal": "knocker_royal_tumble.webp"
+   },
+   "sheet": [
+    3943,
+    1206
+   ],
+   "elevs": [
+    12,
+    22,
+    32
+   ],
+   "per_elev": 16
+  },
+  "squash": {
+   "cell": [
+    336,
+    322
+   ],
+   "cols": 12,
+   "gutter": 2,
+   "n": 12,
+   "ref": 288.0,
+   "anchor": [
+    168.0,
+    231.81
+   ],
+   "files": {
+    "knocker_green": "knocker_green_squash.webp",
+    "knocker_red": "knocker_red_squash.webp",
+    "knocker_yellow": "knocker_yellow_squash.webp",
+    "knocker_purple": "knocker_purple_squash.webp",
+    "knocker_blue": "knocker_blue_squash.webp",
+    "knocker_white": "knocker_white_squash.webp",
+    "knocker_orange": "knocker_orange_squash.webp",
+    "knocker_royal": "knocker_royal_squash.webp"
+   },
+   "sheet": [
+    4054,
+    322
+   ],
+   "elevs": [
+    12,
+    22,
+    32
+   ],
+   "amps": [
+    0.3,
+    0.15,
+    -0.15,
+    -0.3
+   ]
+  },
+  "shadow": {
+   "cell": [
+    202,
+    116
+   ],
+   "cols": 14,
+   "gutter": 2,
+   "n": 14,
+   "ref": 192.0,
+   "anchor": [
+    101.5,
+    58.03999999999999
+   ],
+   "files": {
+    "knocker": "knocker_shadow.webp"
+   },
+   "sheet": [
+    2854,
+    116
+   ]
+  }
+ },
+ "puck": {
+  "elev_deg": [
+   8,
+   10,
+   12,
+   14,
+   16,
+   18,
+   20,
+   22,
+   24,
+   26,
+   28,
+   30,
+   32,
+   34
+  ],
+  "unit_px": 76.80000000000001,
+  "styles": {
+   "classic": {
+    "cell": [
+     170,
+     117
+    ],
+    "cols": 14,
+    "gutter": 2,
+    "n": 14,
+    "ref": 76.80000000000001,
+    "anchor": [
+     85.0,
+     67.0
+    ],
+    "files": {
+     "puck": "puck_classic.webp"
+    },
+    "sheet": [
+     2406,
+     117
+    ],
+    "spin": 1
+   },
+   "lit": {
+    "cell": [
+     170,
+     117
+    ],
+    "cols": 14,
+    "gutter": 2,
+    "n": 14,
+    "ref": 76.80000000000001,
+    "anchor": [
+     85.0,
+     67.0
+    ],
+    "files": {
+     "puck": "puck_lit.webp"
+    },
+    "sheet": [
+     2406,
+     117
+    ],
+    "spin": 1
+   },
+   "zebra": {
+    "cell": [
+     170,
+     117
+    ],
+    "cols": 23,
+    "gutter": 2,
+    "n": 112,
+    "ref": 76.80000000000001,
+    "anchor": [
+     85.0,
+     67.0
+    ],
+    "files": {
+     "puck": "puck_zebra.webp"
+    },
+    "sheet": [
+     3954,
+     593
+    ],
+    "spin": 8
+   },
+   "hive": {
+    "cell": [
+     170,
+     117
+    ],
+    "cols": 23,
+    "gutter": 2,
+    "n": 112,
+    "ref": 76.80000000000001,
+    "anchor": [
+     85.0,
+     67.0
+    ],
+    "files": {
+     "puck": "puck_hive.webp"
+    },
+    "sheet": [
+     3954,
+     593
+    ],
+    "spin": 8
+   },
+   "royal": {
+    "cell": [
+     170,
+     117
+    ],
+    "cols": 23,
+    "gutter": 2,
+    "n": 112,
+    "ref": 76.80000000000001,
+    "anchor": [
+     85.0,
+     67.0
+    ],
+    "files": {
+     "puck": "puck_royal.webp"
+    },
+    "sheet": [
+     3954,
+     593
+    ],
+    "spin": 8
+   },
+   "contested": {
+    "cell": [
+     170,
+     117
+    ],
+    "cols": 23,
+    "gutter": 2,
+    "n": 112,
+    "ref": 76.80000000000001,
+    "anchor": [
+     85.0,
+     67.0
+    ],
+    "files": {
+     "puck": "puck_contested.webp"
+    },
+    "sheet": [
+     3954,
+     593
+    ],
+    "spin": 8
+   }
+  },
+  "shadow": {
+   "cell": [
+    92,
+    55
+   ],
+   "cols": 14,
+   "gutter": 2,
+   "n": 14,
+   "ref": 38.400000000000006,
+   "anchor": [
+    46.0,
+    27.5
+   ],
+   "files": {
+    "puck": "puck_shadow.webp"
+   },
+   "sheet": [
+    1314,
+    55
+   ]
+  }
+ }
+}
