@@ -11,6 +11,8 @@ Penalty Box Nachos, the turbo apex, where the game runs fastest.
 
 Free, in your browser, nothing to install.
 
+The knockers and puck are 3D, rendered in Blender.
+
 ## How to play
 
 Your knocker is the near one. Put the puck in the far goal.
@@ -70,6 +72,16 @@ other end.
 Nothing is saved on your device and nothing is sent anywhere: settings,
 unlocks and campaign progress last until you close the page, like an arcade
 cab at closing time.
+
+## OLD 2D VERSION
+
+The original flat-sprite game, kept playable but no longer the main game:
+[OLD 2D VERSION](https://anderspartnersck.github.io/high-table/old-2d.html).
+Its menus lead back into the 3D edition. In a 3D match, press **3** to flip
+the knockers and puck back to the flat sprites.
+
+Links ending in `-3d.html` came from the day the 3D edition was a side page.
+They forward to the main game.
 
 ## Credits
 
