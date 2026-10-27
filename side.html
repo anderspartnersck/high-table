@@ -2002,30 +2002,100 @@ const L3 = (function(){
   if(!ON) return { ON:false, OPT };
   const K = M.knocker, P = M.puck, KFW = K.frame[0], KFH = K.frame[1], KREF = K.ref || KFW, PFW = P.frame[0];
   const KG = K.gutter || 0, PG = P.gutter || 0;   // cells are frame + transparent gutter apart; source rects are whole integer cells
-  // ---- RUNTIME ATLASES + PRELOAD (Joe 1024 "chugged a little"): only the match's two skins + its puck are fetched,
-  //   from BOOT / table select (need() runs every draw, incl. menus and the GET READY lead-in), each one decoded off the
-  //   main thread (img.decode()) and drawn once at 1px to force the GPU upload — ONE sheet per frame, so the lead-in never freezes. Until a sheet is READY the piece draws
-  //   with the original 2D sprite, so a frame never waits on a decode. Runtime geometry: renders/sprites3d/rt/runtime.json.
-  const RTM = M.rt, RTROOT = ROOT + 'rt/', ready = {}, asked = {}, warm = [];
-  function fetchSheet(file){ if(asked[file]) return; asked[file] = 1; const url = RTROOT + file;
-    const viaImg = () => { const im = new Image(), done = () => { ready[file] = im; warm.push(im); }; im.decoding = 'async';
-      if(!im.decode) im.onload = done; im.src = url; if(im.decode) im.decode().then(done, () => { im.onload = done; }); };
-    // ImageBitmap = decoded ONCE, off the main thread, and kept resident (an <img> source can have its decode dropped
-    // between the GET READY warm-up and first use mid-match — measured: 28-42 ms hitches on the first squash frame)
-    if(window.createImageBitmap && window.fetch && location.protocol !== 'file:')
-      fetch(url).then(r => r.blob()).then(b => createImageBitmap(b)).then(bm => { ready[file] = bm; warm.push(bm); }, viaImg);
-    else viaImg(); }
-  const used = {}; function get(file){ const im = file ? (ready[file] || null) : null;
+  // 96 MiB decoded RGBA budget includes in-flight reservations; two async loads maximum.
+  // Protect the current two skins + puck + shadows, evict only inactive LRU sheets.
+  // ATLAS CACHE BEGIN — independently exercised against failure and cache pressure by loader_check.mjs.
+  function createAtlasCache(rt, root, env){
+    const LIMIT = 96*1024*1024, MAX_LOADS = 2, TIMEOUT = 12000, MAX_TRIES = 3;
+    const entries = new Map(), queue = [], warm = []; let active = new Set(), resident = 0, reserved = 0, loading = 0, serial = 0;
+    function scan(o){ if(!o || typeof o !== 'object') return;
+      if(o.files && o.sheet) for(const file of Object.values(o.files)) entries.set(file, {file, bytes:o.sheet[0]*o.sheet[1]*4, width:o.sheet[0], height:o.sheet[1], status:'idle', image:null, attempts:0, next:0, stamp:0, pending:false});
+      else for(const v of Object.values(o)) scan(v); }
+    scan(rt);
+    function dispose(im){ if(im && im.close) im.close(); else if(im){ im.onload = im.onerror = null; im.src = ''; } }
+    function evict(e){ resident -= e.bytes; dispose(e.image); e.image = null; e.status = 'idle'; }
+    function room(bytes){
+      while(resident + reserved + bytes > LIMIT){
+        let oldest = null; for(const e of entries.values()) if(e.image && !active.has(e.file) && (!oldest || e.stamp < oldest.stamp)) oldest = e;
+        if(!oldest) return false; evict(oldest);
+      } return true;
+    }
+    function imageLoad(url, control){ return new Promise((resolve,reject)=>{
+      const im = new env.Image(); let done = false;
+      const finish = (error)=>{ if(done) return; done = true; im.onload = im.onerror = null; control.cancel = null;
+        if(error){ im.src = ''; reject(error); } else resolve(im); };
+      im.decoding = 'async';
+      im.onload = ()=>{ if(im.decode) Promise.resolve().then(()=>im.decode()).then(()=>finish(),finish); else finish(); };
+      im.onerror = ()=>finish(new Error('atlas image failed'));
+      control.cancel = ()=>finish(new Error('atlas image cancelled'));
+      im.src = url; // Both handlers are installed before src, including cached and file:// loads.
+    }); }
+    async function decode(url, control){
+      if(env.fetch && env.bitmap){
+        const response = await env.fetch(url, control.abort ? {signal:control.abort.signal} : undefined);
+        if(!response.ok) throw new Error('atlas HTTP ' + response.status);
+        const blob = await response.blob();
+        if(control.expired) throw new Error('atlas request expired');
+        return env.bitmap(blob);
+      }
+      return imageLoad(url,control);
+    }
+    function pump(){
+      for(let i = 0; i < queue.length && loading < MAX_LOADS;){
+        const e = queue[i];
+        if(!active.has(e.file) || e.image || e.pending){ queue.splice(i,1); continue; }
+        if(e.next > env.now()){ i++; continue; }
+        if(!room(e.bytes)){ i++; continue; }
+        queue.splice(i,1); start(e);
+      }
+    }
+    function start(e){
+      const token = ++serial, control = {expired:false, cancel:null, abort:env.AbortController ? new env.AbortController() : null};
+      e.token = token; e.pending = true; e.status = 'loading'; e.attempts++; loading++; reserved += e.bytes;
+      const timer = env.setTimeout(()=>{ control.expired = true; e.status = 'error'; e.error = 'atlas timeout';
+        if(control.abort) control.abort.abort(); if(control.cancel) control.cancel(); }, TIMEOUT);
+      // Keep the reservation and slot until decode actually settles: createImageBitmap cannot be aborted.
+      // A timed-out late bitmap is closed, never warmed, and cannot allow 32 rapid swaps to decode together.
+      Promise.resolve().then(()=>decode(root + e.file,control)).then(im=>{
+        if(control.expired || !active.has(e.file) || e.token !== token){ dispose(im); return; }
+        if((im.width || im.naturalWidth) !== e.width || (im.height || im.naturalHeight) !== e.height){ dispose(im); throw new Error('atlas dimensions differ from manifest'); }
+        e.image = im; e.status = 'ready'; e.error = null; e.attempts = 0; resident += e.bytes; e.stamp = ++serial; warm.push({e,im});
+      }).catch(error=>{ e.status = 'error'; e.error = String(error.message || error); }).finally(()=>{
+        env.clearTimeout(timer); reserved -= e.bytes; loading--; e.pending = false;
+        if(!e.image){ e.status = active.has(e.file) ? 'error' : 'idle';
+          e.next = env.now() + (e.attempts >= MAX_TRIES ? 30000 : 500*Math.pow(2,e.attempts-1)); }
+        pump();
+      });
+    }
+    function want(files, loadFiles = files){
+      active = new Set(files.filter(f=>entries.has(f)));
+      for(const file of loadFiles){ const e = entries.get(file); if(!e || !active.has(file) || e.image || e.pending || queue.includes(e)) continue;
+        if(e.attempts >= MAX_TRIES && env.now() >= e.next) e.attempts = 0;
+        if(env.now() >= e.next) queue.push(e);
+      }
+      pump();
+    }
+    function get(file){ const e = entries.get(file); if(!e || !e.image) return null; e.stamp = ++serial; return e.image; }
+    function takeWarm(){ while(warm.length){ const {e,im} = warm.shift(); if(e.image === im && active.has(e.file)) return im; } return null; }
+    return {want,get,takeWarm,stats:()=>({limit:LIMIT,resident,reserved,loading,active:[...active],entries:[...entries.values()].map(e=>({file:e.file,status:e.status,bytes:e.bytes,attempts:e.attempts,pending:e.pending,error:e.error}))})};
+  }
+  // ATLAS CACHE END
+  const RTM = M.rt, RTROOT = ROOT + 'rt/';
+  const cache = createAtlasCache(RTM, RTROOT, {fetch:location.protocol !== 'file:' && window.fetch && window.fetch.bind(window), bitmap:window.createImageBitmap && window.createImageBitmap.bind(window),
+    Image, AbortController:window.AbortController, now:()=>performance.now(), setTimeout:window.setTimeout.bind(window), clearTimeout:window.clearTimeout.bind(window)});
+  const used = {}; function get(file){ const im = file ? cache.get(file) : null;
     if(im && !used[file]){ used[file] = 1; (window.__l3use ||= []).push({ at: Math.round(performance.now()), file, state }); } return im; }
   function knockerFiles(img2d){ const sk = skinOf(img2d); if(!sk || !RTM.knocker.elev.files['knocker_' + sk]) return null;
     const k = 'knocker_' + sk; return { elev:RTM.knocker.elev.files[k], tumble:RTM.knocker.tumble.files[k], squash:RTM.knocker.squash.files[k] }; }
-  const PRE = { boot:1, splash:1, title:1, inter:1, board:1 }; let lastKey = '', stable = 0;   // the match's skins aren't settled yet (defaults get swapped at pick)
+  const PRE = { boot:1, splash:1, title:1, inter:1, board:1 }; let lastKey = '', stable = 0;
   function need(){ if(!RTM) return;
     const key = (IMG.near && IMG.near.src) + '|' + (IMG.far && IMG.far.src); stable = (key === lastKey) ? stable + 1 : 0; lastKey = key;
-    if(!PRE[state] && stable >= 8) for(const im of [IMG.near, IMG.far]){ const f = knockerFiles(im); if(f){ fetchSheet(f.elev); fetchSheet(f.tumble); fetchSheet(f.squash); } }   // a skin must hold 8 frames (the pairing swap at match start)
-    if(OPT.shadow) fetchSheet(RTM.knocker.shadow.files.knocker);
-    const st = puckStyle(); if(st && OPT.puck){ fetchSheet(RTM.puck.styles[st].files.puck); if(OPT.shadow) fetchSheet(RTM.puck.shadow.files.puck); }
-    if(warm.length){ const im = warm.shift(), t0 = performance.now(); ctx.save(); ctx.drawImage(im, 0, 0, (im.naturalWidth || im.width)*0.5, (im.naturalHeight || im.height)*0.5); ctx.restore();   // full sheet at a game-like scale; painted over by the table bg drawn right after
+    const files = [], immediate = [];
+    for(const im of [IMG.near, IMG.far]){ const f = knockerFiles(im); if(f) files.push(f.elev,f.tumble,f.squash); }
+    if(OPT.shadow) immediate.push(RTM.knocker.shadow.files.knocker);
+    const st = puckStyle(); if(st && OPT.puck){ immediate.push(RTM.puck.styles[st].files.puck); if(OPT.shadow) immediate.push(RTM.puck.shadow.files.puck); }
+    cache.want([...files,...immediate], (!PRE[state] && stable >= 8) ? [...files,...immediate] : immediate);
+    const im = cache.takeWarm(); if(im){ const t0 = performance.now(); ctx.save(); ctx.drawImage(im, 0, 0, (im.naturalWidth || im.width)*0.5, (im.naturalHeight || im.height)*0.5); ctx.restore();
       (window.__l3log ||= []).push({ at: Math.round(t0), ms: +(performance.now() - t0).toFixed(1), state, src: String(im.src || 'bitmap').split('/').pop() }); } }
   function blit(im, g, idx, px, py, scl, dy){ const cw = g.cell[0], ch = g.cell[1], sx = (idx % g.cols)*(cw + g.gutter), sy = Math.floor(idx/g.cols)*(ch + g.gutter);
     ctx.drawImage(im, sx, sy, cw, ch, px - g.anchor[0]*scl, py - g.anchor[1]*scl + (dy || 0), cw*scl, ch*scl); }
@@ -2208,7 +2278,7 @@ const L3 = (function(){
       ctx.fillStyle = '#fff'; ctx.fillText(t, VW/2, u*0.018); ctx.restore(); } }
   function physics(){ if(!OPT.expKy) return;                       // re-asserted every frame (the feel lab / htFeel can load CONTACT after boot)
     if(kyBase === null) kyBase = CONTACT.kyStretch; CONTACT.kyStretch = 1.0; }
-  return { ON:true, OPT, drawPieces, view, cam, sbRect, live:() => live, badge, need, physics, trueWidth };
+  return { ON:true, OPT, drawPieces, view, cam, sbRect, live:() => live, badge, need, physics, trueWidth, atlasStats:cache.stats };
 })();
 /* ===== /LAB3D ===== */
 
