@@ -73,16 +73,6 @@ Nothing is saved on your device and nothing is sent anywhere: settings,
 unlocks and campaign progress last until you close the page, like an arcade
 cab at closing time.
 
-## OLD 2D VERSION
-
-The original flat-sprite game, kept playable but no longer the main game:
-[OLD 2D VERSION](https://anderspartnersck.github.io/high-table/old-2d.html).
-Its menus lead back into the 3D edition. In a 3D match, press **3** to flip
-the knockers and puck back to the flat sprites.
-
-Links ending in `-3d.html` came from the day the 3D edition was a side page.
-They forward to the main game.
-
 ## Credits
 
 Created by **Joseph Coleman**, with Claude, ChatGPT, and Blender.
@@ -93,6 +83,15 @@ Music & SFX by **Taylor Lyons** and **Joseph Coleman**.
 ---
 
 <sub>RESPEK LOGIC ART UREA</sub>
+
+## OLD 2D VERSION
+
+The original flat-sprite game, kept playable but no longer the main game:
+[OLD 2D VERSION](https://anderspartnersck.github.io/high-table/old-2d.html).
+Its menus lead back into the 3D edition.
+
+Links ending in `-3d.html` came from the day the 3D edition was a side page.
+They forward to the main game.
 
 [play]: https://anderspartnersck.github.io/high-table/
 [camp]: https://anderspartnersck.github.io/high-table/cab_intro.html?cab=1up%20HIVEMIND%20color&game=side.html%3Fcamp&title=CAMPAIGN
