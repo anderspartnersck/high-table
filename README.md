@@ -84,14 +84,11 @@ Music & SFX by **Taylor Lyons** and **Joseph Coleman**.
 
 <sub>RESPEK LOGIC ART UREA</sub>
 
-## OLD 2D VERSION
+## ⚠︎ OLD 2D VERSION — NOT THE MAIN GAME
 
-The original flat-sprite game, kept playable but no longer the main game:
+Archived for reference only. It is no longer updated, and nothing new goes into it.
+The game at the top of this page is the real one. This is the original flat-sprite build:
 [OLD 2D VERSION](https://anderspartnersck.github.io/high-table/old-2d.html).
-Its menus lead back into the 3D edition.
-
-Links ending in `-3d.html` came from the day the 3D edition was a side page.
-They forward to the main game.
 
 [play]: https://anderspartnersck.github.io/high-table/
 [camp]: https://anderspartnersck.github.io/high-table/cab_intro.html?cab=1up%20HIVEMIND%20color&game=side.html%3Fcamp&title=CAMPAIGN
