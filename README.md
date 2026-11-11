@@ -1,3 +1,9 @@
+> **Status: Finished title — live on GitHub Pages.**
+> Play: https://anderspartnersck.github.io/high-table/ (the 3D edition; every link below is in this repo).
+> Also here: [arcade.html](https://anderspartnersck.github.io/high-table/arcade.html) (attract-mode launcher) ·
+> [garage.html](https://anderspartnersck.github.io/high-table/garage.html) (the cab collection) ·
+> [old-2d.html](https://anderspartnersck.github.io/high-table/old-2d.html) (OLD 2D VERSION, see the bottom).
+
 <img src="sprites/title_high_table.png" alt="ONE-TIMER: THE HIGH TABLE" width="560">
 
 ## ▶ [PLAY IT IN YOUR BROWSER][play]
@@ -38,8 +44,8 @@ Turn it sideways.
 ### On a computer
 
 - Steer with the mouse, WASD or the arrow keys.
-- **TRAP**: hold the mouse button or **Z** · **GET BIG**: **X** · **BLAST**: **C**
-- **P** or **Esc** pauses. **M** switches colour / black-and-white.
+- **TRAP**: hold the mouse button or **Z** · **GET BIG**: **X** (or **SPACE** / **F**) · **BLAST**: **C**
+- **P** or **Esc** pauses (the pause menu has SOUND and HOW TO PLAY). **M** switches colour / black-and-white.
 
 ### With a controller
 
@@ -83,6 +89,8 @@ Music & SFX by **Taylor Lyons** and **Joseph Coleman**.
 ---
 
 <sub>RESPEK LOGIC ART UREA</sub>
+
+<sub>Generated from the private Castle Killscreen tree (`ONE TIMER THE HIGH TABLE/tools/build_pages.py`). Edit the game there, not here. This README is the one file the build never touches, so edit it here.</sub>
 
 ## ⚠︎ OLD 2D VERSION — NOT THE MAIN GAME
 
