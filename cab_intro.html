@@ -84,7 +84,7 @@
   {var _cp=document.getElementById('cabPhoto'); _cp.onerror=function(){this.style.opacity=0.12;}; _cp.src=cabUrl;}   // beauty-shot 404 → dim, not a broken glyph
   if(Q.get('title')) document.getElementById('marquee').textContent=Q.get('title');
   var gameEl=document.getElementById('game');
-  var _nb=(/side\.html|table_temp_engine/.test(game)&&!/2up\.html/.test(game))?'&noboot':'';   // the game supports ?noboot → skip its OWN boot ident so it doesn't stack on the cab Ken-Burns cold-open
+  var _nb=(/side(-3d)?\.html|table_temp_engine/.test(game)&&!/2up\.html/.test(game))?'&noboot':'';   // the game supports ?noboot → skip its OWN boot ident so it doesn't stack on the cab Ken-Burns cold-open
   gameEl.src=game+(game.indexOf('?')>=0?'&':'?')+'_cb='+Date.now()+_nb;   // load the game behind the intro (no-cache)
 
   var ck=document.getElementById('ckSplash'), neon=document.getElementById('ckNeon'),

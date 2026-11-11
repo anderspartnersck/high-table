@@ -104,6 +104,10 @@
     padding:8px 12px;border:1px solid rgba(39,246,255,.35);border-radius:16px;background:rgba(4,8,16,.62);opacity:0;transition:opacity .6s}
   #esccue.on{opacity:1} #esccue b{color:#ffe23a} body.handR #esccue{right:auto;left:16px}   /* the cue sits opposite the GET BIG meter */   /* phone: the HAND flop replaces the desktop input toggles */
   #pause .pbtns{display:flex;gap:9px;margin-top:18px}
+  #pause .card{max-height:96vh;overflow:auto} #pause .pvol{padding:8px 13px;margin:6px 0}
+  #pause .card.hidden{display:none}   /* UI-AUDIT 1110: HOW TO PLAY + SOUND */
+  #pause .vbar{color:#ffe23a;letter-spacing:.1em;margin-left:8px;font-family:ui-monospace,Menlo,monospace}
+  #pause .hrow{display:flex;gap:12px;padding:8px 2px;border-bottom:1px solid #1c2740} #pause .hrow b{flex:none;width:84px;color:#ffe23a;font:800 11px/1.5 'Helvetica Neue',Arial;letter-spacing:.12em} #pause .hrow span{color:#cfe6ff;font-size:12px}
   #pause button{flex:1;padding:13px 0;border:1px solid #2a3550;border-radius:9px;background:#121828;color:#cfe6ff;font:800 12px/1 ui-monospace,monospace;letter-spacing:.1em;cursor:pointer}
   #pause button:hover{border-color:#ffe23a;color:#fff}
   #pause button.primary{background:#1a2236;border-color:#ffe23a;color:#ffe23a}
@@ -220,8 +224,22 @@
     <div class="ctog" data-ctrl="stick"><div class="box"><i></i></div><div class="txt"><div class="nm">STICK (F300 / pad)</div><div class="hk">left stick / d-pad · A TRAP · B BLAST · RT GET BIG</div></div></div>
     <div class="ctog" id="phand"><div class="box"><i></i></div><div class="txt"><div class="nm">FLOP THE HUD · BUTTONS ON THE RIGHT</div><div class="hk" id="phandhk">left-handed: TRAP · GET BIG · BLAST move to the right thumb, steer with the left</div></div></div>
     <div class="ctog appOnly" id="preset"><div class="box" style="background:#3a1420"><i></i></div><div class="txt"><div class="nm">RESET SAVED PROGRESS</div><div class="hk">tap twice · wipes campaign progress + settings on this machine · keeps the controller map and the filing cabinet (that wipe lives in the console's SETTINGS, behind an are-you-sure)</div></div></div>
-    <div class="pbtns"><button class="primary" id="presume">▶ RESUME</button><button id="pmenu">↩ BACK TO MENU</button></div>
+    <div class="seclbl" style="margin-top:14px">SOUND — this visit only</div>
+    <div class="ctog pvol" data-vol="music" title="click / ENTER steps the level"><div class="txt"><div class="nm">MUSIC <span class="vbar"></span></div></div></div>
+    <div class="ctog pvol" data-vol="sfx" title="click / ENTER steps the level"><div class="txt"><div class="nm">SOUND EFFECTS <span class="vbar"></span></div></div></div>
+    <div class="pbtns"><button class="primary" id="presume">▶ RESUME</button><button id="phowto">? HOW TO PLAY</button><button id="pmenu">↩ BACK TO MENU</button></div>
     <div class="pnav" id="pnav">↑ ↓ MOVE · ENTER / A PICK · ESC / START RESUME</div>
+  </div>
+  <div class="card hidden" id="phowcard">
+    <h2>HOW TO PLAY</h2>
+    <div class="psub">AIR HOCKEY AT THE HIGH TABLE</div>
+    <div class="hrow"><b>THE POINT</b><span>Put the puck in the far goal. Guard yours.</span></div>
+    <div class="hrow"><b>STEER</b><span>the mouse · WASD / arrows · stick or d-pad</span></div>
+    <div class="hrow"><b>TRAP</b><span>click · Z · A — hold the puck on your mallet, then let it go where you mean it</span></div>
+    <div class="hrow"><b>GET BIG</b><span>X · RT — the mallet swells: a wall in front of your goal</span></div>
+    <div class="hrow"><b>BLAST</b><span>C · B — a lunge through the puck</span></div>
+    <div class="hrow"><b>MENU</b><span>ESC · P · START</span></div>
+    <div class="pbtns"><button class="primary" id="phowback">↩ BACK</button></div>
   </div>
 </div>
 
@@ -351,7 +369,7 @@ const SFX=(()=>{ const lib={},names=['slap','bomb','wave_off','bees_goal','queen
   function queen(pw){const c=actx();if(!c||!c.createOscillator)return; if(sfxLast.queen!=null&&clock-sfxLast.queen<0.05)return; sfxLast.queen=clock; const t=c.currentTime,p=pw==null?0.6:pw;
     [392,494,587,784].forEach((f,i)=>tone(f,f,t,0.09,0.5,Math.min(0.09,0.04+p*0.04)*(i<3?1:0.5),'sine'));
     tone(90,64,t,0.06,0.42,Math.min(0.06,0.03+p*0.025),'sine'); }   // the low sub-bass = the "womp"; raised 70->90Hz, gain ~halved, shorter (0.62->0.42) so it reads as a queens accent, not a WOMP
-  return {resume, bee, queen,
+  return {resume, bee, queen, setVol(x){ M=Q.has('mute')?0:0.55*x; },   // UI-AUDIT 1110: the pause menu's SOUND rows (this visit only)
     hit(power){play('slap',Math.min(0.7,0.25+power*0.6)); if(power>0.7)play('bomb',0.4);},
     wall(p){play('slap',Math.min(0.3,0.1+(p||0)*0.2));},
     clack(p){ const c=actx(); if(!c||!c.createBuffer)return; try{ const t=c.currentTime,dur=0.04,n=Math.floor(c.sampleRate*dur),b=c.createBuffer(1,n,c.sampleRate),d=b.getChannelData(0);   // subtle air-hockey CLACK — short bandpassed noise transient, scales w/ impact (replaces the rail "pound")
@@ -394,7 +412,8 @@ const SFX=(()=>{ const lib={},names=['slap','bomb','wave_off','bees_goal','queen
 //   A long melodic cue (game-start) sets menuCueDuck → ALL beds duck to 0 under it then swell back. 2-UP: HOST only.
 const BEDFOR={ bee:'bees', bees:'bees', nachos:'bees',      // per-TABLE gameplay bed (the venue's house), tunable
                queens:'queens', throne:'queens', killscreen:'bees' };       // Honey Hole=bees · Throne Room=queens (Joe 2026-07-08)
-const Music=(()=>{ if(Q.has('mute')||Q.get('cab2')==='p2') return {kick(){},update(){}};
+let MUSV=1;   // UI-AUDIT 1110: music volume from the pause menu (this visit only)
+const Music=(()=>{ if(Q.has('mute')||Q.get('cab2')==='p2') return {kick(){},update(){},setVol(){}};
   const XF=1.2;   // seamless-loop crossfade seconds — the second copy fades in over the seam so the loop never hard-cuts
   function Bed(src){ let A=null,B=null,cur=null,lvl=0,tgt=0,go=false;
     function mk(){ const e=new Audio(src); e.loop=false; e.volume=0; e.preload='auto'; return e; }   // loop=false — WE do the loop, with a crossfade
@@ -406,16 +425,17 @@ const Music=(()=>{ if(Q.has('mute')||Q.get('cab2')==='p2') return {kick(){},upda
         if(d&&isFinite(d)&&cur.currentTime>=d-XF){                        // in the loop-seam crossfade window
           if(other.paused){ try{ other.currentTime=0; other.play(); }catch(e){} }   // spin up the second copy from the top
           const k=Math.min(1,(cur.currentTime-(d-XF))/XF);
-          cur.volume=lvl*(1-k); other.volume=lvl*k;                        // crossfade tail→head across the seam
+          cur.volume=lvl*MUSV*(1-k); other.volume=lvl*MUSV*k;                        // crossfade tail→head across the seam
           if(cur.ended||cur.currentTime>=d-0.03){ try{cur.pause();}catch(e){} cur=other; }   // hand off before the actual end (no gap)
         } else { if(cur.ended){ try{ cur.currentTime=0; cur.play(); }catch(e){} }   // safety: a frame hitch overran the seam → restart rather than go silent
-          cur.volume=lvl; if(!other.paused){ try{other.pause();}catch(e){} other.volume=0; } }   // steady state: one copy, at level
+          cur.volume=lvl*MUSV; if(!other.paused){ try{other.pause();}catch(e){} other.volume=0; } }   // steady state: one copy, at level
       }
     };
   }
   const beds={ a:Bed('audio/title.mp3'), bB:Bed('audio/bees_breakaway.mp3'), bQ:Bed('audio/queens_breakaway.mp3'), mS:Bed('audio/mode_select.mp3') };
   let ready=false;
   return {
+    setVol(x){ MUSV=x; },
     kick(){ if(!ready){ ready=true; for(const k in beds) beds[k].start(); } },   // start every bed (muted) on the first gesture
     update(dt){ if(!ready)return; if(menuCueDuck>0)menuCueDuck-=(dt||0.016);
       const live=!DEMO&&(state==='play'||state==='faceoff'||state==='serve'||state==='goal'), duck=(menuCueDuck>0);
@@ -996,7 +1016,7 @@ function step(dt){
   if(state==='config') return;   // JAILBREAK custom-match picker — static (clock-animated in drawConfig), no sim
   if(REEL && !TRANS.on && reelIdx>=0 && REELSEG[reelIdx] && REELSEG[reelIdx].k==='demo'){ reelT+=dt; if(reelT>=REELSEG[reelIdx].dur && (state==='play'||state==='serve'||state==='faceoff')) reelAdvance(); }   // cut the live demo to the next beat
   if(HYSCORE){ if((state==='win'||state==='champion')&&!INI.on){ hyIdle+=dt; if(hyIdle>25){ hyIdle=0; hyAttract(); return; } } else hyIdle=0; }   // nobody fed it another quarter -> attract
-  if(state==='splash'){ splashIdle+=dt; if(!DIRECT && !REEL && splashIdle>7){ reelStart(); } return; }   // the title holds its full beat before the attract (HYSCORE included)   // SPLASH idles to the ATTRACT REEL; clock-animated in drawSplash, no sim
+  if(state==='splash'){ splashIdle+=dt; if(!DIRECT && !REEL && splashIdle>(TOHOME?0.3:7)){ reelStart(); } return; }   // the title holds its full beat before the attract (HYSCORE included)   // SPLASH idles to the ATTRACT REEL; clock-animated in drawSplash, no sim
   if(state==='title'||state==='select'){ menuSim(dt); return; }   // MENU: a little air-hockey demo (knockers bat the pucks) — then skip the game physics/SFX entirely
   if(estT>0)estT=Math.max(0,estT-dt);
   else if(pendBanner!==null && (state==='play'||state==='faceoff'||state==='serve'||state==='goal')){ banner(pendBanner,pendBannerD); pendBanner=null; }   // the establishing beat just cleared -> reveal the staggered RAISE IT · GAME N banner
@@ -2270,7 +2290,10 @@ const DIRECT=Q.has('go')||Q.has('demo')||!!CAB2;
 //   returns to the attract. ESC / the pause menu's exit go back to the attract. ?castlerules rides along (clocked).
 // HYSCORE is the DEFAULT build: the bare link (bundle index.html == this file, PLAY IT NOW, the home-screen app) and a
 //   plain side.html are the quarter-eater. Any other mode param keeps its own front end; ?select restores the old selector.
-const HYSCORE=Q.has('hyscore') || !['camp','jail','go','demo','reel','pick','embed','cab2','select','raiseit','cup','p2'].some(k=>Q.has(k)), HY_ROT=['bee','queens','nachos']; let hyN=0, hyIdle=0;
+// ?tohome (2026-11-10, the desktop / Steam CONSOLE build): the CK ident + the attract reel only. ANY press leaves for the
+//   front door (title.html → PRESS BLAST → console.html HOME); the attract never drops into a match on its own.
+const TOHOME=Q.has('tohome');
+const HYSCORE=Q.has('hyscore') || !['camp','jail','go','demo','reel','pick','embed','cab2','select','raiseit','cup','p2','tohome'].some(k=>Q.has(k)), HY_ROT=['bee','queens','nachos']; let hyN=0, hyIdle=0;
 function hyCoin(){ const t=HY_ROT[(hyN++)%HY_ROT.length], pr=TABLE_PAIR[t];
   try{SFX.menu('player_select',0.6);}catch(e){}
   transition('clash',()=>{ reelExit(); resetSeries(); playEntry({tbl:t, knock:pr[0], team:KTEAM[pr[0]]||'bees'}); },0.9,()=>{try{SFX.hit(0.85);}catch(e){}}); }
@@ -2369,6 +2392,7 @@ if(AUTOQA) window.__htAuto={ peek:()=>({state,DEMO,TIMED,FREE,CAMP,campCleared,c
   pX:puck.X,pY:puck.Y,pv:Math.hypot(puck.vX,puck.vY),fX:far.X,fY:far.Y,nX:near.X,nY:near.Y,champ:champTeam,unlock:champUnlock,bonus:champBonus}), begin:()=>begin() };   // QA read-only
 function begin(){
   if(TRANS.on) return;   // ignore input mid-transition — MUST be first: held-key auto-repeat / stick+key in one window were re-entering the reel/splash branches below and re-firing the clash wipe + SFX.hit (double impact). The boot intro isn't a transition() so this never blocks skipping it.
+  if(TOHOME && (REEL||state==='inter'||state==='board'||state==='splash'||state==='boot')){ try{SFX.menu('player_select',0.6);}catch(e){} location.href='title.html'; return; }   // desktop console: the attract hands off to the front door
   if(HYSCORE && (REEL||state==='inter'||state==='board'||state==='splash')){ hyCoin(); return; }   // QUARTER-EATER: the coin goes straight into a match
   if(REEL||state==='inter'||state==='board'){ reelExit(); SFX.menu('player_select',0.6); transition('clash',()=>{ state='title'; },0.9,()=>{try{SFX.hit(0.85);}catch(e){}}); return; }   // any input during the ATTRACT REEL -> the menu (clash wipe; impact at the collision)
   if(state==='boot'){ try{SFX.stopKill();}catch(e){} menuCueDuck=0; state='splash'; bootT=0; splashIdle=0; try{Music.kick();}catch(e){} return; }   // any input skips the boot intro -> SPLASH TITLE (cut the killscreen sting so it can't bleed)
@@ -2515,7 +2539,7 @@ function pauseNavPad(gp){ const ay=(gp.axes&&gp.axes[1])||0, up=ay<-0.55||!!(gp.
 function pausable(){ return state==='play'||state==='faceoff'||state==='serve'||state==='goal'; }   // a live match, incl. the goal celebration (Esc there used to drop the mouse with no menu)
 let _pauseAt=0;
 function openPause(){ _pauseAt=performance.now(); PAUSED=true; for(var k in keys)keys[k]=false; mouseDown=false; deckGrab=false; syncPauseToggles(); pauseEl.classList.remove('hidden'); const it=pItems(); pFocusSet(Math.max(0,it.indexOf(document.getElementById('presume')))); _pnA=_pnB=true; escCueOff(); }   // clear held input so nothing sticks across the pause
-function closePause(){ PAUSED=false; pauseEl.classList.add('hidden'); }
+function closePause(){ PAUSED=false; pauseEl.classList.add('hidden'); if(window._htHowOff) window._htHowOff(); }
 function togglePause(){ if(pauseEl.classList.contains('hidden'))openPause(); else closePause(); }
 // LEAVING A MATCH. There was no way out of one: the pause menu only toggled control schemes, and the
 // win screen's only action was winPress() -> startMatch(), an endless rematch of the same venue. In
@@ -2524,7 +2548,7 @@ function togglePause(){ if(pauseEl.classList.contains('hidden'))openPause(); els
 // jailbreak picker when ?jail, the venue select otherwise), so both exits just call it.
 // HOME (Joe 2026-10-14): the console's ARCADE MODE opens the quarter-eater with ?home=console, so the cab's owner can get
 //   back: the pause menu's exit and ESC on the attract go HOME. A plain arcade boot (no ?home) stays a pure quarter-eater.
-const HOMEURL=(Q.get('home')==='console')?'console.html':null;
+const HOMEURL=TOHOME?'title.html':(Q.get('home')==='console')?'console.html':null;
 function backToMenu(){ if(HOMEURL){ location.href=HOMEURL; return; } if(SHELL){ closePause(); try{ parent.postMessage({ht:'menu'},'*'); }catch(_){} return; }   // the console owns the menus
   if(HYSCORE){ hyAttract(); return; } closePause(); try{ resetSeries(); }catch(e){} goSelect(); }   // the quarter-eater has no menu: back = the attract
 (function(){ var b=document.getElementById('pmenu'); if(b){ b.addEventListener('click',backToMenu); b.textContent=(SHELL||HOMEURL)?'↩ BACK TO HOME':(HYSCORE?'↩ QUIT TO ATTRACT':'↩ BACK TO MENU'); } })();
@@ -2539,6 +2563,17 @@ function escCue(){ const c=document.getElementById('esccue'); if(!c||!c.classLis
       armed=0; try{ HTStore.reset(); }catch(_){} campCleared=0; banner('SAVED PROGRESS RESET',1.2); }); } }   // two taps, so a stray thumb can't wipe it
 pauseEl.querySelectorAll('.ctog[data-ctrl]').forEach(t=>{ t.addEventListener('click',()=>{ const k=t.getAttribute('data-ctrl'); CTRL[k]=!CTRL[k]; saveCtrl(); syncPauseToggles(); banner((CTRL[k]?'':'NO ')+k.toUpperCase(),0.7); }); });
 addEventListener('keydown',e=>{ if(twoP && !CAB2 && state==='play' && e.key==='.') farBlastReq=true; });   // BLAST = . (mirror of P1's C)   // single-screen P2 BLAST ('.') → far lunge
+// UI-AUDIT 1110: SOUND rows (step 100→75→50→25→0→100, this visit only — web saves nothing) + HOW TO PLAY inside the pause card.
+const PVOL={music:1,sfx:1};
+function pvolSync(){ pauseEl.querySelectorAll('.pvol').forEach(r=>{ const v=PVOL[r.getAttribute('data-vol')]; const b=r.querySelector('.vbar'); if(b) b.textContent='▮'.repeat(Math.round(v*4))+'▯'.repeat(4-Math.round(v*4))+'  '+Math.round(v*100)+'%'; }); }
+pauseEl.querySelectorAll('.pvol').forEach(r=>r.addEventListener('click',()=>{ const k=r.getAttribute('data-vol'); PVOL[k]=PVOL[k]<=0?1:Math.max(0,PVOL[k]-0.25);
+  if(k==='music'){ try{Music.setVol(PVOL.music);}catch(e){} } else { try{SFX.setVol(PVOL.sfx);}catch(e){} } pvolSync(); }));
+pvolSync();
+{ const main=pauseEl.querySelector('.card'), how=document.getElementById('phowcard');
+  const showHow=on=>{ if(!main||!how) return; main.classList.toggle('hidden',on); how.classList.toggle('hidden',!on); pFocusSet(0); };
+  const ph=document.getElementById('phowto'); if(ph) ph.addEventListener('click',()=>showHow(true));
+  const hb=document.getElementById('phowback'); if(hb) hb.addEventListener('click',()=>showHow(false));
+  window._htHowOff=()=>showHow(false); }
 document.getElementById('presume').addEventListener('click',()=>{ closePause(); if(typeof grabMouse==='function') grabMouse(); });   // RESUME re-captures the mouse (the click is the user gesture the browser wants)
 // ---- PHONE PAD (Joe 2026-10-07) -------------------------------------------------------------------------
 // Landscape phone: whole table + thumb buttons in the frame columns. They drive the SAME hooks as the cab
