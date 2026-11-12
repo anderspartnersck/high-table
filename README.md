@@ -90,8 +90,6 @@ Music & SFX by **Taylor Lyons** and **Joseph Coleman**.
 
 <sub>RESPEK LOGIC ART UREA</sub>
 
-<sub>Generated from the private Castle Killscreen tree (`ONE TIMER THE HIGH TABLE/tools/build_pages.py`). Edit the game there, not here. This README is the one file the build never touches, so edit it here.</sub>
-
 ## ⚠︎ OLD 2D VERSION — NOT THE MAIN GAME
 
 Archived for reference only. It is no longer updated, and nothing new goes into it.
