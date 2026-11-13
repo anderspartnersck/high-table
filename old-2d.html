@@ -451,7 +451,8 @@ const Music=(()=>{ if(Q.has('mute')||Q.get('cab2')==='p2') return {kick(){},upda
 ['pointerdown','keydown','touchstart','mousedown'].forEach(ev=>addEventListener(ev,function(){ try{Music.kick();}catch(e){} },{passive:true}));   // unlock the bed on the first gesture (autoplay policy)
 // CK BOOT STANDARD (Joe 1112): if the browser blocked audio at load (public web), the FIRST key/click/tap only turns the
 //   sound on -- begin() ignores that one press. Launchers / cabs / Electron (autoplay allowed) never arm this.
-let AUDIO_GATE=(()=>{ try{ const C=window.AudioContext||window.webkitAudioContext; const c=new C(), s=c.state; c.close(); return s!=='running'; }catch(e){ return false; } })(), UNLOCK_PRESS=false, CABHOLD=0;
+let AUDIO_GATE=!Q.has('hyscore')&&(()=>{ try{ const C=window.AudioContext||window.webkitAudioContext; const c=new C(), s=c.state; c.close(); return s!=='running'; }catch(e){ return false; } })(), UNLOCK_PRESS=false, CABHOLD=0;
+// Q781 (Joe 1113): the arcade/HYSCORE build (?hyscore) never arms the gate -- its first press coins straight away; web stays as is.
 ['keydown','mousedown','touchstart'].forEach(ev=>addEventListener(ev,function(e){ if(!AUDIO_GATE||!e.isTrusted) return; AUDIO_GATE=false; UNLOCK_PRESS=true; setTimeout(()=>{UNLOCK_PRESS=false;},0); try{SFX.resume();}catch(_){} try{Music.kick();}catch(_){} },{capture:true,passive:true}));
 addEventListener('message',e=>{ const d=e.data; if(d&&d.cabHold) CABHOLD=performance.now()+d.cabHold*1000; });   // cab_intro: no press counts until its CK ident + reveal are gone
 
@@ -1468,6 +1469,20 @@ function celebDef(k,topImg,botImg){ const sq=knockDef(k), c=celebPose(k);
   return { sx:(sq?sq.sx:1)*c.sx, sy:(sq?sq.sy:1)*c.sy, lift:c.lift, rot:c.rot, img:useBottom?botImg:topImg, skew:(sq&&sq.skew)||0 }; }
 function goalGlow(ty,col){const l=project(0.5-GOAL,ty),r=project(0.5+GOAL,ty);ctx.save();ctx.strokeStyle=col;ctx.lineWidth=Math.max(4,VH*0.011);ctx.lineCap='round';ctx.shadowColor=col;ctx.shadowBlur=26;ctx.globalAlpha=0.85;ctx.beginPath();ctx.moveTo(l[0],l[1]);ctx.lineTo(r[0],r[1]);ctx.stroke();ctx.restore();}
 function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+// UI KIT (3D PIPELINE lib/ui, games/high-table/ui — RENDER-ONLY): Blender-built GET BIG plate + glass tube, graded to the
+// game's own neon; Q237 (Joe 1113) adds the chrome `title` plate behind the banners and the `scoreplate` behind the floating SCORE BUG.
+//
+// game's own neon. Sprite rects inlined (works from file://, the cab, the Pi). Until the atlas loads every call returns
+// false and the caller draws exactly what it drew before. Sim, physics, input and feel never see it.
+const UIK=(()=>{ const S={"scoreplate":{"x":0,"y":0,"w":120,"h":90,"slice":[16,16,16,16],"nine":{"tl":[0,0,16,16],"t":[16,0,88,16],"tr":[104,0,16,16],"l":[0,16,16,58],"c":[16,16,88,58],"r":[104,16,16,58],"bl":[0,74,16,16],"b":[16,74,88,16],"br":[104,74,16,16]}},"title":{"x":122,"y":0,"w":520,"h":84,"slice":[22,30,22,30],"nine":{"tl":[122,0,30,22],"t":[152,0,460,22],"tr":[612,0,30,22],"l":[122,22,30,40],"c":[152,22,460,40],"r":[612,22,30,40],"bl":[122,62,30,22],"b":[152,62,460,22],"br":[612,62,30,22]}},"bigplate":{"x":644,"y":0,"w":120,"h":70,"slice":[14,14,14,14],"nine":{"tl":[644,0,14,14],"t":[658,0,92,14],"tr":[750,0,14,14],"l":[644,14,14,42],"c":[658,14,92,42],"r":[750,14,14,42],"bl":[644,56,14,14],"b":[658,56,92,14],"br":[750,56,14,14]}},"bigbar.track":{"x":0,"y":92,"w":346,"h":18,"slice":[0,9,0,9],"nine":{"tl":[0,92,9,0],"t":[9,92,328,0],"tr":[337,92,9,0],"l":[0,92,9,18],"c":[9,92,328,18],"r":[337,92,9,18],"bl":[0,110,9,0],"b":[9,110,328,0],"br":[337,110,9,0]}},"bigbar.fill":{"x":348,"y":92,"w":346,"h":18,"slice":[0,9,0,9],"nine":{"tl":[348,92,9,0],"t":[357,92,328,0],"tr":[685,92,9,0],"l":[348,92,9,18],"c":[357,92,328,18],"r":[685,92,9,18],"bl":[348,110,9,0],"b":[357,110,328,0],"br":[685,110,9,0]}},"bigbar.fill_ready":{"x":0,"y":112,"w":346,"h":18,"slice":[0,9,0,9],"nine":{"tl":[0,112,9,0],"t":[9,112,328,0],"tr":[337,112,9,0],"l":[0,112,9,18],"c":[9,112,328,18],"r":[337,112,9,18],"bl":[0,130,9,0],"b":[9,130,328,0],"br":[337,130,9,0]}},"bigbar.cap":{"x":348,"y":112,"w":346,"h":18,"slice":[0,9,0,9],"nine":{"tl":[348,112,9,0],"t":[357,112,328,0],"tr":[685,112,9,0],"l":[348,112,9,18],"c":[357,112,328,18],"r":[685,112,9,18],"bl":[348,130,9,0],"b":[357,130,328,0],"br":[685,130,9,0]}}}, K=(window.devicePixelRatio||1)>=1.5?2:1;
+  const img=new Image(); let ok=false; img.onload=()=>{ok=true;}; img.onerror=()=>{ if(!/png$/.test(img.src)) img.src='sprites/ui/kit/atlas@'+K+'x.png'; };
+  img.src='sprites/ui/kit/atlas@'+K+'x.webp';
+  const spr=(key,x,y,w,h,f)=>{ const s=S[key]; if(!ok||!s) return false; f=Math.max(0,Math.min(1,f==null?1:f)); if(f>0) ctx.drawImage(img,s.x*K,s.y*K,s.w*K*f,s.h*K,x,y,w,h); return true; };
+  const nine=(key,x,y,w,h,sc)=>{ const s=S[key]; if(!ok||!s||!s.nine) return false; const [t,r,b,l]=s.slice.map(v=>v*sc), n=s.nine;
+    const X=[x,x+l,x+w-r,x+w], Y=[y,y+t,y+h-b,y+h], N=[['tl','t','tr'],['l','c','r'],['bl','b','br']];
+    for(let j=0;j<3;j++)for(let i=0;i<3;i++){ const q=n[N[j][i]], dw=X[i+1]-X[i], dh=Y[j+1]-Y[j]; if(q[2]>0&&q[3]>0&&dw>0&&dh>0) ctx.drawImage(img,q[0]*K,q[1]*K,q[2]*K,q[3]*K,X[i],Y[j],dw,dh); }
+    return true; };
+  return {spr,nine}; })();
 // live score into the baked green scoreboard panels — simple digital readout, team-coloured
 // SCORE BUG (broadcast-style, Joe 2026-06-26): a clean plate with the two scores. Tables with a baked panel
 //   region get it PAINTED over their raw green panels; tables without get it subtly at top-centre. Same wiring.
@@ -1503,10 +1518,14 @@ function drawScoreboard(){
   // FALLBACK self-contained bug (a table with no painted score window)
   const w=Math.min(VW*0.2,VH*0.30), h=VH*0.058, x=VW/2-w/2, y=VH*0.05, cx=VW/2, r=h*0.24, sep=w*0.42, tab=h*0.42, my=y+h/2, sz=h*0.62;   // y 0.02->0.05: pull the float readout off the top edge so it isn't clipped on the wireframe Generica tables (2026-09-01)
   ctx.save();
+  if(UIK.nine('scoreplate',x-h*0.12,y-h*0.12,w+h*0.24,h*1.24,h*1.24/90)){   // UI KIT (Q237): chrome + black-glass SCOREPLATE, team tabs inset inside the chrome
+    const ins=h*0.2; ctx.fillStyle=tL==='queens'?'rgba(177,76,255,0.85)':'rgba(255,226,58,0.85)'; rr(x+ins*0.5,y+ins*0.5,tab*0.55,h-ins,r*0.5); ctx.fill();
+    ctx.fillStyle=tR==='queens'?'rgba(177,76,255,0.85)':'rgba(255,226,58,0.85)'; rr(x+w-ins*0.5-tab*0.55,y+ins*0.5,tab*0.55,h-ins,r*0.5); ctx.fill(); }
+  else {
   ctx.fillStyle='rgba(6,5,14,0.96)'; rr(x,y,w,h,r); ctx.fill();
   ctx.fillStyle=tL==='queens'?'rgba(177,76,255,0.9)':'rgba(255,226,58,0.9)'; rr(x,y,tab,h,r); ctx.fill();
   ctx.fillStyle=tR==='queens'?'rgba(177,76,255,0.9)':'rgba(255,226,58,0.9)'; rr(x+w-tab,y,tab,h,r); ctx.fill();
-  ctx.strokeStyle='rgba(150,120,210,0.5)'; ctx.lineWidth=Math.max(1.5,h*0.045); rr(x,y,w,h,r); ctx.stroke();
+  ctx.strokeStyle='rgba(150,120,210,0.5)'; ctx.lineWidth=Math.max(1.5,h*0.045); rr(x,y,w,h,r); ctx.stroke(); }
   ctx.fillStyle='rgba(150,160,180,0.35)'; ctx.fillRect(cx-1,y+h*0.24,2,h*0.52);
   ctx.textAlign='center'; ctx.textBaseline='middle';
   ctx.font=`900 ${Math.round(sz*(1+0.35*pL))}px "Helvetica Neue",Arial`; ctx.fillStyle=tcol(tL); ctx.shadowColor=tcol(tL); ctx.shadowBlur=8+18*pL; ctx.fillText(sL,cx-sep*0.5,my);
@@ -2052,13 +2071,20 @@ function draw(){
   if(!TMODE&&state!=='title'&&state!=='select'&&state!=='boot'&&state!=='champion'){
     const w=VW*0.24, x=PADHAND==='R'?VW*0.96-w:VW*0.04, y=VH*0.175, bh=VH*0.02, rd=near.sup>=1, fc=rd?'#ffe23a':'#37c0ff', blink=rd&&(Math.floor(clock*3)%2===0);
     ctx.save();
-    ctx.fillStyle='rgba(4,4,12,0.58)'; rr(x-VW*0.014,y-VH*0.05,w+VW*0.028,VH*0.078,9); ctx.fill();   // dark backing plate so it reads over the table
+    { const px=x-VW*0.014,py=y-VH*0.05,pw=w+VW*0.028,ph=VH*0.078;   // dark backing plate so it reads over the table (UI KIT: chrome + black glass)
+      if(!UIK.nine('bigplate',px,py,pw,ph,ph/70)){ ctx.fillStyle='rgba(4,4,12,0.58)'; rr(px,py,pw,ph,9); ctx.fill(); } }
     ctx.textAlign='left'; ctx.textBaseline='alphabetic'; ctx.font=`900 ${Math.round(VH*0.028)}px "Helvetica Neue",Arial`;
     ctx.lineWidth=Math.max(2,VH*0.004); ctx.strokeStyle='rgba(0,0,0,0.9)'; ctx.fillStyle=blink?'#fff':(rd?'#ffe23a':'#eaf6ff'); ctx.shadowColor=rd?'#ff37c7':'#000'; ctx.shadowBlur=rd?16:4;
     const label=rd?'★ GET BIG ★':'GET BIG';
     ctx.strokeText(label,x,y-VH*0.012); ctx.fillText(label,x,y-VH*0.012);   // outlined label = legible on any background
-    ctx.shadowBlur=0; ctx.fillStyle='rgba(255,255,255,.18)'; rr(x,y,w,bh,bh/2); ctx.fill();
-    ctx.fillStyle=fc; ctx.shadowColor=fc; ctx.shadowBlur=rd?18:8; rr(x,y,Math.max(bh,w*near.sup),bh,bh/2); ctx.fill();
+    ctx.shadowBlur=0;
+    { const tp=bh*0.3, tx=x-tp, ty=y-tp, tw=w+2*tp, th=bh+2*tp, f=Math.max(bh,w*near.sup)/w;   // UI KIT: neon in a glass tube
+      if(UIK.nine('bigbar.track',tx,ty,tw,th,th/18)){
+        ctx.shadowColor=fc; ctx.shadowBlur=rd?18:8; UIK.spr(rd?'bigbar.fill_ready':'bigbar.fill',tx,ty,tw*Math.min(1,f),th,Math.min(1,f));
+        ctx.shadowBlur=0; UIK.nine('bigbar.cap',tx,ty,tw,th,th/18);
+      } else {
+    ctx.fillStyle='rgba(255,255,255,.18)'; rr(x,y,w,bh,bh/2); ctx.fill();
+    ctx.fillStyle=fc; ctx.shadowColor=fc; ctx.shadowBlur=rd?18:8; rr(x,y,Math.max(bh,w*near.sup),bh,bh/2); ctx.fill(); } }
     ctx.restore();}
   if(state==='faceoff'){ctx.save();
     const cp=project(0.5,0.5), inReady=foT>FO_DROP;
@@ -2077,7 +2103,9 @@ function draw(){
     const my=(state==='faceoff')?VH*0.155:VH*0.30, a=Math.min(1,msgT*2);   // dodge GET READY on the drop
     fitFont(msg,800,VH*0.10,VW*0.9);   // shrink long banners (e.g. "THE HIGH TABLE · GAME 7 · THE HIGH TABLE") so they never clip the edges
     const tw=ctx.measureText(msg).width;
-    ctx.globalAlpha=a*0.5; ctx.fillStyle='rgba(4,6,14,0.55)'; rr(VW/2-tw/2-VH*0.03,my-VH*0.088,tw+VH*0.06,VH*0.118,VH*0.02); ctx.fill();   // soft dark plate = legible over the busy table
+    { const bx=VW/2-tw/2-VH*0.05, by=my-VH*0.095, bw=tw+VH*0.10, bh=VH*0.13;   // UI KIT (Q237): the chrome + black-glass TITLE plate; text stays live
+      ctx.globalAlpha=a*0.92; if(!UIK.nine('title',bx,by,bw,bh,bh/84)){
+    ctx.globalAlpha=a*0.5; ctx.fillStyle='rgba(4,6,14,0.55)'; rr(VW/2-tw/2-VH*0.03,my-VH*0.088,tw+VH*0.06,VH*0.118,VH*0.02); ctx.fill(); } }   // soft dark plate = legible over the busy table
     ctx.globalAlpha=a; ctx.lineWidth=Math.max(3,VH*0.007); ctx.strokeStyle='rgba(0,0,0,0.92)'; ctx.strokeText(msg,VW/2,my);
     ctx.fillStyle='#fff'; ctx.shadowColor='#27f6ff'; ctx.shadowBlur=24; ctx.fillText(msg,VW/2,my); ctx.restore();}
   if(msg2T>0){ctx.save();ctx.textAlign='center';const my2=((state==='faceoff')?VH*0.155:VH*0.30)+VH*0.095, a2=Math.min(1,msg2T*2);

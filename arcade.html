@@ -159,7 +159,7 @@ function startMusic(){ if(musicOn)return; musicOn=true;
 //   --autoplay-policy=no-user-gesture-required) ran a SILENT attract. Try it on load; a browser that blocks autoplay
 //   rejects the play() and the first press/tap retries it.
 setTimeout(startMusic,0);   // not 'load': that waits for every attract asset (the reel video) and the bed came in late or not at all
-var AUDIO_GATE=(function(){ try{ var C=window.AudioContext||window.webkitAudioContext, c=new C(), s=c.state; c.close(); return s!=='running'; }catch(e){ return false; } })();   // CK BOOT STANDARD (Joe 1112)
+var AUDIO_GATE=!/[?&]hyscore(=|&|$)/.test(location.search)&&(function(){ try{ var C=window.AudioContext||window.webkitAudioContext, c=new C(), s=c.state; c.close(); return s!=='running'; }catch(e){ return false; } })();   // CK BOOT STANDARD (Joe 1112) · Q781 (Joe 1113): ?hyscore (the HYSCORE 1UP cab) skips the sound-only press
 ['pointerdown','keydown','touchstart'].forEach(function(ev){ addEventListener(ev,function(){ startMusic(); if(AUDIO_GATE) setTimeout(function(){ AUDIO_GATE=false; },0); },{passive:true}); });
 function sting(kind){ if(!AC)return; try{
   var now=AC.currentTime, g=AC.createGain(); g.connect(AC.destination);
