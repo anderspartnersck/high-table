@@ -449,6 +449,11 @@ const Music=(()=>{ if(Q.has('mute')||Q.get('cab2')==='p2') return {kick(){},upda
     }
   }; })();
 ['pointerdown','keydown','touchstart','mousedown'].forEach(ev=>addEventListener(ev,function(){ try{Music.kick();}catch(e){} },{passive:true}));   // unlock the bed on the first gesture (autoplay policy)
+// CK BOOT STANDARD (Joe 1112): if the browser blocked audio at load (public web), the FIRST key/click/tap only turns the
+//   sound on -- begin() ignores that one press. Launchers / cabs / Electron (autoplay allowed) never arm this.
+let AUDIO_GATE=(()=>{ try{ const C=window.AudioContext||window.webkitAudioContext; const c=new C(), s=c.state; c.close(); return s!=='running'; }catch(e){ return false; } })(), UNLOCK_PRESS=false, CABHOLD=0;
+['keydown','mousedown','touchstart'].forEach(ev=>addEventListener(ev,function(e){ if(!AUDIO_GATE||!e.isTrusted) return; AUDIO_GATE=false; UNLOCK_PRESS=true; setTimeout(()=>{UNLOCK_PRESS=false;},0); try{SFX.resume();}catch(_){} try{Music.kick();}catch(_){} },{capture:true,passive:true}));
+addEventListener('message',e=>{ const d=e.data; if(d&&d.cabHold) CABHOLD=performance.now()+d.cabHold*1000; });   // cab_intro: no press counts until its CK ident + reveal are gone
 
 /* ---- canvas ---- */
 // MONO ⇄ COLOUR CONTROL (Joe 2026-06-19): the whole frame renders to an OFFSCREEN buffer, then the visible
@@ -2396,6 +2401,8 @@ if(AUTOQA) window.__htAuto={ peek:()=>({state,DEMO,TIMED,FREE,CAMP,campCleared,c
   pX:puck.X,pY:puck.Y,pv:Math.hypot(puck.vX,puck.vY),fX:far.X,fY:far.Y,nX:near.X,nY:near.Y,champ:champTeam,unlock:champUnlock,bonus:champBonus}), begin:()=>begin() };   // QA read-only
 function begin(){
   if(TRANS.on) return;   // ignore input mid-transition — MUST be first: held-key auto-repeat / stick+key in one window were re-entering the reel/splash branches below and re-firing the clash wipe + SFX.hit (double impact). The boot intro isn't a transition() so this never blocks skipping it.
+  if(UNLOCK_PRESS || performance.now()<CABHOLD) return;   // CK BOOT STANDARD: this press only turned the sound on / the cab reveal is still up
+  if(state==='boot' && bootT<BOOT.A2) return;              // CK BOOT STANDARD: A&P PRESENTS + the CK smash play out (ACT 3, the puck drop, may still be pressed)
   if(TOHOME && (REEL||state==='inter'||state==='board'||state==='splash'||state==='boot')){ try{SFX.menu('player_select',0.6);}catch(e){} location.href='title.html'; return; }   // desktop console: the attract hands off to the front door
   if((state==='win'||(state==='champion'&&!INI.on)) && stAge<WIN_HOLD) return;   // the result holds a beat: a TRAP click / GET BIG mash at the final goal must not skip it into a rematch
   if(HYSCORE && (REEL||state==='inter'||state==='board'||state==='splash')){ hyCoin(); return; }   // QUARTER-EATER: a coin counts ONLY from the attract (REEL / its cards / the splash) -- a running match is never in these states
@@ -2877,10 +2884,10 @@ function cabReport(){ try{ if(parent===window) return; }catch(_){ return; }   //
         deckGrab=bt(BTN.trap);
         var bbl=bt(BTN.blast); if(bbl&&!prevBlast)deckBlast=true; prevBlast=bbl;
         var bbg=bt(BTN.big); if(bbg&&!prevBig2&&state==='play'&&near.sup>=1)bigUp(near,PTEAM); prevBig2=bbg;
-        if(any&&!prevAny&&(state==='boot'||state==='title'||state==='win'||state==='champion'||DEMO))begin(); prevAny=any;
+        if(any&&!prevAny&&(state==='boot'||state==='splash'||state==='title'||state==='win'||state==='champion'||DEMO))begin(); prevAny=any;
       } else {
         var gb=(GB!=null)?!!(gp.buttons[GB]&&gp.buttons[GB].pressed):any;   // mapped GET BIG, or any button
-        if(any&&!prevAny&&(state==='boot'||state==='title'||state==='win'||state==='champion'||DEMO)) begin();
+        if(any&&!prevAny&&(state==='boot'||state==='splash'||state==='title'||state==='win'||state==='champion'||DEMO)) begin();
         if(gb&&!prevGB&&state==='play'&&near.sup>=1) bigUp(near,PTEAM);
         prevAny=any; prevGB=gb;
       }

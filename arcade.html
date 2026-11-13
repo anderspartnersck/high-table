@@ -159,7 +159,8 @@ function startMusic(){ if(musicOn)return; musicOn=true;
 //   --autoplay-policy=no-user-gesture-required) ran a SILENT attract. Try it on load; a browser that blocks autoplay
 //   rejects the play() and the first press/tap retries it.
 setTimeout(startMusic,0);   // not 'load': that waits for every attract asset (the reel video) and the bed came in late or not at all
-['pointerdown','keydown','touchstart'].forEach(function(ev){ addEventListener(ev,function(){ startMusic(); },{passive:true}); });
+var AUDIO_GATE=(function(){ try{ var C=window.AudioContext||window.webkitAudioContext, c=new C(), s=c.state; c.close(); return s!=='running'; }catch(e){ return false; } })();   // CK BOOT STANDARD (Joe 1112)
+['pointerdown','keydown','touchstart'].forEach(function(ev){ addEventListener(ev,function(){ startMusic(); if(AUDIO_GATE) setTimeout(function(){ AUDIO_GATE=false; },0); },{passive:true}); });
 function sting(kind){ if(!AC)return; try{
   var now=AC.currentTime, g=AC.createGain(); g.connect(AC.destination);
   var notes = kind==='logo' ? [660,990] : [523];
@@ -411,7 +412,8 @@ function loop(t){ var dt=last?Math.min(0.05,(t-last)/1000):0.016; last=t; clock+
     else if(s.t==='mouse'){ ctx.fillStyle='#05030c'; ctx.fillRect(0,0,cv.width,cv.height); }   // live iframe covers
     else drawDrift();
     if(capDelay>0){ capDelay-=dt; if(capDelay<=0) capEl.style.opacity='1'; }
-    if(sT>s.dur && !TR.on) crossTo((function(n){ return function(){ enterScene(n); }; })((si+1)%REEL.length));   // smooth dissolve to the next beat
+    if(TITLE_HOLD){ holdT+=dt; if(REEL[si].t!=='title'){ if(!TR.on) crossTo(function(){ enterScene(0); }); } else if(holdT>20) TITLE_HOLD=false; }
+    else if(sT>s.dur && !TR.on) crossTo((function(n){ return function(){ enterScene(n); }; })((si+1)%REEL.length));   // smooth dissolve to the next beat
   } else if(scr==='menu'){ gradBg('#160a2e','#05030c'); }
   if(musicOn){ music.volume += (musicTarget-music.volume)*Math.min(1,dt*2.4); }
   requestAnimationFrame(loop);
@@ -442,15 +444,19 @@ function setDemoFrame(on,kind){ if(!gameEl)return;
   else { if(gameEl.getAttribute('data-demo')){ gameEl.src='about:blank'; gameEl.removeAttribute('data-demo'); }
     gameEl.style.zIndex=''; if(scr!=='game') gameEl.style.display='none'; } }
 
-function toMenu(){ startMusic(); if(scr==='title'){ flashCut(); musicTarget=0.5; show('menu'); } }
-document.body.addEventListener('pointerdown',function(){ if(scr==='title')toMenu(); });
+var TITLE_HOLD=false, holdT=0;   // CK BOOT STANDARD: attract press -> the TITLE beat (logo + PRESS START) holds; the NEXT press opens the menu
+function toMenu(gesture){ startMusic(); if(scr!=='title') return;
+  if(gesture&&AUDIO_GATE) return;
+  if(!TITLE_HOLD){ TITLE_HOLD=true; holdT=0; return; }
+  TITLE_HOLD=false; flashCut(); musicTarget=0.5; show('menu'); }
+document.body.addEventListener('pointerdown',function(){ if(scr==='title')toMenu(true); });
 // PRESS START on a controller cab (Joe 2026-06-30): the title only advanced on click/Space/Enter, so a stick/button
 //   cab's START did nothing — the prompt lied. Poll the pads while the title is up; ANY button (START included)
 //   advances to the menu, matching the "PRESS START" prompt. Edge-triggered so a held button can't re-fire.
 (function padTitle(){ try{ if(scr==='title'){ var ps=navigator.getGamepads?navigator.getGamepads():[]; var down=false;
       for(var i=0;i<ps.length;i++){ var p=ps[i]; if(!p)continue; for(var b=0;b<p.buttons.length;b++){ var bt=p.buttons[b]; if(bt&&(bt.pressed||bt.value>0.5)){down=true;break;} } if(down)break; }
       if(down&&!padTitle._was) toMenu(); padTitle._was=down; } else padTitle._was=false; }catch(e){} requestAnimationFrame(padTitle); })();
-addEventListener('keydown',function(e){ if(scr==='title'&&(e.key===' '||e.key==='Enter')){e.preventDefault();toMenu();}
+addEventListener('keydown',function(e){ if(scr==='title'&&(e.key===' '||e.key==='Enter')){e.preventDefault();toMenu(true);}
   else if(scr==='menu'){ if(e.key==='Enter'){go();} else if(e.key==='ArrowRight'){selVenue((venI+1)%VEN.length);} else if(e.key==='ArrowLeft'){selVenue((venI-1+VEN.length)%VEN.length);} } });
   // NOTE: Escape during a live game is NOT intercepted here — the side.html iframe owns Escape (→ its own PAUSE menu, RESUME-only).
   // We deliberately do NOT let the shell bail a paid game back to the menu on a keystroke (quarter-eater; matches the Suck Up fix). Intentional exit = the on-screen BACK button (toBack). Joe 2026-07-10
