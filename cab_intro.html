@@ -7,7 +7,7 @@
   killscreen cue) -> Ken Burns push-in on the cab beauty-shot -> reveal the FULL-BLEED game (NOT
   superimposed into a tiny monitor rect). Modeled on ONE TIMER/cab_1up_desktop.html.
     ?cab=<name>   cab art file in cab_final/ (no extension), e.g. ?cab=OTTHT_1 up HYSCORE color
-    ?game=<url>   the game to reveal, e.g. ?game=side.html?ctrl=all&stick=8way   (default: side.html?ctrl=all&stick=8way)
+    ?game=<url>   the game to reveal, e.g. ?game=side.html?ctrl=all&stick=8way   (default: side.html?hyscore&ctrl=all&stick=8way, the quarter-eater)
     ?title=<txt>  optional marquee label under the logo
 -->
 <style>
@@ -78,7 +78,7 @@
   // straight into the iframe src (javascript: URLs, or framing any outside site inside the cab art).
   var cab=Q.get('cab')||'', game=Q.get('game')||'';
   if(!/^[\w \-]{1,64}$/.test(cab)) cab='OTTHT_1 up HYSCORE color';
-  if(!/^(side-3d|side|table_temp_engine|2up-3d|2up|queens_2up-3d|queens_2up)\.html(\?[\w=&.%-]*)?$/.test(game)) game='side.html?ctrl=all&stick=8way';
+  if(!/^(side-3d|side|table_temp_engine|2up-3d|2up|queens_2up-3d|queens_2up)\.html(\?[\w=&.%-]*)?$/.test(game)) game='side.html?hyscore&ctrl=all&stick=8way';   // the bare cab = the HYSCORE quarter-eater
   var cabUrl='cab_final/'+encodeURIComponent(cab)+'.png';
   document.getElementById('room').style.backgroundImage="url('"+cabUrl+"')";
   {var _cp=document.getElementById('cabPhoto'); _cp.onerror=function(){this.style.opacity=0.12;}; _cp.src=cabUrl;}   // beauty-shot 404 → dim, not a broken glyph

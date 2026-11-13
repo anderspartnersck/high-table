@@ -631,6 +631,7 @@ let stallT=0, stallSampleT=0, stallRefX=0.5, stallRefY=AR/2;   // anti-stall wat
 let cornerT=0, farRetreat=0;          // corner-dwell timer (fires regardless of jostling) + a forced CPU back-off after a break-out
 let lingerT=0;                        // how long the puck has sat slow near a rail — drives the continuous corner-escape drift
 let streakTeam=null, streak=0;       // consecutive goals by one team -> HAT TRICK at 3
+let stPrev=null, stAge=0; const WIN_HOLD=0.9;   // state age (step) -> begin() ignores presses on the WIN / CHAMPION screen for WIN_HOLD s
 let estT=0, estTurbo=false;          // venue establishing beat at match start (#11); TURBO ident on the Penalty Box (#12)
 let pendBanner=null, pendBannerD=0;   // a banner ARMED to show only AFTER the establishing beat clears (staggered so the RAISE IT · GAME N line doesn't fight the GET READY overlay)
 let estImg=null, est0=1.7;           // chosen establishing still (mono→colour→live grade) + its start time
@@ -989,6 +990,7 @@ function rollFarPlan(deep){
   return {style:'hold', until:clock+0.35};
 }
 function step(dt){
+  if(state!==stPrev){ stPrev=state; stAge=0; } else stAge+=dt;   // how long the current screen has been up (begin() holds the result screens a beat)
   near.pX=near.X; near.pY=near.Y; far.pX=far.X; far.pY=far.Y;   // frame-START knocker positions — the puck substep SWEEPS the knocker from here to its end pos so a fast hand can't tunnel THROUGH the puck (the "puck slips behind the knocker" bug, worst in 2-up)
   if(state==='boot'){ bootT+=dt; const SMASH=BOOT.A1+2.3;   // COLD-OPEN: A&P PRESENTS -> CASTLE KILLSCREEN 4th-wall PUCK SMASH -> THE PUCK DROP -> title -> SPLASH
     if(bootT>=0.5 && !bootZap){ bootZap=true; SFX.resume(); }                                       // ACT 1 — the presents card
@@ -2615,12 +2617,14 @@ const DIRECT=Q.has('go')||Q.has('demo')||!!CAB2;
 //   The house cab: boot -> the ATTRACT reel; a coin (any button) drops straight into a match -- no menu. Each credit
 //   rotates the front-door tables with their house knockers. Game over: press to run it back; walk away and it
 //   returns to the attract. ESC / the pause menu's exit go back to the attract. ?castlerules rides along (clocked).
-// HYSCORE is the DEFAULT build: the bare link (bundle index.html == this file, PLAY IT NOW, the home-screen app) and a
-//   plain side.html are the quarter-eater. Any other mode param keeps its own front end; ?select restores the old selector.
+// HYSCORE is OPT-IN since 2026-11-12 (Joe: "boots into a game and then goes to a menu rather than showing an attract then
+//   going into a main menu"). The bare link (bundle index.html, the home-screen app) now runs the HOME front end:
+//   CK ident -> ATTRACT reel -> any press -> the carpet MENU (title -> SELECT -> game). The quarter-eater (coin straight into a
+//   match) lives where it belongs: ?hyscore -- the 1UP ARCADE launchers, cab_intro's default game, console ARCADE MODE, the Pi cab.
 // ?tohome (2026-11-10, the desktop / Steam CONSOLE build): the CK ident + the attract reel only. ANY press leaves for the
 //   front door (title.html → PRESS BLAST → console.html HOME); the attract never drops into a match on its own.
 const TOHOME=Q.has('tohome');
-const HYSCORE=Q.has('hyscore') || !['camp','jail','go','demo','reel','pick','embed','cab2','select','raiseit','cup','p2','tohome'].some(k=>Q.has(k)), HY_ROT=['bee','queens','nachos']; let hyN=0, hyIdle=0;
+const HYSCORE=Q.has('hyscore'), HY_ROT=['bee','queens','nachos']; let hyN=0, hyIdle=0;
 function hyCoin(){ const t=HY_ROT[(hyN++)%HY_ROT.length], pr=TABLE_PAIR[t];
   try{SFX.menu('player_select',0.6);}catch(e){}
   transition('clash',()=>{ reelExit(); resetSeries(); playEntry({tbl:t, knock:pr[0], team:KTEAM[pr[0]]||'bees'}); },0.9,()=>{try{SFX.hit(0.85);}catch(e){}}); }
@@ -2720,7 +2724,8 @@ if(AUTOQA) window.__htAuto={ peek:()=>({state,DEMO,TIMED,FREE,CAMP,campCleared,c
 function begin(){
   if(TRANS.on) return;   // ignore input mid-transition — MUST be first: held-key auto-repeat / stick+key in one window were re-entering the reel/splash branches below and re-firing the clash wipe + SFX.hit (double impact). The boot intro isn't a transition() so this never blocks skipping it.
   if(TOHOME && (REEL||state==='inter'||state==='board'||state==='splash'||state==='boot')){ try{SFX.menu('player_select',0.6);}catch(e){} location.href='title.html'; return; }   // desktop console: the attract hands off to the front door
-  if(HYSCORE && (REEL||state==='inter'||state==='board'||state==='splash')){ hyCoin(); return; }   // QUARTER-EATER: the coin goes straight into a match
+  if((state==='win'||(state==='champion'&&!INI.on)) && stAge<WIN_HOLD) return;   // the result holds a beat: a TRAP click / GET BIG mash at the final goal must not skip it into a rematch
+  if(HYSCORE && (REEL||state==='inter'||state==='board'||state==='splash')){ hyCoin(); return; }   // QUARTER-EATER: a coin counts ONLY from the attract (REEL / its cards / the splash) -- a running match is never in these states
   if(REEL||state==='inter'||state==='board'){ reelExit(); SFX.menu('player_select',0.6); transition('clash',()=>{ state='title'; },0.9,()=>{try{SFX.hit(0.85);}catch(e){}}); return; }   // any input during the ATTRACT REEL -> the menu (clash wipe; impact at the collision)
   if(state==='boot'){ try{SFX.stopKill();}catch(e){} menuCueDuck=0; state='splash'; bootT=0; splashIdle=0; try{Music.kick();}catch(e){} return; }   // any input skips the boot intro -> SPLASH TITLE (cut the killscreen sting so it can't bleed)
   if(state==='splash'){ SFX.menu('player_select',0.6); transition('clash',()=>{ state='title'; },0.9,()=>{try{SFX.hit(0.85);}catch(e){}}); return; }   // SPLASH -> the carpet MENU (clash wipe; impact at the collision)

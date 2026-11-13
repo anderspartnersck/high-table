@@ -1,5 +1,5 @@
 > **Status: Finished title — live on GitHub Pages.**
-> Play: https://anderspartnersck.github.io/high-table/ (the 3D edition; every link below is in this repo).
+> Play: https://anderspartnersck.github.io/high-table/ (the 3D edition: attract, then any key or tap for the menu; every link below is in this repo).
 > Also here: [arcade.html](https://anderspartnersck.github.io/high-table/arcade.html) (attract-mode launcher) ·
 > [garage.html](https://anderspartnersck.github.io/high-table/garage.html) (the cab collection) ·
 > [old-2d.html](https://anderspartnersck.github.io/high-table/old-2d.html) (OLD 2D VERSION, see the bottom).
@@ -45,6 +45,8 @@ Turn it sideways.
 
 - Steer with the mouse, WASD or the arrow keys.
 - **TRAP**: hold the mouse button or **Z** · **GET BIG**: **X** (or **SPACE** / **F**) · **BLAST**: **C**
+- **Space** / **Enter** start and confirm on the menus. In a match they never restart anything; Space only
+  fires GET BIG when the meter is full.
 - **P** or **Esc** pauses (the pause menu has SOUND and HOW TO PLAY). **M** switches colour / black-and-white.
 
 ### With a controller
@@ -56,9 +58,12 @@ Set the pad to X-input (on an 8BitDo, also set the lever to D-pad). Press
 
 ## Ways to play
 
-- [HYSCORE][play] — the house cab at HYSCORE, the arcade off the 101. A
-  quarter-eater: it runs its attract until you drop a quarter, then you play it
-  out and run it back or walk.
+- [PLAY][play] — the front door. The attract runs until you press a key (or
+  tap); then the title, then pick your table and mode (◄ ► to cycle, BLAST /
+  Space / Enter to confirm), then your puck, and you're on.
+- [HYSCORE][hyscore] — the house cab at HYSCORE, the arcade off the 101. A
+  quarter-eater: it runs its attract until you drop a quarter (any key), then
+  you play it out and run it back or walk. No menus.
 - [CAMPAIGN][camp] — the Old-Tyme climb. Win a best-of-seven on each table to
   reach the next, all the way up to the High Table.
 - [CASTLE RULES][castle] — three timed periods. Most goals at the horn wins; a
@@ -97,6 +102,7 @@ The game at the top of this page is the real one. This is the original flat-spri
 [OLD 2D VERSION](https://anderspartnersck.github.io/high-table/old-2d.html).
 
 [play]: https://anderspartnersck.github.io/high-table/
+[hyscore]: https://anderspartnersck.github.io/high-table/?hyscore
 [camp]: https://anderspartnersck.github.io/high-table/cab_intro.html?cab=1up%20HIVEMIND%20color&game=side.html%3Fcamp&title=CAMPAIGN
 [castle]: https://anderspartnersck.github.io/high-table/?castlerules
 [jail]: https://anderspartnersck.github.io/high-table/cab_intro.html?cab=OTTHT_1%20up%20HYSCORE%20violet&game=side.html%3Fjail&title=JAILBREAK
