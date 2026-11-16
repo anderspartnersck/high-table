@@ -2380,10 +2380,11 @@ const UI3D = (function(){
     ctx.restore(); }
   // PUCK: the stage plate, then the turntable registered to the plate's baked shadow
   function stage(ctx, VW, VH){ preload(); if(!cover(ctx, 'stage', VW, VH)) return false;
-    // the stage is lit hot for the puck: pull the carpet down everywhere but the pool, so the headline + name stay readable
+    // pull the carpet down everywhere but the pool, so the headline + name stay readable (1116: the plate is re-lit cooler
+    // (key x0.42, no clipped pool), so the blanket eases off: .18/.55/.80 -> .08/.42/.72)
     const sp = spot(), cx = sp ? sp.x : VW / 2, cy = sp ? sp.y : VH * 0.43, r0 = Math.min(VW, VH) * 0.16;
     ctx.save(); const v = ctx.createRadialGradient(cx, cy, r0, cx, cy, Math.max(VW, VH) * 0.62);
-    v.addColorStop(0, 'rgba(4,3,12,.18)'); v.addColorStop(0.45, 'rgba(4,3,12,.55)'); v.addColorStop(1, 'rgba(2,2,8,.8)'); ctx.fillStyle = v; ctx.fillRect(0, 0, VW, VH);
+    v.addColorStop(0, 'rgba(4,3,12,.08)'); v.addColorStop(0.45, 'rgba(4,3,12,.42)'); v.addColorStop(1, 'rgba(2,2,8,.72)'); ctx.fillStyle = v; ctx.fillRect(0, 0, VW, VH);
     const g = ctx.createLinearGradient(0, VH * 0.58, 0, VH * 0.92);   // a soft band under the name + prompts
     g.addColorStop(0, 'rgba(4,3,12,0)'); g.addColorStop(0.35, 'rgba(4,3,12,.45)'); g.addColorStop(1, 'rgba(4,3,12,.35)'); ctx.fillStyle = g; ctx.fillRect(0, VH * 0.58, VW, VH * 0.42);
     ctx.restore(); return true; }
@@ -2412,11 +2413,11 @@ function draw(){
   if(state==='config'){ drawConfig(); return; }   // JAILBREAK custom-match picker owns the frame
   ctx.save(); if(shake>0)ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);
   if(ZOOM!==1){ctx.translate(VW/2,VH*0.55);ctx.scale(ZOOM,ZOOM);ctx.translate(-VW/2,-VH*0.55);}
-  {const _menu=(state==='title'||state==='select'), _bg=(state==='title'&&UI3D.ok('title')&&!TMODE)?null:((_menu&&IMG.carpet)?IMG.carpet:IMG.bg); if(state==='title'&&!TMODE&&UI3D.cover(ctx,'title',VW,VH)){}   // menu lives on the neutral CARPET; the real table only appears in-game (you transition into it)
+  {const _menu=(state==='title'||state==='select'), _bg=(state==='title'&&UI3D.ok('title'))?null:((_menu&&IMG.carpet)?IMG.carpet:IMG.bg); if(state==='title'&&UI3D.cover(ctx,'title',VW,VH)){}   // menu lives on the neutral CARPET; the real table only appears in-game (you transition into it)
    if(_bg){const ir=_bg.width/_bg.height,br=VW/VH;let dw,dh,dx,dy;if(TMODE&&!_menu){ctx.fillStyle='#05050c';ctx.fillRect(0,0,VW,VH);if(ir>br){dw=VW;dh=VW/ir;dx=0;dy=(VH-dh)/2;}else{dh=VH;dw=VH*ir;dx=(VW-dw)/2;dy=0;}}else if(ir>br){dh=VH;dw=VH*ir;dx=(VW-dw)/2;dy=0;}else{dw=VW;dh=VW/ir;dx=0;dy=(VH-dh)/2;
      if(!_menu) dy=sbCropDy(dy,dh);}   // WIDESCREEN: the cover crop ate the top of the painted scoreboard (Throne's vanished) -> slide down to show it
    ctx.drawImage(_bg,dx,dy,dw,dh);if(!_menu){BG.dx=dx;BG.dy=dy;BG.dw=dw;BG.dh=dh;BG.ok=true;}}
-   else if(!(state==='title'&&UI3D.ok('title')&&!TMODE)){ctx.fillStyle='#0a0618';ctx.fillRect(0,0,VW,VH);}}
+   else if(!(state==='title'&&UI3D.ok('title'))){ctx.fillStyle='#0a0618';ctx.fillRect(0,0,VW,VH);}}
   if(state!=='title'&&state!=='select'&&state!=='boot'){ goalGlow(0.0,tcol(PTEAM)); goalGlow(1.0,tcol(OTEAM)); }   // goal mouths follow the TEAMS (near=PTEAM/far=OTEAM), not a fixed gold/purple — correct on reversed RIVALRY sides
   if(state!=='title'&&state!=='select'&&state!=='boot'&&state!=='win') drawSlot();                  // the slot — quiet, in front of each net
   if(state!=='title'&&state!=='select'&&state!=='boot'&&state!=='champion') drawScoreboard();   // the SCORE BUG — not on the carpet menu / boot
@@ -2511,7 +2512,7 @@ function draw(){
     fitFont(msg2,800,VH*0.058,VW*0.9); ctx.globalAlpha=a2; ctx.lineWidth=Math.max(2,VH*0.005); ctx.strokeStyle='rgba(0,0,0,0.92)'; ctx.strokeText(msg2,VW/2,my2);
     ctx.fillStyle='#ffe23a'; ctx.shadowColor='#ff37c7'; ctx.shadowBlur=18; ctx.fillText(msg2,VW/2,my2); ctx.restore();}
   if(REG){const cs=corners();ctx.save();ctx.strokeStyle='#27f6ff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cs[0][0],cs[0][1]);ctx.lineTo(cs[1][0],cs[1][1]);ctx.lineTo(cs[3][0],cs[3][1]);ctx.lineTo(cs[2][0],cs[2][1]);ctx.closePath();ctx.stroke();for(let i=0;i<4;i++){ctx.fillStyle=i===dragC?'#ffe23a':'#ff37c7';ctx.beginPath();ctx.arc(cs[i][0],cs[i][1],9,0,6.28);ctx.fill();}ctx.fillStyle='#cfe6ff';ctx.font='13px monospace';ctx.textAlign='left';ctx.fillText('REG · '+(TNAME[tbl]||tbl)+' ('+tbl+')  ·  drag the 4 corners onto the painted rink  ·  S=save (prints preset)  R=reset',16,24);ctx.fillText(JSON.stringify(RINK),16,44);ctx.restore();}
-  if(state==='title'){ctx.save();ctx.fillStyle=(UI3D.ok('title')&&!TMODE)?'rgba(2,2,10,.18)':'rgba(2,2,10,.45)';ctx.fillRect(0,0,VW,VH);ctx.textAlign='center';
+  if(state==='title'){ctx.save();ctx.fillStyle=UI3D.ok('title')?'rgba(2,2,10,.18)':'rgba(2,2,10,.45)';ctx.fillRect(0,0,VW,VH);ctx.textAlign='center';
     let logoBot=VH*0.52;   // the logo is the hero, fit into a BOUNDED box; all text anchors BELOW its real bottom (no overlap)
     if(TITLE.complete&&TITLE.naturalWidth){ const NW=TITLE.naturalWidth, NH=TITLE.naturalHeight, r=NW/NH, ty=VH*0.09, SP=0.57, GAP=0.06; let w=Math.min(VW*0.60,VH*0.48*r), h=w/r, lx=VW/2-w/2;
       ctx.drawImage(TITLE,0,0,NW,NH*SP,lx,ty,w,h*SP);                          // ONE-TIMER (top band)

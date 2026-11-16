@@ -15,8 +15,8 @@
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%;background:radial-gradient(120% 90% at 50% -10%,rgba(200,160,255,.16),transparent 55%),#07050e;
     color:#fff;font-family:"Saira Condensed","Helvetica Neue",Arial,sans-serif}
-  body{display:flex;align-items:center;justify-content:center}
-  .card{width:min(94vw,620px);text-align:center;padding:30px 26px 34px}
+  body{display:flex;justify-content:center;height:auto;min-height:100%}   /* 1116: was align-items:center on a fixed-height body; a 900px window clipped the title off the top */
+  .card{width:min(94vw,620px);text-align:center;padding:30px 26px 34px;margin:auto 0}
   h1{font-size:clamp(24px,5vw,42px);font-weight:800;letter-spacing:.04em}
   h1 .w{color:#fff;text-shadow:0 0 16px rgba(255,255,255,.5)} h1 .p{color:#ffd23f;text-shadow:0 0 18px rgba(255,174,0,.5)}
   .s{margin-top:6px;color:#a98fd0;letter-spacing:.26em;text-transform:uppercase;font-size:12px}
@@ -55,6 +55,7 @@
   @keyframes gbpulse{to{filter:brightness(1.4)}}
   #sframes .half .pscore{position:absolute;transform:translate(-50%,-50%);font:900 16px/1 "Helvetica Neue",Arial;pointer-events:none;text-shadow:0 1px 0 rgba(255,255,255,.25);transition:transform .08s}
 </style><link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSczMicgaGVpZ2h0PSczMic+PGVsbGlwc2UgY3g9JzE2JyBjeT0nMjEnIHJ4PScxMicgcnk9JzYnIGZpbGw9JyMxNDE0MTknLz48cmVjdCB4PSc0JyB5PScxMycgd2lkdGg9JzI0JyBoZWlnaHQ9JzgnIGZpbGw9JyMxNDE0MTknLz48ZWxsaXBzZSBjeD0nMTYnIGN5PScxMycgcng9JzEyJyByeT0nNicgZmlsbD0nI2YwYjQyOScvPjxlbGxpcHNlIGN4PScxNicgY3k9JzEzJyByeD0nNycgcnk9JzMuMicgZmlsbD0nI2ZmZDc2YicvPjwvc3ZnPg==">   <!-- gold puck — inline so there is no favicon.ico request (every build was 404ing one) -->
+<style data-ui3d>html{background:linear-gradient(180deg,rgba(5,3,12,.70),rgba(5,3,12,.86) 55%,rgba(5,3,12,.94)),url(sprites3d/ui/ui_title.webp) center 40%/cover fixed,#07050e!important}body{background:transparent!important}</style>
 </head>
 <body>
 <div class="card" id="launch">
