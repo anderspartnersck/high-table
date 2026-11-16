@@ -2603,7 +2603,7 @@ function togoShow(on){ if(!PADOK) return;   // headless harness: no DOM
       togoCap.innerHTML='HIGH-TABLE TO-GO!<div style="font:800 clamp(11px,1.7vw,19px)/1.4 \'Helvetica Neue\',Arial;font-style:normal;color:#fff;letter-spacing:.18em;margin-top:.5em">THE TABLE FROM ABOVE · MOUSE OR PHONE</div>';
       document.body.appendChild(togoEl); document.body.appendChild(togoCap); }
   if(!togoEl) return;
-  if(on){ togoEl.src='table_temp_engine.html?demo=1&mute=1&table='+TOGO_ROT[(togoN++)%TOGO_ROT.length]; setTimeout(function(){ if(togoEl&&interAct==='togo'&&REEL){ togoEl.style.opacity='1'; togoCap.style.opacity='1'; } },450); }
+  if(on){ togoEl.src='topdown-3d.html?demo=1&mute=1&table='+TOGO_ROT[(togoN++)%TOGO_ROT.length]; setTimeout(function(){ if(togoEl&&interAct==='togo'&&REEL){ togoEl.style.opacity='1'; togoCap.style.opacity='1'; } },450); }
   else { togoEl.style.opacity='0'; togoCap.style.opacity='0'; setTimeout(function(){ if(togoEl&&!(interAct==='togo'&&REEL)) togoEl.src='about:blank'; },500); } }   // blank it so the engine stops running
 function reelStartSeg(s){ reelT=0; interT=0; interAct=s.act||'splash'; interDur=s.dur||4; DEMO=true;
   if(togoEl && s.act!=='togo') togoShow(false); if(s.act==='togo') togoShow(true);

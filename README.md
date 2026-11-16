@@ -76,6 +76,9 @@ Set the pad to X-input (on an 8BitDo, also set the lever to D-pad). Press
   Two pads work too.
 - [HIGH-TABLE TO-GO!][todown] — the table from overhead. Steer with the mouse,
   or drag a finger on a phone.
+- [TO-GO · 2 PLAYER][todown2] — two players on one overhead table. P1: the
+  mouse or WASD. P2: the arrows. On a phone or tablet, a finger each on your
+  own half. Two pads work too.
 
 Every table has its house knockers. Pick your own and the table brings the
 other end.
@@ -100,6 +103,7 @@ Music & SFX by **Taylor Lyons** and **Joseph Coleman**.
 Archived for reference only. It is no longer updated, and nothing new goes into it.
 The game at the top of this page is the real one. This is the original flat-sprite build:
 [OLD 2D VERSION](https://anderspartnersck.github.io/high-table/old-2d.html).
+The old flat top-down is [here](https://anderspartnersck.github.io/high-table/table_temp_engine.html).
 
 [play]: https://anderspartnersck.github.io/high-table/
 [hyscore]: https://anderspartnersck.github.io/high-table/?hyscore
@@ -107,4 +111,5 @@ The game at the top of this page is the real one. This is the original flat-spri
 [castle]: https://anderspartnersck.github.io/high-table/?castlerules
 [jail]: https://anderspartnersck.github.io/high-table/cab_intro.html?cab=OTTHT_1%20up%20HYSCORE%20violet&game=side.html%3Fjail&title=JAILBREAK
 [twoup]: https://anderspartnersck.github.io/high-table/cab_intro.html?cab=RIVALRY%20A%20color&game=2up.html%3Fsolo&title=2%20PLAYER
-[todown]: https://anderspartnersck.github.io/high-table/table_temp_engine.html
+[todown]: https://anderspartnersck.github.io/high-table/topdown-3d.html
+[todown2]: https://anderspartnersck.github.io/high-table/topdown-2up-3d.html

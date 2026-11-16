@@ -78,13 +78,13 @@
   // straight into the iframe src (javascript: URLs, or framing any outside site inside the cab art).
   var cab=Q.get('cab')||'', game=Q.get('game')||'';
   if(!/^[\w \-]{1,64}$/.test(cab)) cab='OTTHT_1 up HYSCORE color';
-  if(!/^(side-3d|side|table_temp_engine|2up-3d|2up|queens_2up-3d|queens_2up)\.html(\?[\w=&.%-]*)?$/.test(game)) game='side.html?hyscore&ctrl=all&stick=8way';   // the bare cab = the HYSCORE quarter-eater
+  if(!/^(side-3d|side|table_temp_engine|topdown-3d|topdown-2up-3d|2up-3d|2up|queens_2up-3d|queens_2up)\.html(\?[\w=&.%-]*)?$/.test(game)) game='side.html?hyscore&ctrl=all&stick=8way';   // the bare cab = the HYSCORE quarter-eater
   var cabUrl='cab_final/'+encodeURIComponent(cab)+'.png';
   document.getElementById('room').style.backgroundImage="url('"+cabUrl+"')";
   {var _cp=document.getElementById('cabPhoto'); _cp.onerror=function(){this.style.opacity=0.12;}; _cp.src=cabUrl;}   // beauty-shot 404 → dim, not a broken glyph
   if(Q.get('title')) document.getElementById('marquee').textContent=Q.get('title');
   var gameEl=document.getElementById('game');
-  var _nb=(/side(-3d)?\.html|table_temp_engine/.test(game)&&!/2up\.html/.test(game))?'&noboot':'';   // the game supports ?noboot → skip its OWN boot ident so it doesn't stack on the cab Ken-Burns cold-open
+  var _nb=(/side(-3d)?\.html|table_temp_engine|topdown-(2up-)?3d/.test(game)&&!/2up\.html/.test(game))?'&noboot':'';   // the game supports ?noboot → skip its OWN boot ident so it doesn't stack on the cab Ken-Burns cold-open
   gameEl.src=game+(game.indexOf('?')>=0?'&':'?')+'_cb='+Date.now()+_nb;   // load the game behind the intro (no-cache)
 
   var ck=document.getElementById('ckSplash'), neon=document.getElementById('ckNeon'),

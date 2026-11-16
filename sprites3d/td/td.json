@@ -1,0 +1,169 @@
+{
+ "version": 1,
+ "made_by": "tools/td_bake.py",
+ "note": "HIGH TABLE top-down 3D runtime set (blender/topdown/*)",
+ "plates": {
+  "nachos": {
+   "file": "plate_nachos.webp",
+   "size": [
+    2048,
+    1365
+   ],
+   "boards": [],
+   "preset": "nachos_mouse"
+  },
+  "killscreen": {
+   "file": "plate_killscreen.webp",
+   "size": [
+    2048,
+    1298
+   ],
+   "boards": [],
+   "preset": "killscreen_mouse"
+  },
+  "rivalry": {
+   "file": "plate_rivalry.webp",
+   "size": [
+    2048,
+    1365
+   ],
+   "boards": [
+    [
+     0.3671875,
+     0.08187134502923976,
+     0.4921875,
+     0.1286549707602339
+    ],
+    [
+     0.5078125,
+     0.08187134502923976,
+     0.62890625,
+     0.1286549707602339
+    ]
+   ],
+   "preset": "rivalry_top"
+  },
+  "rivalry_flip": {
+   "file": "plate_rivalry_flip.webp",
+   "size": [
+    2048,
+    1365
+   ],
+   "boards": [
+    [
+     0.37109375,
+     0.08187134502923976,
+     0.4921875,
+     0.1286549707602339
+    ],
+    [
+     0.5078125,
+     0.08187134502923976,
+     0.6328125,
+     0.1286549707602339
+    ]
+   ],
+   "preset": "rivalry_top~flip"
+  },
+  "bees": {
+   "file": "plate_bees.webp",
+   "size": [
+    2048,
+    1365
+   ],
+   "boards": [],
+   "preset": "honey_top"
+  },
+  "throne": {
+   "file": "plate_throne.webp",
+   "size": [
+    2048,
+    1365
+   ],
+   "boards": [
+    [
+     0.40625,
+     0.10526315789473684,
+     0.48828125,
+     0.14035087719298245
+    ],
+    [
+     0.5078125,
+     0.10526315789473684,
+     0.58984375,
+     0.14035087719298245
+    ]
+   ],
+   "preset": "throne_top"
+  }
+ },
+ "thumbs": {
+  "nachos": "thumb_nachos.webp",
+  "killscreen": "thumb_killscreen.webp",
+  "rivalry": "thumb_rivalry.webp",
+  "bees": "thumb_bees.webp",
+  "throne": "thumb_throne.webp"
+ },
+ "knocker": {
+  "cell": 384,
+  "unit_px": 80.0,
+  "frames": 17,
+  "cols": 6,
+  "tumble_deg_per_frame": -22.5
+ },
+ "kthumbs": {
+  "knocker_yellow": "kthumb_yellow.webp",
+  "knocker_purple": "kthumb_purple.webp",
+  "knocker_white": "kthumb_white.webp",
+  "knocker_blue": "kthumb_blue.webp",
+  "knocker_green": "kthumb_green.webp",
+  "knocker_red": "kthumb_red.webp"
+ },
+ "puck": {
+  "cell": 218,
+  "unit_px": 64,
+  "styles": {
+   "classic": 1,
+   "lit": 1,
+   "zebra": 8,
+   "hive": 8,
+   "royal": 8,
+   "contested": 8
+  }
+ },
+ "light": {
+  "note": "THE top-down key light, shared by td_tables.py (plates) and td_pieces.py (mallet/puck sprites + their contact shadows) so every shadow on the table falls the same way. azim = screen-space angle the light COMES FROM (0 = right, 90 = top): 135 = upper-left, shadows fall lower-right.",
+  "elev_deg": 52,
+  "azim_deg": 128,
+  "sun_energy": 1.45,
+  "sun_soft_deg": 6,
+  "sun_color": [
+   1.0,
+   0.96,
+   0.92
+  ],
+  "ambient": 0.3,
+  "rim_energy": 0.22,
+  "rim_color": [
+   0.62,
+   0.48,
+   1.0
+  ],
+  "sheen_energy": 60.0
+ },
+ "uipucks": {
+  "classic": 1,
+  "lit": 1,
+  "zebra": 16,
+  "hive": 16,
+  "royal": 16,
+  "contested": 16
+ },
+ "venues": {
+  "bee": "bee_est.webp",
+  "queens": "queens_est.webp",
+  "bees": "bees_est.webp",
+  "throne": "throne_est.webp",
+  "nachos": "nachos_est.webp"
+ }
+}
