@@ -7,7 +7,7 @@
 <title>ONE-TIMER: THE HIGH TABLE [3D]</title>
 <!--
   FRONT-END SHELL — ATTRACT REEL -> menu (venue / difficulty / players) -> game.
-  Arcade loop (no lore — mirrors attract.html):
+  Arcade loop (no lore; the old standalone attract page was retired 1116):
     MAIN TITLE — the HIGH TABLE logo ZINGS in (sting + swell)
     SPLASH     — bees-gold + queens-purple logos burst — THE RIVALRY
     DEMO       — live CPU-vs-CPU (side.html?demo)
@@ -126,7 +126,7 @@ var ADS_DUR=ADS.length*3.4;   // 3.4s per ad -> each holds ~3s after its 12-fram
 function gradBg(c0,c1){ var CW=cv.width,CH=cv.height,g=ctx.createRadialGradient(CW/2,CH*0.42,0,CW/2,CH*0.5,Math.max(CW,CH)*0.7);
   g.addColorStop(0,c0); g.addColorStop(1,c1); ctx.fillStyle=g; ctx.fillRect(0,0,CW,CH); }
 
-/* ---------- THE REEL (arcade loop, no lore — mirrors attract.html) ----------
+/* ---------- THE REEL (arcade loop, no lore) ----------
    title : the logo zings in
    splash: bees-gold + queens-purple logos burst — THE RIVALRY
    demo  : live CPU-vs-CPU (side.html?demo)
