@@ -1991,7 +1991,7 @@ function drawBoot(){ const t=bootT, cx=VW/2, cy=VH*0.5, u=Math.min(VW,VH);
       ctx.restore(); }
     // the PUCK launches from the shooter's blade -> arcs to centre -> ROCKETS at the viewer (grows) -> SMASH
     if(at>=SHOOT && st<0.04){ const g=Math.min(1,(at-SHOOT)/(SMASH-SHOOT)), e=g*g, bx=shX+u*0.20, by=shY-u*0.10, px=bx+(cx-bx)*e, py=by+(cy-by)*e, R=u*(0.02+0.11*e);
-      ctx.save(); ctx.globalCompositeOperation='lighter'; ctx.globalAlpha=0.45*(1-e); ctx.strokeStyle='#eaf6ff'; ctx.lineWidth=Math.max(2,R*0.5); ctx.shadowColor='#cfe6ff'; ctx.shadowBlur=14; ctx.beginPath(); ctx.moveTo(bx,by); ctx.lineTo(px,py); ctx.stroke(); ctx.restore();   // shot streak from the shooter
+      { const sdx=px-bx, sdy=py-by, sl=Math.hypot(sdx,sdy)||1, nx=-sdy/sl, ny=sdx/sl, hw=Math.max(1,R*0.25), sg=ctx.createLinearGradient(bx,by,px,py); sg.addColorStop(0,'rgba(234,246,255,0)'); sg.addColorStop(1,'rgba(234,246,255,1)'); ctx.save(); ctx.globalCompositeOperation='lighter'; ctx.globalAlpha=0.45*(1-e); ctx.fillStyle=sg; ctx.shadowColor='#cfe6ff'; ctx.shadowBlur=14; ctx.beginPath(); ctx.moveTo(bx,by); ctx.lineTo(px+nx*hw,py+ny*hw); ctx.arc(px,py,hw,Math.atan2(ny,nx),Math.atan2(ny,nx)+Math.PI,true); ctx.closePath(); ctx.fill(); ctx.restore(); }   // shot streak from the shooter: 1117 tapered comet (point at the stick, round head under the puck, fades in) — was a butt-capped stroke with a SQUARE tail (Joe)
       ctx.save(); ctx.shadowColor='#eaf6ff'; ctx.shadowBlur=18+34*g; if(window.PuckArt) PuckArt.draw(ctx,px,py,R,{style:'lit',t:at,spin:at*24,blk:true}); else { ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(px,py,R*0.5,0,6.28); ctx.fill(); } ctx.restore(); }
     // THE SMASH — white flash, shockwave, spider glass, shards
     if(st>=0){
