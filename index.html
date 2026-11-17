@@ -388,7 +388,6 @@ const SFX=(()=>{ const lib={},names=['slap','bomb','wave_off','bees_goal','queen
     cut(){play('slap',0.6);},                  // the SLAP — menu transition / cut
     clank(p){play('slap',0.30); play('bomb',Math.min(0.72,0.44+(p||0)*0.14));},   // knocker BLAST connection: slap UNDERNEATH a solid bomb-hit on top
     cursor(){play('move_cursor',0.55);},       // SOLO — cycling the SELECT
-    cursor(){play('move_cursor',0.55);},       // SOLO — cycling the SELECT
     psel(){play('player_select',0.62);},       // SOLO — a venue selection sting
     mconf(){play('mode_confirm',0.72);},       // SOLO — confirmed -> dropping into the game
     msel(){play('mode_select',0.62);},         // SOLO — cycling the MODE chip (EXHIBITION / RAISE IT / CASTLE RULES)
@@ -2954,7 +2953,7 @@ addEventListener('keydown',e=>{ if(pauseNavKey(e)||iniKey(e)) return; if(e.key==
   if(e.key==='Escape' && (state==='win'||state==='champion')){ e.preventDefault(); backToMenu(); return; }
   if(e.key==='Escape' && HOMEURL && (REEL||state==='boot'||state==='splash'||state==='inter'||state==='board'||state==='title')){ e.preventDefault(); location.href=HOMEURL; return; }   // owner: ESC on the attract = back to the console
   if((e.key==='Escape'||e.key.toLowerCase()==='p') && (pausable() || !pauseEl.classList.contains('hidden'))){ e.preventDefault(); togglePause(); return; }   // PAUSE MENU (active match only, so 'win' rematch + title 2P toggle below are untouched)
-  if((state==='title')&&e.key.toLowerCase()==='p'){twoP=!twoP;return;}if(state==='select'&&e.key==='ArrowLeft'){selCycle(-1);return;}if(state==='select'&&e.key==='ArrowRight'){selCycle(1);return;}if(state==='config'&&e.key==='ArrowLeft'){cfgCycle(-1);return;}if(state==='config'&&e.key==='ArrowRight'){cfgCycle(1);return;}if(state==='config'&&e.key==='ArrowUp'){cfgRowMove(-1);return;}if(state==='config'&&e.key==='ArrowDown'){cfgRowMove(1);return;}if(state==='select'&&(e.key==='ArrowUp'||e.key==='ArrowDown')){selBack();return;}if(!CAMP&&(state==='title'||(state==='select'&&selPhase!=='puck'))&&e.key.toLowerCase()==='c'){engineCycleMode();return;}if((state==='title')&&e.key.toLowerCase()==='t'){setTable(TKEYS[(TKEYS.indexOf(tbl)+1)%TKEYS.length]);return;}if(e.key.toLowerCase()==='m'&&!((twoP||CAB2)&&(state==='play'||state==='faceoff'||state==='serve'))){MONO=!MONO;banner(MONO?'MONOCHROME':'COLOR',0.8);return;}if(e.key.toLowerCase()==='y'){WAYS=WAYS===4?8:4;try{LS.setItem('sideStickWays',String(WAYS));}catch(_){}banner(WAYS+'-WAY STICK',1.0);return;}if(state==='play'&&!DEMO&&near.sup>=1&&(e.key===' '||e.key.toLowerCase()==='f')){e.preventDefault();bigUp(near,PTEAM);return;}if(state==='play'&&twoP&&!CAB2&&far.sup>=1&&(e.key==='Enter'||e.key==='/')){e.preventDefault();bigUp(far,OTEAM);return;}if(REG&&e.key.toLowerCase()==='s'){try{LS.setItem('sideRink.'+tbl,JSON.stringify(RINK));}catch(_){}const j=JSON.stringify({nearY:+RINK.nearY.toFixed(3),farY:+RINK.farY.toFixed(3),nearHalf:+RINK.nearHalf.toFixed(3),farHalf:+RINK.farHalf.toFixed(3),cx:+RINK.cx.toFixed(3)});console.log('RINKPRESET '+tbl+':  '+j);banner('SAVED '+(TNAME[tbl]||tbl),1.2);return;}if(REG&&e.key.toLowerCase()==='r'){try{LS.removeItem('sideRink.'+tbl);}catch(_){}location.reload();return;}if(e.key>='1'&&e.key<='3'&&(state==='title'||state==='win'))DIFF=+e.key-1;if(e.key===' '||e.key==='Enter'){e.preventDefault();if(AUTOFS&&!_fsTried){_fsTried=true;goFullscreen();}begin();}});
+  if((state==='title')&&e.key.toLowerCase()==='p'){twoP=!twoP;return;}if(state==='select'&&e.key==='ArrowLeft'){selCycle(-1);return;}if(state==='select'&&e.key==='ArrowRight'){selCycle(1);return;}if(state==='config'&&e.key==='ArrowLeft'){cfgCycle(-1);return;}if(state==='config'&&e.key==='ArrowRight'){cfgCycle(1);return;}if(state==='config'&&e.key==='ArrowUp'){cfgRowMove(-1);return;}if(state==='config'&&e.key==='ArrowDown'){cfgRowMove(1);return;}if(state==='select'&&(e.key==='ArrowUp'||e.key==='ArrowDown')){selBack();return;}if(!CAMP&&(state==='title'||(state==='select'&&selPhase!=='puck'))&&e.key.toLowerCase()==='c'){engineCycleMode();return;}if((state==='title')&&e.key.toLowerCase()==='t'){setTable(TKEYS[(TKEYS.indexOf(tbl)+1)%TKEYS.length]);return;}if(e.key.toLowerCase()==='m'&&!((twoP||CAB2)&&(state==='play'||state==='faceoff'||state==='serve'))){MONO=!MONO;banner(MONO?'MONOCHROME':'COLOR',0.8);return;}if(e.key.toLowerCase()==='y'){const w=window.__toggleWays?window.__toggleWays():8;banner(w+'-WAY STICK',1.0);return;}if(state==='play'&&!DEMO&&near.sup>=1&&(e.key===' '||e.key.toLowerCase()==='f')){e.preventDefault();bigUp(near,PTEAM);return;}if(state==='play'&&twoP&&!CAB2&&far.sup>=1&&(e.key==='Enter'||e.key==='/')){e.preventDefault();bigUp(far,OTEAM);return;}if(REG&&e.key.toLowerCase()==='s'){try{LS.setItem('sideRink.'+tbl,JSON.stringify(RINK));}catch(_){}const j=JSON.stringify({nearY:+RINK.nearY.toFixed(3),farY:+RINK.farY.toFixed(3),nearHalf:+RINK.nearHalf.toFixed(3),farHalf:+RINK.farHalf.toFixed(3),cx:+RINK.cx.toFixed(3)});console.log('RINKPRESET '+tbl+':  '+j);banner('SAVED '+(TNAME[tbl]||tbl),1.2);return;}if(REG&&e.key.toLowerCase()==='r'){try{LS.removeItem('sideRink.'+tbl);}catch(_){}location.reload();return;}if(e.key>='1'&&e.key<='3'&&(state==='title'||state==='win'))DIFF=+e.key-1;if(e.key===' '||e.key==='Enter'){e.preventDefault();if(AUTOFS&&!_fsTried){_fsTried=true;goFullscreen();}begin();}});
 addEventListener('keyup',e=>{if(e.key==='Shift')keyShift=false;keys[e.key]=false;});
 // ---- PAUSE MENU wiring (live control toggles; PAUSED freezes the sim, render keeps going, NOTHING resets) ----
 const pauseEl=document.getElementById('pause');
@@ -2972,7 +2971,8 @@ function pauseNavKey(e){ if(pauseEl.classList.contains('hidden')) return false; 
   if(k==='Enter'||k===' '){ e.preventDefault(); pActivate(); return true; }
   return false; }   // Esc / P fall through to the toggle below
 let _pnY=0,_pnA=false,_pnB=false;
-function pauseNavPad(gp){ const ay=(gp.axes&&gp.axes[1])||0, up=ay<-0.55||!!(gp.buttons[12]&&gp.buttons[12].pressed), dn=ay>0.55||!!(gp.buttons[13]&&gp.buttons[13].pressed), y=up?-1:dn?1:0;
+function pauseNavPad(gp,BTN){   // BTN passed in by poll(): the button map lives in the gamepad IIFE (a top-level read threw ReferenceError and killed poll() -- 1116)
+  const ay=(gp.axes&&gp.axes[1])||0, up=ay<-0.55||!!(gp.buttons[12]&&gp.buttons[12].pressed), dn=ay>0.55||!!(gp.buttons[13]&&gp.buttons[13].pressed), y=up?-1:dn?1:0;
   if(y&&y!==_pnY) pFocusSet(pFocus+y); _pnY=y;
   const a=!!(gp.buttons[BTN.trap]&&gp.buttons[BTN.trap].pressed), b=!!(gp.buttons[BTN.blast]&&gp.buttons[BTN.blast].pressed);
   if(a&&!_pnA) pActivate(); if(b&&!_pnB) closePause(); _pnA=a; _pnB=b; }
@@ -3091,7 +3091,7 @@ addEventListener('resize',tpadLayout); addEventListener('orientationchange',func
     placePad(); try{ LS.setItem('htTouchStick',on?'1':'0'); }catch(_){} tpadLayout(); }
   { const ph=document.getElementById('phand'); if(ph) ph.addEventListener('click',()=>{ setPadHand(PADHAND==='R'?'L':'R'); banner(PADHAND==='R'?'BUTTONS RIGHT':'BUTTONS LEFT',0.7); }); }
   chip.addEventListener('pointerdown',e=>{ e.preventDefault(); buzz(); applyStick(!TSTICK.on); });
-  if(Q.has('qa')) window.__htPad={ peek:()=>({nX:near.X,nY:near.Y,lunge:near.lungeT,gvY:near.gvY,pX:puck.X,pY:puck.Y,fX:far.X,fY:far.Y,held:puckHeld,stun:near.stunT||0,flip:near.flipT||0,state,TX:near.TX,TY:near.TY,grab:deckGrab,blastCD:near.blastCD,big:near.big,sup:near.sup,held:puckHeld,bg:[BG.dx,BG.dw,BG.dh],st:[TSTICK.x,TSTICK.y]}),
+  if(Q.has('qa')) window.__htPad={ peek:()=>({nX:near.X,nY:near.Y,lunge:near.lungeT,gvY:near.gvY,pX:puck.X,pY:puck.Y,fX:far.X,fY:far.Y,held:puckHeld,stun:near.stunT||0,flip:near.flipT||0,state,TX:near.TX,TY:near.TY,grab:deckGrab,blastCD:near.blastCD,big:near.big,sup:near.sup,bg:[BG.dx,BG.dw,BG.dh],st:[TSTICK.x,TSTICK.y]}),
     prime:()=>{ near.sup=1; near.blastCD=0; },
     p2:()=>({fX:far.X,fY:far.Y,nX:near.X,nY:near.Y,pX:puck.X,pY:puck.Y,sn:scoreN,sf:scoreF,state,held:puckHeld,fbig:far.big,fsup:far.sup,flunge:far.lungeT||0,fcd:far.blastCD||0,cw:CUP.win,cl:CUP.loss,con:CUP.on,champ:champTeam,champHead:champHeadQA,target:TARGET,timed:TIMED,mirror:MIRROR2,cab2:CAB2,link:linkSeen}),
     primeFar:()=>{ far.sup=1; far.blastCD=0; }, puckToFar:(dx,dy,vx,vy)=>{ puck.X=far.X+dx; puck.Y=far.Y+dy; puck.vX=vx||0; puck.vY=vy||0; },
@@ -3147,7 +3147,7 @@ function recWatch(){ const s=state;
   if(s!==_wState){ const inM=(s==='faceoff'||s==='play'||s==='serve'||s==='goal');
     if(inM&&!_wMatch) escCue();
     if(s==='win') recEmit({t:'game', won:TIMED?(scoreN>scoreF):(scoreN>=TARGET), n:scoreN, f:scoreF, tbl, twoP:!!twoP, mode:recMode()});
-    if(s==='champion'){ const p1=twoP?(CUP.win>=SERIES_WINS):true; recEmit({t:'series', won:p1, w:CUP.win, l:CUP.loss, twoP:!!twoP, variant:CAMP?'campaign':CUP.variant, tbl, team:PTEAM, playoff:!!champUnlock}); iniStart(p1); }
+    if(s==='champion'){ const p1=twoP?(CUP.win>=SERIES_WINS):true; recEmit({t:'series', won:p1, w:CUP.win, l:CUP.loss, twoP:!!twoP, variant:CAMP?'campaign':CUP.variant, tbl, team:(NEARK==='bees'||NEARK==='queens')?NEARK:'neutral', playoff:!!champUnlock}); iniStart(p1); }
     _wMatch=inM; _wState=s; }
   const u=JSON.stringify(UNLOCKED); if(u!==_wUnl){ const was=JSON.parse(_wUnl); for(const k in UNLOCKED) if(UNLOCKED[k]&&!was[k]) recEmit({t:'unlock',key:k}); _wUnl=u; }
   if(campCleared!==_wCamp){ if(campCleared>_wCamp) recEmit({t:'camp',rung:campCleared}); _wCamp=campCleared; } }
@@ -3211,6 +3211,7 @@ function cabReport(){ try{ if(parent===window) return; }catch(_){ return; }   //
   // 4-WAY vs 8-WAY restrictor: 4-way keeps ONLY the dominant axis (no diagonals) so "straight up" doesn't bleed sideways = smoother cardinal moves. ?stick=4way, or press Y to toggle live; persists in LS.
   var WAYS=8; try{ var _w=LS.getItem('sideStickWays'); if(_w==='4'||_w==='8') WAYS=+_w; }catch(_){}   // 8-WAY default (knocker needs the diagonals); press Y for 4-way restrictor, or ?stick=4way
   if(Q.get('stick')==='4way'||Q.get('ways')==='4') WAYS=4; else if(Q.get('stick')==='8way'||Q.get('ways')==='8') WAYS=8;   // ?ways = the console's STICK setting
+  window.__toggleWays=function(){ WAYS=WAYS===4?8:4; try{LS.setItem('sideStickWays',String(WAYS));}catch(_){} return WAYS; };   // the Y key (top-level keydown) toggles the restrictor through here (WAYS is private to this IIFE -- 1116)
   function only4(dx,dy,ax,ay){ if(WAYS===4 && dx && dy){ if(Math.abs(ax)>=Math.abs(ay)) dy=0; else dx=0; } return [dx,dy]; }
   // 3-BUTTON CAB defaults — A=TRAP (catch/hold) · B=BLAST (fire) · RT=GET BIG (team power). Overridable by the saved map (highTableGamepad).
   var BTN={trap:(M&&M.buttons&&M.buttons.trap!=null)?M.buttons.trap:0, big:(M&&M.buttons&&M.buttons.big!=null)?M.buttons.big:1, blast:(M&&M.buttons&&M.buttons.blast!=null)?M.buttons.blast:7, start:(M&&M.buttons&&M.buttons.start!=null)?M.buttons.start:9};   // A=TRAP · B=GET BIG · RT=BLAST (Joe's cab layout, F300 + 8BitDo)
@@ -3305,7 +3306,7 @@ function cabReport(){ try{ if(parent===window) return; }catch(_){ return; }   //
       var any=false; for(var j=0;j<gp.buttons.length;j++){ if(gp.buttons[j]&&gp.buttons[j].pressed){ any=true; break; } }
       var bst=!!(gp.buttons[BTN.start]&&gp.buttons[BTN.start].pressed);   // START opens/closes the PAUSE MENU mid-match (stick-only cabs need it)
       if(bst&&!prevStart&&(pausable()||!pauseEl.classList.contains('hidden'))){ togglePause(); } prevStart=bst;
-      if(!pauseEl.classList.contains('hidden')) pauseNavPad(gp);
+      if(!pauseEl.classList.contains('hidden')) pauseNavPad(gp,BTN);
       if(INI.on&&state==='champion') iniPad(gp);   // stick spins the initials letter   // stick / A / B drive the pause menu (a stick-only cab had no way to reach the rows)
       if(STICK8){   // 3-BUTTON CAB: TRAP (hold) · BLAST (tap) · GET BIG
         var bt=function(i){return !!(gp.buttons[i]&&gp.buttons[i].pressed);};
