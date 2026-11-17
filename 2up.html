@@ -90,7 +90,14 @@
 
 <div id="split"><div id="sbar"></div><div id="sframes"></div></div>
 
+<div id="t2up" style="display:none;position:fixed;inset:0;z-index:50;background:radial-gradient(120% 90% at 50% -10%,rgba(200,160,255,.18),transparent 55%),#07050e;cursor:pointer;align-items:center;justify-content:center;flex-direction:column;text-align:center">
+  <img src="sprites/title_high_table.png" alt="ONE-TIMER: THE HIGH TABLE" style="width:min(62vw,96vh);height:auto;filter:drop-shadow(0 8px 30px #000)">
+  <div style="margin-top:2vh;font:italic 900 clamp(22px,4.6vw,52px)/1 'Helvetica Neue',Arial;color:#27f6ff;text-shadow:0 0 22px rgba(39,246,255,.6)">2-UP · TWO PLAYERS</div>
+  <div style="margin-top:1.2vh;font:800 clamp(11px,1.7vw,18px)/1.5 'Helvetica Neue',Arial;letter-spacing:.16em;color:#cfe6ff">P1 WASD · Z X C &nbsp;·&nbsp; P2 O K L ; · , GET BIG · . BLAST &nbsp;·&nbsp; OR A PAD EACH</div>
+  <div id="t2press" style="margin-top:4vh;font:800 clamp(14px,2.6vw,28px)/1 'Helvetica Neue',Arial;color:#fff;text-shadow:0 0 16px #ff37c7">▸ PRESS START · OR CLICK TO FACE OFF ◂</div>
+</div>
 <script src="lib/catalog.js?v=2"></script>
+<script src="lib/attract.js?v=1"></script>
 <script>
 (function(){
   var Q=new URLSearchParams(location.search);
@@ -268,8 +275,24 @@
     loadFrames();
   }
 
-  if(SOLO){ mountSolo(); }
-  else { drawCard(); }
+  // THE ATTRACT (lib/attract.js, Joe 1117 "likely missing from ... 2 player 2 up"): the 2-UP page now boots like every other
+  //   mode -- A&P PRESENTS -> CK ident -> title -> the TOP-DOWN attract loop. A press leaves it for the 2-UP TITLE card (?solo) or
+  //   the launch card (window mode); the NEXT press faces off. Never under ?console (the HOME / Pi cab already picked the match),
+  //   ?noattract, ?qa, or inside a frame (the cab reveal). Idle 45 s on the title / launch card -> the attract again.
+  var ATTRACT=!!window.HTAttract && !CONSOLE && !Q.has('noattract') && !Q.has('qa') && window.top===window && (window.__HT_NO_ATTRACT!==true||Q.has('attract'));   // __HT_NO_ATTRACT: the QA harnesses (tools/_qa/cdp.mjs)
+  function t2up(on){ var t=document.getElementById('t2up'); if(t) t.style.display=on?'flex':'none'; }
+  function face(){ if(window.HTAttract&&HTAttract.busy()) return; t2up(false); mountSolo(); }
+  if(SOLO && ATTRACT){
+    var tt=document.getElementById('t2up'); tt.addEventListener('pointerdown',function(e){ e.preventDefault(); face(); });
+    addEventListener('keydown',function(e){ if(document.getElementById('t2up').style.display==='flex'){ e.preventDefault(); face(); } });
+    (function padT(){ var any=false; try{ var ps=navigator.getGamepads?navigator.getGamepads():[]; for(var i=0;i<ps.length;i++){ var p=ps[i]; if(p&&p.connected) for(var j=0;j<p.buttons.length;j++) if(p.buttons[j]&&p.buttons[j].pressed) any=true; } }catch(e){}
+      if(any&&!padT.prev&&document.getElementById('t2up').style.display==='flex') face(); padT.prev=any; if(document.getElementById('t2up').style.display!=='none'||(window.HTAttract&&HTAttract.active)) requestAnimationFrame(padT); else padT.prev=false; })();
+    if(Q.has('noboot')) t2up(true);   // ?noboot: straight to the 2-UP title (the idle return stays armed)
+    HTAttract.mount({ boot:true, autostart:!Q.has('noboot'), idle:45, first:'side2', isIdle:function(){ return document.getElementById('t2up').style.display==='flex'; },
+      onExit:function(){ t2up(true); } });
+  }
+  else if(SOLO){ mountSolo(); }
+  else { drawCard(); if(ATTRACT) HTAttract.mount({ boot:true, autostart:!Q.has('noboot'), idle:45, first:'side2', isIdle:function(){ return true; } }); }
 })();
 </script>
 </body></html>

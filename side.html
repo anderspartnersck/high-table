@@ -122,7 +122,7 @@
   body.tmode #hint{display:none}
   body.tmode #tpad{display:block;position:fixed;inset:0;pointer-events:none;z-index:5}
   #tpad .col{position:absolute;top:0;bottom:0;width:var(--col,120px);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
-    gap:calc(var(--btn,84px)*0.16);padding-bottom:max(14px,calc(var(--btn,84px)*0.28))}
+    gap:calc(var(--btn,84px)*0.2 + 6px);padding-bottom:max(14px,calc(var(--btn,84px)*0.28))}
   #tpad .L{left:0;padding-left:env(safe-area-inset-left)} #tpad .R{right:0;padding-right:env(safe-area-inset-right)}
   .tb{pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
     position:relative;width:var(--btn,84px);height:var(--btn,84px);border-radius:50%;
@@ -134,9 +134,11 @@
     -webkit-mask:radial-gradient(closest-side,transparent calc(100% - 5px),#000 calc(100% - 4px));mask:radial-gradient(closest-side,transparent calc(100% - 5px),#000 calc(100% - 4px))}
   .tb img{position:absolute;left:50%;top:50%;width:64%;height:64%;object-fit:contain;transform:translate(-50%,-50%);pointer-events:none;
     filter:drop-shadow(0 3px 4px rgba(0,0,0,.7));transition:transform .09s cubic-bezier(.3,1.6,.5,1),opacity .2s,filter .2s;transform-origin:50% 85%}
-  .tb .lb{position:absolute;left:50%;bottom:-2px;transform:translate(-50%,100%);font:italic 900 calc(var(--btn,84px)*0.15)/1.3 "Helvetica Neue",Arial;
-    letter-spacing:.04em;color:var(--c);text-shadow:0 1px 3px #000,0 0 8px rgba(0,0,0,.9);white-space:nowrap;pointer-events:none}
+  .tb .lb{position:absolute;left:50%;bottom:-2px;transform:translate(-50%,100%);font:italic 900 calc(var(--btn,84px)*0.15)/1.3 "Arial Black","Arial Bold",Impact,"Helvetica Neue",Arial;
+    letter-spacing:.02em;color:var(--c);-webkit-text-stroke:1.5px #07060c;paint-order:stroke fill;text-shadow:0 2px 0 #000,0 0 3px #000,0 0 8px rgba(0,0,0,.95);white-space:nowrap;pointer-events:none}
   .tb.trap{--c:#f5b31b} .tb.big{--c:#efe6d2} .tb.blast{--c:#a64bff}
+  body.tbees .tb.big .ring{--c:#ffe23a} body.tqueens .tb.big .ring{--c:#b14cff}   /* HUD 1117: the GET BIG ring (= the phone's super meter) fills in the TEAM colour, like the desktop meter; the button stays bone */
+  /* HUD 1117: the gap above = label height + the 6px ring overhang, so TRAP / GET BIG no longer run under the next ring */
   .tb.down{transform:scale(.94);box-shadow:0 0 26px var(--c),inset 0 0 18px rgba(0,0,0,.5)}
   .tb.trap.down img{transform:translate(-50%,-50%) scale(1.22,.6)}                      /* TRAP = the knocker squashes down onto the puck */
   .tb.trap.hold{border-color:#fff;box-shadow:0 0 calc(10px + 22px*var(--q,0)) var(--c)}  /* holding a puck: glow builds with the charge */
@@ -350,11 +352,16 @@ const SFX=(()=>{ const lib={},names=['slap','bomb','wave_off','bees_goal','queen
   // SOLO menu cues (breakaway model): the musical stings (player_select / mode_confirm / move_cursor) must NOT
   //   stack — cycling restarts the sting, never layers. Hold one live instance per cue and stop it before replay.
   const solo={}, SOLOSET={player_select:1,mode_confirm:1,mode_select:1,move_cursor:1};
-  let menuSlot=null, killInst=null;   // menuSlot = ONE shared channel for menu cues (a new cue stops the previous); killInst = the boot killscreen sting, held so it can be stopped before the title (no bleed)
+  // MUSCUE = every MUSICAL one-shot (the long stings/fanfares/horns, 1-17 s). They used to fire as free clones on top of each
+  //   other + the bed: ?hyscore's coin played player_select (8.6 s) UNDER bees_game_start (17 s), and the bed came back at
+  //   3.5 s under the still-running fanfare, then the countdown + faceoff horn stacked on all of it (4 music voices). Now they
+  //   all go through Music.cue(): ONE cue voice, crossfaded, and the beds sidechain-duck while it sounds. Short SFX stay here.
+  const MUSCUE={player_select:1,mode_select:1,mode_confirm:1,bees_game_start:1,killscreen:1,bees_faceoff:1,queens_faceoff:1,center_countdown:1,bees_goal:1,queens_goal:1,title_logo_drop:1,bees_breakaway:1,queens_breakaway:1};
   for(const n of names){const a=new Audio('audio/'+n+'.mp3');a.preload='auto';lib[n]=a;}
   let M=Q.has('mute')?0:0.55; let ac=null;   // ?mute=1 silences everything (attract reel supplies its own bed)
   const sfxLast={};   // per-cue debounce so big moments can't restack and BLOW OUT the mix
   function play(n,v){const s=lib[n];if(!s)return;
+    if(MUSCUE[n]){ try{ if(Music.cue(n,s,(v==null?0.6:v)*M)) return; }catch(e){} }   // MUSIC CUE (Joe 1117 "cue overlap"): one cue voice, owned by Music -- a new cue fades the old one + the bed ducks for as long as the cue sounds
     if(SOLOSET[n]){ if(solo[n]){ try{solo[n].pause();}catch(e){} } const c=s.cloneNode(); c.volume=(v==null?0.6:v)*M; solo[n]=c; try{c.play();}catch(e){} return; }   // SOLO: restart, never stack
     if(sfxLast[n]!=null&&clock-sfxLast[n]<0.05)return; sfxLast[n]=clock; try{const c=s.cloneNode();c.volume=(v==null?0.6:v)*M;c.play();}catch(e){}}
   function actx(){try{if(!ac)ac=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}return ac;}
@@ -395,13 +402,12 @@ const SFX=(()=>{ const lib={},names=['slap','bomb','wave_off','bees_goal','queen
       o.type='square'; const f0=up?520:460, f1=up?880:300; o.frequency.setValueAtTime(f0,t); o.frequency.exponentialRampToValueAtTime(f1,t+0.09);
       g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.15*M,t+0.012); g.gain.exponentialRampToValueAtTime(0.0001,t+0.15);
       o.connect(g).connect(c.destination); o.start(t); o.stop(t+0.16); }catch(e){} },
-    kill(){ const s=lib['killscreen']; if(!s)return; try{ if(killInst){try{killInst.pause();}catch(_){}} const c=s.cloneNode(); c.volume=0.85*M; killInst=c; c.play(); }catch(e){} },   // the Castle Killscreen 4th-wall break sting (~11s) — held so the title can stop it (no bleed)
-    stopKill(){ if(!killInst)return; const k=killInst; killInst=null; let g=k.volume; const f=setInterval(()=>{ g-=0.14; if(g<=0){clearInterval(f);try{k.pause();}catch(e){}} else k.volume=Math.max(0,g); },16); },   // fade the killscreen sting out as the title takes over
+    kill(){ play('killscreen',0.85); },   // the Castle Killscreen 4th-wall break sting (~11s) — a Music cue now (the title can fade it: no bleed)
+    stopKill(){ try{ Music.cueStop('killscreen',0.25); }catch(e){} },   // fade the killscreen sting out as the title takes over
     sel(){play('select',0.62);},                // crisp UI select (entering the menu)
     // MENU CUE CHANNEL: title / first-menu / second-menu cues all share one slot — a new one fades out the
     //   previous (so they crossfade, never stack), and it sits OVER the looping title.mp3 bed (the bed never stops).
-    menu(n,v){ const s=lib[n]; if(!s)return; if(menuSlot){ const old=menuSlot; let g=old.volume; const fo=setInterval(()=>{ g-=0.5; if(g<=0){clearInterval(fo);try{old.pause();}catch(e){}} else old.volume=Math.max(0,g); },16); }   // ~2-frame crossfade (snappy)
-      const c=s.cloneNode(); c.volume=(v==null?0.6:v)*M; menuSlot=c; try{c.play();}catch(e){} menuCueDuck=(c.duration&&isFinite(c.duration)&&c.duration<12)?c.duration*0.9:4.5; },   // duck the bed for the cue's length
+    menu(n,v){ play(n,v); },   // = the Music cue voice (a new cue crossfades the previous; the bed ducks for the cue's real length)
     logoDrop(){play('title_logo_drop',0.7);},   // the title sting on the boot intro's logo rise
     breakaway(team){play(team==='bees'?'bees_breakaway':'queens_breakaway',0.5);},   // a team's ATTACKING-ZONE cue (great at the Honey Hole / Throne Room)
     faceoff(team){play(team==='queens'?'queens_faceoff':'bees_faceoff',0.42);} };   // per-team faceoff horn (on the release)
@@ -416,7 +422,7 @@ const SFX=(()=>{ const lib={},names=['slap','bomb','wave_off','bees_goal','queen
 const BEDFOR={ bee:'bees', bees:'bees', nachos:'bees',      // per-TABLE gameplay bed (the venue's house), tunable
                queens:'queens', throne:'queens', killscreen:'bees' };       // Honey Hole=bees · Throne Room=queens (Joe 2026-07-08)
 let MUSV=1;   // UI-AUDIT 1110: music volume from the pause menu (this visit only)
-const Music=(()=>{ if(Q.has('mute')||Q.get('cab2')==='p2') return {kick(){},update(){},setVol(){}};
+const Music=(()=>{ if(Q.has('mute')||Q.get('cab2')==='p2') return {kick(){},update(){},setVol(){},cue(){return true;},cueStop(){},peek(){return null;}};   // p2 (2-UP client) = silent: the HOST carries beds AND cues (one window used to play every fanfare twice)
   const XF=1.2;   // seamless-loop crossfade seconds — the second copy fades in over the seam so the loop never hard-cuts
   function Bed(src){ let A=null,B=null,cur=null,lvl=0,tgt=0,go=false;
     function mk(){ const e=new Audio(src); e.loop=false; e.volume=0; e.preload='auto'; return e; }   // loop=false — WE do the loop, with a crossfade
@@ -437,11 +443,31 @@ const Music=(()=>{ if(Q.has('mute')||Q.get('cab2')==='p2') return {kick(){},upda
   }
   const beds={ a:Bed('audio/title.mp3'), bB:Bed('audio/bees_breakaway.mp3'), bQ:Bed('audio/queens_breakaway.mp3'), mS:Bed('audio/mode_select.mp3') };
   let ready=false;
+  // THE CUE VOICE (Joe 1117): ONE musical one-shot at a time. cue() fades the previous cue out over XC s (a crossfade, never a
+  //   stack), the beds duck to 0 while a cue sounds (sidechain) and swell back when it ends. A cue that runs long in play is
+  //   trimmed (CUEMAX) so the bed is not held under it. The same cue re-fired inside 0.3 s (double click / double event) is
+  //   ignored. In the attract DEMO the in-match cues (countdown / horns) stay silent: the attract has ONE bed, the title.
+  const XC=0.3, CUEMAX={bees_faceoff:4.5, queens_faceoff:4.5, bees_goal:7.0, queens_goal:7.0, center_countdown:5.5};
+  const DEMOQUIET={center_countdown:1,bees_faceoff:1,queens_faceoff:1,bees_goal:1,queens_goal:1,bees_breakaway:1,queens_breakaway:1};
+  let cv=null, cn=null, cT=0, cMax=0, cVol=0; const fading=[];
+  function fadeOut(el,sec){ if(el) fading.push({el,g:el.volume,r:el.volume/Math.max(0.05,sec)}); }
+  let cLast=0;
+  function cueTick(){ const now=performance.now(), dt=cLast?Math.min(0.25,Math.max(0,(now-cLast)/1000)):0.016; cLast=now;   // WALL-CLOCK fades: a slow/hitching frame must not stretch a 0.3 s crossfade into 1.4 s
+    for(let i=fading.length-1;i>=0;i--){ const f=fading[i]; f.g-=f.r*dt; if(f.g<=0){ try{f.el.pause();}catch(e){} fading.splice(i,1); } else { try{f.el.volume=Math.max(0,f.g);}catch(e){} } }
+    if(cv){ cT+=dt; const d=cv.duration, over=(cv.ended)||(d&&isFinite(d)&&cv.currentTime>=d-0.02);
+      if(over){ cv=null; cn=null; } else if(cMax&&cT>=cMax){ fadeOut(cv,0.6); cv=null; cn=null; } } }
   return {
     setVol(x){ MUSV=x; },
     kick(){ if(!ready){ ready=true; for(const k in beds) beds[k].start(); } },   // start every bed (muted) on the first gesture
-    update(dt){ if(!ready)return; if(menuCueDuck>0)menuCueDuck-=(dt||0.016);
-      const live=!DEMO&&(state==='play'||state==='faceoff'||state==='serve'||state==='goal'), duck=(menuCueDuck>0);
+    cue(n,src,vol){ if(DEMO&&DEMOQUIET[n]) return true;
+      if(cv&&cn===n&&cT<0.3) return true;                                  // double-fire guard
+      if(cv){ fadeOut(cv,XC); cv=null; }
+      let c=null; try{ c=src.cloneNode(); c.volume=Math.max(0,Math.min(1,vol)); const p=c.play(); if(p&&p.catch)p.catch(()=>{}); }catch(e){ return true; }
+      cv=c; cn=n; cT=0; cMax=CUEMAX[n]||0; cVol=vol; return true; },
+    cueStop(n,sec){ if(cv&&(!n||cn===n)){ fadeOut(cv,sec==null?0.4:sec); cv=null; cn=null; } },
+    peek(){ return {cue:cn, t:cT}; },
+    update(dt){ cueTick(); if(!ready)return; if(menuCueDuck>0)menuCueDuck-=(dt||0.016);
+      const live=!DEMO&&(state==='play'||state==='faceoff'||state==='serve'||state==='goal'), duck=(menuCueDuck>0)||!!cv||performance.now()<CABHOLD;   // CABHOLD: the cab reveal's CK cue owns the music until it hands off
       const puckScreen=(!live && state==='select' && typeof selPhase!=='undefined' && selPhase==='puck');   // the PUCK-SELECT beat owns the mode-select bed
       const which=BEDFOR[tbl]||'bees';                                     // the VENUE'S gameplay bed (per-table, not per-team)
       beds.a.set( duck?0:((live||puckScreen)?0:0.34));                     // title bed: menus, steps aside for the puck screen + live play
@@ -1003,7 +1029,7 @@ function step(dt){
   if(state==='boot'){ bootT+=dt; const SMASH=BOOT.A1+2.3;   // COLD-OPEN: A&P PRESENTS -> CASTLE KILLSCREEN 4th-wall PUCK SMASH -> THE PUCK DROP -> title -> SPLASH
     if(bootT>=0.5 && !bootZap){ bootZap=true; SFX.resume(); }                                       // ACT 1 — the presents card
     if(bootT>=SMASH && !bootSmash){ bootSmash=true; SFX.resume(); SFX.kill(); SFX.hit(0.9); menuCueDuck=4.0; }   // ACT 2 — the CASTLE KILLSCREEN 4th-wall PUCK SMASH; duck the bed under the killscreen sting (one music cue at a time)
-    if(bootT>=BOOT.LAND && !bootDrop){ bootDrop=true; SFX.resume(); SFX.hit(0.55); SFX.drop(); }    // ACT 3 — the puck LANDS (soft, no kill cue)
+    if(bootT>=BOOT.LAND && !bootDrop){ bootDrop=true; SFX.resume(); SFX.hit(0.55); }    // ACT 3 — the puck LANDS (soft, no kill cue; no countdown either -- it stacked on the killscreen sting + the logo drop, Joe 1117)
     if(bootT>=BOOT.LAND+0.8 && !bootLogo){ bootLogo=true; SFX.stopKill(); SFX.logoDrop(); }         // the title assembles — the killscreen sting fades out so it never overlaps the title/attract
     if(bootT>=BOOT.END){ state='splash'; splashIdle=0; try{Music.kick();}catch(e){} } return; }     // seamless hand-off to the SPLASH TITLE; idles into the ATTRACT REEL
   // HARD CAP the particle pools — belt-and-braces so no spawn path can ever run the tab out of memory.
@@ -1028,6 +1054,8 @@ function step(dt){
   if(state==='config') return;   // JAILBREAK custom-match picker — static (clock-animated in drawConfig), no sim
   if(REEL && !TRANS.on && reelIdx>=0 && REELSEG[reelIdx] && REELSEG[reelIdx].k==='demo'){ reelT+=dt; if(reelT>=REELSEG[reelIdx].dur && (state==='play'||state==='serve'||state==='faceoff')) reelAdvance(); }   // cut the live demo to the next beat
   if(HYSCORE){ if((state==='win'||state==='champion')&&!INI.on){ hyIdle+=dt; if(hyIdle>25){ hyIdle=0; hyAttract(); return; } } else hyIdle=0; }   // nobody fed it another quarter -> attract
+  if((state==='title'||state==='select'||state==='config') && !DIRECT && !SHELL && !TRANS.on && !PAUSED){ menuIdle+=dt; if(padBusy()) menuIdle=0;   // CK attract standard (Joe 1117 "be consistent in all game modes with the attract"): the title / SELECT idles back into the ATTRACT
+    if(menuIdle>45){ menuIdle=0; try{ resetSeries(); }catch(e){} state='splash'; splashIdle=99; } } else menuIdle=0;
   if(state==='splash'){ splashIdle+=dt; if(!DIRECT && !REEL && splashIdle>(TOHOME?0.3:7)){ reelStart(); } return; }   // the title holds its full beat before the attract (HYSCORE included)   // SPLASH idles to the ATTRACT REEL; clock-animated in drawSplash, no sim
   if(state==='title'||state==='select'){ menuSim(dt); return; }   // MENU: a little air-hockey demo (knockers bat the pucks) — then skip the game physics/SFX entirely
   if(estT>0)estT=Math.max(0,estT-dt);
@@ -1487,6 +1515,82 @@ const UIK=(()=>{ const S={"scoreplate":{"x":0,"y":0,"w":120,"h":90,"slice":[16,1
     for(let j=0;j<3;j++)for(let i=0;i<3;i++){ const q=n[N[j][i]], dw=X[i+1]-X[i], dh=Y[j+1]-Y[j]; if(q[2]>0&&q[3]>0&&dw>0&&dh>0) ctx.drawImage(img,q[0]*K,q[1]*K,q[2]*K,q[3]*K,X[i],Y[j],dw,dh); }
     return true; };
   return {spr,nine}; })();
+// GET BIG METER — VIDEO-GAME HUD (Joe 1117: "check spacing on every fill up meter ... lean making them more video game
+//   stylized or even in that paint splash font similar to the one timer logo type"). RENDER-ONLY: reads near.sup / clock,
+//   writes nothing. Was the UI KIT chrome plate + glass tube: the plate was VW/VH-mixed (bar bottom sat ON the plate's
+//   bottom border, label crowded the top). Now ONE padding P (px) on all four sides, measured from the frame edge:
+//     plate = P + label cap-height + gap + bar + P;  bar inset P from the slanted left/right edges on every row.
+//   Skewed plate + skewed segmented bar (angled ends, 10 ticks, glossy highlight), TEAM colour (the near knocker's glow:
+//   gold bees / purple queens / the chosen skin), and when FULL a glow pulse + a sheen sweep. Lettering = brushLabel():
+//   the logo is artwork, not a font, so the paint-splash look is procedural (slanted heavy system face + black outline
+//   + a ragged team-colour brush swash + dry-brush grain), cached per label. Deterministic hash, never Math.random
+//   (the sim's RNG stays untouched).
+const HUDFONT='"Arial Black","Arial Bold",Impact,"Helvetica Neue",Arial,sans-serif';
+const _hh=i=>{ const s=Math.sin(i*127.1+311.7)*43758.5453; return s-Math.floor(s); };
+const _brush=new Map();
+function brushLabel(text,fs,col,hot){ const key=text+'|'+fs+'|'+col+'|'+(hot?1:0); let o=_brush.get(key); if(o) return o;
+  if(_brush.size>32) _brush.clear();
+  const SK=0.2, font=`italic 900 ${fs}px ${HUDFONT}`, cap=Math.round(fs*0.74);
+  const m=document.createElement('canvas').getContext('2d'); m.font=font; const tw=Math.ceil(m.measureText(text).width);
+  const pad=Math.ceil(fs*0.5), c=document.createElement('canvas'); c.width=tw+pad*2+Math.ceil(fs*SK); c.height=cap+pad*2;
+  const g=c.getContext('2d'), x0=pad, base=pad+cap;
+  // 1) paint swash: a ragged team-colour brush stroke behind the letters, bristle streaks off both ends
+  g.save(); g.transform(1,0,-SK,1,SK*base,0);
+  const sx0=x0-fs*0.28, sx1=x0+tw+fs*0.22, sy0=base-cap-fs*0.13, sy1=base+fs*0.12, st=Math.max(3,fs*0.14);
+  g.beginPath(); g.moveTo(sx0,sy0+fs*0.05);
+  for(let x=sx0,i=0;x<=sx1;x+=st,i++) g.lineTo(x,sy0+(_hh(i+fs)-0.5)*fs*0.10);
+  g.lineTo(sx1+fs*0.10,(sy0+sy1)/2);
+  for(let x=sx1,i=0;x>=sx0;x-=st,i++) g.lineTo(x,sy1+(_hh(i*3+fs)-0.5)*fs*0.10);
+  g.closePath(); g.globalAlpha=0.92; g.fillStyle=col; g.fill();
+  g.globalAlpha=0.55; g.strokeStyle=col; g.lineCap='round';
+  for(let i=0;i<5;i++){ const y=sy0+(sy1-sy0)*(0.15+0.7*_hh(i*7+fs)), L=fs*(0.25+0.5*_hh(i*11)); g.lineWidth=Math.max(1,fs*0.035);
+    g.beginPath(); if(i%2){ g.moveTo(sx1,y); g.lineTo(sx1+L,y-fs*0.02); } else { g.moveTo(sx0+fs*0.05,y); g.lineTo(sx0-L,y+fs*0.02); } g.stroke(); }
+  g.globalAlpha=1; g.globalCompositeOperation='source-atop'; g.fillStyle='rgba(0,0,0,0.30)';   // dry-brush streaks in the swash
+  for(let i=0;i<9;i++){ const y=sy0+(sy1-sy0)*_hh(i*5+3), x=sx0+(sx1-sx0)*_hh(i*13+1); g.fillRect(x,y,fs*(0.4+0.9*_hh(i*17)),Math.max(1,fs*0.025)); }
+  g.restore();
+  // 2) the letters: bone-white (hot = white-on-team flash), fat black outline, slanted like the logo
+  g.save(); g.transform(1,0,-SK,1,SK*base,0); g.font=font; g.textBaseline='alphabetic'; g.lineJoin='round';
+  g.lineWidth=Math.max(3,fs*0.2); g.strokeStyle='#07060c'; g.strokeText(text,x0,base);
+  g.fillStyle=hot?'#ffffff':'#f4eee0'; g.fillText(text,x0,base);
+  g.globalCompositeOperation='source-atop'; g.fillStyle='rgba(60,50,40,0.22)';   // chalky grain on the letters
+  for(let i=0;i<Math.round(tw*0.6);i++){ g.fillRect(x0+tw*_hh(i*2+1), base-cap+cap*_hh(i*2+2), Math.max(1,fs*0.05*_hh(i)), 1); }
+  g.restore();
+  o={c, ox:x0, oy:base-cap, cap, tw}; _brush.set(key,o); return o; }
+function drawBigMeter(){
+  const u=VH, P=Math.max(6,Math.round(u*0.012)), fs=Math.max(12,Math.round(u*0.03)), gap=Math.max(4,Math.round(u*0.009)),
+        bh=Math.max(8,Math.round(u*0.024)), K=0.25, rd=near.sup>=1, col=NEARGLOW||tcol(PTEAM);
+  const L0=brushLabel('GET BIG',fs,col,false), cap=L0.cap, ph=P+cap+gap+bh+P, bw=Math.round(VW*0.24), pw=bw+2*P;
+  const px=Math.round(PADHAND==='R'?VW*0.96-bw-P:VW*0.04-P), py=Math.round(VH*0.125);
+  const Lx=y=>px+K*(py+ph-y);                       // the plate's slanted LEFT edge at row y (right edge = Lx(y)+pw)
+  const para=(x0,y0,w,h)=>{ ctx.beginPath(); ctx.moveTo(x0+K*h,y0); ctx.lineTo(x0+K*h+w,y0); ctx.lineTo(x0+w,y0+h); ctx.lineTo(x0,y0+h); ctx.closePath(); };
+  const pulse=rd?0.5+0.5*Math.sin(clock*7):0;
+  ctx.save();
+  // plate: dark glass parallelogram, team rim, glow pulse when FULL
+  para(px,py,pw,ph); const pg=ctx.createLinearGradient(0,py,0,py+ph); pg.addColorStop(0,'rgba(18,14,30,0.86)'); pg.addColorStop(1,'rgba(4,4,10,0.86)');
+  ctx.fillStyle=pg; ctx.shadowColor=rd?col:'rgba(0,0,0,0.6)'; ctx.shadowBlur=rd?12+14*pulse:6; ctx.fill(); ctx.shadowBlur=0;
+  ctx.lineWidth=2; ctx.strokeStyle='rgba(0,0,0,0.9)'; ctx.stroke();
+  para(px+1.5,py+1.5,pw-3,ph-3); ctx.lineWidth=1.5; ctx.strokeStyle=col; ctx.globalAlpha=rd?0.75+0.25*pulse:0.6; ctx.stroke(); ctx.globalAlpha=1;
+  // label: the brush plate, cap top exactly P below the frame, left on the bar's slanted left edge
+  const capTop=py+P, Lb=rd?brushLabel('★ GET BIG ★',fs,col,Math.floor(clock*3)%2===0):L0;
+  ctx.drawImage(Lb.c, Math.round(Lx(capTop+cap)+P+K*cap*0.15-Lb.ox), Math.round(capTop-Lb.oy));
+  // bar: skewed track inset P from every edge, 10 segments, glossy team fill, sheen sweep when FULL
+  const by=capTop+cap+gap, bx=Lx(by+bh)+P, bwi=pw-2*P, f=Math.max(0,Math.min(1,near.sup));
+  para(bx,by,bwi,bh); ctx.fillStyle='rgba(255,255,255,0.08)'; ctx.fill(); ctx.lineWidth=1; ctx.strokeStyle='rgba(0,0,0,0.85)'; ctx.stroke();
+  ctx.save(); para(bx,by,bwi,bh); ctx.clip();
+  if(f>0){ const fw=Math.max(bh*0.5,bwi*f);
+    const fg=ctx.createLinearGradient(0,by,0,by+bh); fg.addColorStop(0,'#ffffff'); fg.addColorStop(0.18,col); fg.addColorStop(0.75,col); fg.addColorStop(1,'rgba(0,0,0,0.55)');
+    para(bx,by,fw,bh); ctx.fillStyle=fg; ctx.shadowColor=col; ctx.shadowBlur=rd?10:4; ctx.fill(); ctx.shadowBlur=0;
+    ctx.fillStyle='rgba(0,0,0,0.25)'; para(bx,by+bh*0.62,fw,bh*0.38); ctx.fill();          // lower half shade = the glossy tube read
+    ctx.save(); para(bx,by,fw,bh); ctx.clip(); ctx.fillStyle='rgba(255,255,255,0.32)'; ctx.fillRect(bx,by+Math.max(1,bh*0.12),bwi+K*bh,Math.max(1,bh*0.22)); ctx.restore();   // highlight band on the fill only
+    if(!rd){ ctx.fillStyle='rgba(255,255,255,0.85)'; para(bx+fw-2,by,2,bh); ctx.fill(); }          // charging: hot leading edge
+    else { const t=((clock*0.8)%1.6)-0.3, sx=bx+bwi*t; const sg=ctx.createLinearGradient(sx-bh,0,sx+bh,0);
+      sg.addColorStop(0,'rgba(255,255,255,0)'); sg.addColorStop(0.5,'rgba(255,255,255,0.75)'); sg.addColorStop(1,'rgba(255,255,255,0)');
+      ctx.fillStyle=sg; para(sx-bh,by,bh*2,bh); ctx.fill(); } }
+  ctx.fillStyle='rgba(0,0,0,0.75)';              // the 10 segment ticks (slanted gaps)
+  for(let i=1;i<10;i++){ const tx0=bx+bwi*i/10-1; para(tx0,by,Math.max(2,Math.round(bh*0.12)),bh); ctx.fill(); }
+  ctx.restore();
+  ctx.restore();
+  if(Q.has('qa')) window.__htMeter={px,py,pw,ph,P,cap,gap,bh,bx,by,bwi,K,capTop}; }   // QA: geometry for the HUD audit (tools/_qa)
 // live score into the baked green scoreboard panels — simple digital readout, team-coloured
 // SCORE BUG (broadcast-style, Joe 2026-06-26): a clean plate with the two scores. Tables with a baked panel
 //   region get it PAINTED over their raw green panels; tables without get it subtly at top-centre. Same wiring.
@@ -1943,7 +2047,10 @@ function glassShatter(px,py,grow,a){ if(a<=0||grow<=0)return; const u=Math.min(V
 // COLD-OPEN (Joe 2026-06-27, built fresh) — three acts:
 //   1) ANDERS & PARTNERS PRESENTS card  2) CASTLE KILLSCREEN ident -> a PUCK SMASHES THE SCREEN (4th-wall break; the
 //   killscreen cue lands HERE)  3) THE PUCK DROP resolves into ONE-TIMER · THE HIGH TABLE -> seamless to the SPLASH.
-const BOOT={A1:2.6, A2:6.6, LAND:8.0, END:10.2};   // shared with step() so cues match the visuals
+const BOOT={A1:2.6, A2:6.6, LAND:8.0, END:10.2};
+let menuIdle=0;   // seconds on the title / SELECT with no input -> back to the attract (45 s, like the TO-GO / 2-UP / HOME attract)
+['keydown','pointerdown','mousemove','touchstart','wheel'].forEach(ev=>addEventListener(ev,()=>{ menuIdle=0; },{passive:true}));
+function padBusy(){ try{ const ps=navigator.getGamepads?navigator.getGamepads():[]; for(const p of ps){ if(!p||!p.connected) continue; for(const b of p.buttons) if(b&&b.pressed) return true; for(const a of p.axes) if(Math.abs(a)>0.35) return true; } }catch(e){} return false; }   // shared with step() so cues match the visuals
 function drawBoot(){ const t=bootT, cx=VW/2, cy=VH*0.5, u=Math.min(VW,VH);
   function cover(im,a,zoom){ if(!(im&&im.complete&&im.naturalWidth)||a<=0)return; const ir=im.naturalWidth/im.naturalHeight,br=VW/VH; let dw,dh; if(ir>br){dh=VH*zoom;dw=dh*ir;}else{dw=VW*zoom;dh=dw/ir;} ctx.save(); ctx.globalAlpha=Math.min(1,a); ctx.drawImage(im,(VW-dw)/2,(VH-dh)/2,dw,dh); ctx.restore(); }
   ctx.fillStyle='#04030a'; ctx.fillRect(0,0,VW,VH);
@@ -2467,24 +2574,7 @@ function draw(){
     ctx.font=`900 ${Math.round(VH*0.05)}px "Helvetica Neue",Arial`;const _cy=Math.max(VH*0.085, sbRect().bottom+VH*0.055);   // sits UNDER the scoreboard (it used to land on top of the panels)
     ctx.fillText(otSudden?'OT':(mm+':'+(ss<10?'0':'')+ss),VW/2,_cy);
     ctx.font=`800 ${Math.round(VH*0.024)}px "Helvetica Neue",Arial`;ctx.fillStyle='#9fb6c8';ctx.shadowBlur=0;ctx.fillText(otSudden?'NEXT GOAL WINS':('PERIOD '+period+' / '+PERIODS),VW/2,_cy+VH*0.037);ctx.restore();}
-  if(!TMODE&&state!=='title'&&state!=='select'&&state!=='boot'&&state!=='champion'){
-    const w=VW*0.24, x=PADHAND==='R'?VW*0.96-w:VW*0.04, y=VH*0.175, bh=VH*0.02, rd=near.sup>=1, fc=rd?'#ffe23a':'#37c0ff', blink=rd&&(Math.floor(clock*3)%2===0);
-    ctx.save();
-    { const px=x-VW*0.014,py=y-VH*0.05,pw=w+VW*0.028,ph=VH*0.078;   // dark backing plate so it reads over the table (UI KIT: chrome + black glass)
-      if(!UIK.nine('bigplate',px,py,pw,ph,ph/70)){ ctx.fillStyle='rgba(4,4,12,0.58)'; rr(px,py,pw,ph,9); ctx.fill(); } }
-    ctx.textAlign='left'; ctx.textBaseline='alphabetic'; ctx.font=`900 ${Math.round(VH*0.028)}px "Helvetica Neue",Arial`;
-    ctx.lineWidth=Math.max(2,VH*0.004); ctx.strokeStyle='rgba(0,0,0,0.9)'; ctx.fillStyle=blink?'#fff':(rd?'#ffe23a':'#eaf6ff'); ctx.shadowColor=rd?'#ff37c7':'#000'; ctx.shadowBlur=rd?16:4;
-    const label=rd?'★ GET BIG ★':'GET BIG';
-    ctx.strokeText(label,x,y-VH*0.012); ctx.fillText(label,x,y-VH*0.012);   // outlined label = legible on any background
-    ctx.shadowBlur=0;
-    { const tp=bh*0.3, tx=x-tp, ty=y-tp, tw=w+2*tp, th=bh+2*tp, f=Math.max(bh,w*near.sup)/w;   // UI KIT: neon in a glass tube
-      if(UIK.nine('bigbar.track',tx,ty,tw,th,th/18)){
-        ctx.shadowColor=fc; ctx.shadowBlur=rd?18:8; UIK.spr(rd?'bigbar.fill_ready':'bigbar.fill',tx,ty,tw*Math.min(1,f),th,Math.min(1,f));
-        ctx.shadowBlur=0; UIK.nine('bigbar.cap',tx,ty,tw,th,th/18);
-      } else {
-    ctx.fillStyle='rgba(255,255,255,.18)'; rr(x,y,w,bh,bh/2); ctx.fill();
-    ctx.fillStyle=fc; ctx.shadowColor=fc; ctx.shadowBlur=rd?18:8; rr(x,y,Math.max(bh,w*near.sup),bh,bh/2); ctx.fill(); } }
-    ctx.restore();}
+  if(!TMODE&&state!=='title'&&state!=='select'&&state!=='boot'&&state!=='champion') drawBigMeter();   // GET BIG meter (HUD 1117: see drawBigMeter)
   if(state==='faceoff'){ctx.save();
     const cp=project(0.5,0.5), inReady=foT>FO_DROP;
     // the ref's fist: descends through GET READY to hover the dot, then snaps up + fades on the release

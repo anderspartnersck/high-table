@@ -98,6 +98,7 @@
     setTimeout(function(){ ck.classList.add('gone'); if(kb){ kb.classList.add('show'); requestAnimationFrame(function(){ kb.classList.add('push'); }); } }, 2500);
     setTimeout(function(){ if(ck&&ck.parentNode) ck.parentNode.removeChild(ck); }, 4000);
     setTimeout(function(){ if(kb) kb.classList.add('fade'); }, 6300);
+    setTimeout(function(){ var g=cue.volume, f=setInterval(function(){ g-=0.06; if(g<=0){ clearInterval(f); try{cue.pause();}catch(e){} } else cue.volume=g; },50); }, 6300);   // fade the CK cue out with the reveal: the game's bed (held down until cabHold) takes over -- one music voice at a time (Joe 1117 audit)
     setTimeout(function(){ if(kb&&kb.parentNode) kb.parentNode.removeChild(kb); }, 7200);
   }
   // any input arms it (BLAST is a button/click/key — matches the in-game "PUSH BLAST TO START")
