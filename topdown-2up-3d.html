@@ -123,7 +123,7 @@
 <script src="lib/pucks.js?v=noglow1"></script>
 <script src="lib/menu.js?v=1"></script>
 <script>window.TD3D_MAN={"version":1,"made_by":"tools/td_bake.py","note":"HIGH TABLE top-down 3D runtime set (blender/topdown/*)","plates":{"nachos":{"file":"plate_nachos.webp","size":[2048,1365],"boards":[],"preset":"nachos_mouse"},"killscreen":{"file":"plate_killscreen.webp","size":[2048,1298],"boards":[],"preset":"killscreen_mouse"},"rivalry":{"file":"plate_rivalry.webp","size":[2048,1365],"boards":[[0.3671875,0.08187134502923976,0.4921875,0.1286549707602339],[0.5078125,0.08187134502923976,0.62890625,0.1286549707602339]],"preset":"rivalry_top"},"rivalry_flip":{"file":"plate_rivalry_flip.webp","size":[2048,1365],"boards":[[0.37109375,0.08187134502923976,0.4921875,0.1286549707602339],[0.5078125,0.08187134502923976,0.6328125,0.1286549707602339]],"preset":"rivalry_top~flip"},"bees":{"file":"plate_bees.webp","size":[2048,1365],"boards":[],"preset":"honey_top"},"throne":{"file":"plate_throne.webp","size":[2048,1365],"boards":[[0.40625,0.10526315789473684,0.48828125,0.14035087719298245],[0.5078125,0.10526315789473684,0.58984375,0.14035087719298245]],"preset":"throne_top"}},"thumbs":{"nachos":"thumb_nachos.webp","killscreen":"thumb_killscreen.webp","rivalry":"thumb_rivalry.webp","bees":"thumb_bees.webp","throne":"thumb_throne.webp"},"knocker":{"cell":384,"unit_px":80.0,"frames":17,"cols":6,"tumble_deg_per_frame":-22.5},"kthumbs":{"knocker_yellow":"kthumb_yellow.webp","knocker_purple":"kthumb_purple.webp","knocker_white":"kthumb_white.webp","knocker_blue":"kthumb_blue.webp","knocker_green":"kthumb_green.webp","knocker_red":"kthumb_red.webp"},"puck":{"cell":218,"unit_px":64,"styles":{"classic":1,"lit":1,"zebra":8,"hive":8,"royal":8,"contested":8}},"light":{"note":"THE top-down key light, shared by td_tables.py (plates) and td_pieces.py (mallet/puck sprites + their contact shadows) so every shadow on the table falls the same way. azim = screen-space angle the light COMES FROM (0 = right, 90 = top): 135 = upper-left, shadows fall lower-right.","elev_deg":52,"azim_deg":128,"sun_energy":1.45,"sun_soft_deg":6,"sun_color":[1.0,0.96,0.92],"ambient":0.3,"rim_energy":0.22,"rim_color":[0.62,0.48,1.0],"sheen_energy":60.0},"uipucks":{"classic":1,"lit":1,"zebra":16,"hive":16,"royal":16,"contested":16},"venues":{"bee":"bee_est.webp","queens":"queens_est.webp","bees":"bees_est.webp","throne":"throne_est.webp","nachos":"nachos_est.webp"}};window.TD_2P=true;</script>
-<script>/* art3d/td3d.js (inlined by build_topdown3d.py, b365a5c1) */
+<script>/* art3d/td3d.js (inlined by build_topdown3d.py, ba5f3edf) */
 // TD3D — HIGH TABLE · TOP-DOWN 3D EDITION (Joe 1116: "rebuild all versions [of the top down] in 3d, including the
 // 2 up 2 player"). RENDER + INPUT LAYER ONLY, loaded by the generated topdown-3d.html / topdown-2up-3d.html
 // (tools/build_topdown3d.py builds them from table_temp_engine.html — never edit those by hand).
@@ -196,15 +196,25 @@
     return true;
   }
   // LED scoreboard face (the board's green placeholder is replaced by a lit dot-matrix read, as on the side SELECT plates)
-  let dots=null;
-  function ledBoard(ctx, x, y, w, h, val, col){
-    ctx.save(); ctx.fillStyle='#04050a'; ctx.fillRect(x-1,y-1,w+2,h+2);
-    const g=ctx.createLinearGradient(0,y,0,y+h); g.addColorStop(0,'rgba(255,255,255,.07)'); g.addColorStop(.5,'rgba(255,255,255,0)'); ctx.fillStyle=g; ctx.fillRect(x,y,w,h);
-    ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.shadowColor=col; ctx.shadowBlur=h*0.55; ctx.fillStyle=col;
-    ctx.font=`800 ${Math.round(h*0.82)}px "Helvetica Neue",Arial`; ctx.fillText(val, x+w/2, y+h*0.54); ctx.shadowBlur=0;
+  // PERF 1117: the two boards are drawn EVERY frame but only change on a goal -> each face (size, score, colour) is painted
+  //   once into a small canvas (gradient, glow text, dot mask) and blitted; was a gradient + a shadowBlur text + a pattern
+  //   allocated per board per frame.
+  let dots=null; const LED=new Map();
+  function ledFace(w, h, val, col, sc){
+    const m=Math.ceil(h*0.6), key=Math.round(w*sc)+'x'+Math.round(h*sc)+'|'+val+'|'+col; let c=LED.get(key); if(c) return c;
+    if(LED.size>24) LED.clear();
+    c=document.createElement('canvas'); c.width=Math.ceil((w+2*m)*sc); c.height=Math.ceil((h+2*m)*sc); c.m=m;
+    const g=c.getContext('2d'); g.scale(sc,sc); const x=m, y=m;
+    g.fillStyle='#04050a'; g.fillRect(x-1,y-1,w+2,h+2);
+    const gr=g.createLinearGradient(0,y,0,y+h); gr.addColorStop(0,'rgba(255,255,255,.07)'); gr.addColorStop(.5,'rgba(255,255,255,0)'); g.fillStyle=gr; g.fillRect(x,y,w,h);
+    g.textAlign='center'; g.textBaseline='middle'; g.shadowColor=col; g.shadowBlur=h*0.55*sc; g.fillStyle=col;
+    g.font=`800 ${Math.round(h*0.82)}px "Helvetica Neue",Arial`; g.fillText(val, x+w/2, y+h*0.54); g.shadowBlur=0;
     if(!dots){ dots=document.createElement('canvas'); dots.width=dots.height=4; const d=dots.getContext('2d'); d.fillStyle='rgba(0,0,0,.55)'; d.fillRect(0,0,4,4); d.clearRect(1,1,2,2); }
-    try{ ctx.globalAlpha=0.6; ctx.fillStyle=ctx.createPattern(dots,'repeat'); ctx.fillRect(x,y,w,h); }catch(e){}
-    ctx.restore(); return true; }
+    try{ g.setTransform(1,0,0,1,0,0); g.globalAlpha=0.6; g.fillStyle=g.createPattern(dots,'repeat'); g.fillRect(Math.round(x*sc),Math.round(y*sc),Math.round(w*sc),Math.round(h*sc)); }catch(e){}
+    LED.set(key,c); return c; }
+  function ledBoard(ctx, x, y, w, h, val, col){
+    const t=ctx.getTransform&&ctx.getTransform(), sc=t?Math.max(1,Math.hypot(t.a,t.b)||1):1, c=ledFace(w,h,val,col,sc), m=c.m;
+    ctx.drawImage(c, x-m, y-m, w+2*m, h+2*m); return true; }
 
   // ---------------------------------------------------------------- menus (DOM)
   const CSS_MENU = `
@@ -305,8 +315,9 @@
       if(matchMedia('(pointer:coarse)').matches) d.textContent=i?'P2':'P1'; document.body.appendChild(d); return d; }); }
     tagT = inMatch ? tagT+1 : 0;
     const a=E.S(0.18,0.06), b=E.S(1.82,0.06);
-    [[tags[0],a,E.yk.col],[tags[1],b,E.pk.col]].forEach(([d,p,col]) => { d.style.left=(p[0]-40)+'px'; d.style.top=Math.max(4,p[1]-34)+'px';
-      d.style.color=col||'#fff'; d.style.borderColor=col||'#fff'; d.style.opacity = inMatch ? (tagT<420 ? 1 : 0.35) : 0; });
+    [[tags[0],a,E.yk.col],[tags[1],b,E.pk.col]].forEach(([d,p,col]) => {   // PERF 1117: touch the DOM only when a value changes (was 10 style writes a frame)
+      const v=[(p[0]-40)+'px', Math.max(4,p[1]-34)+'px', col||'#fff', String(inMatch ? (tagT<420 ? 1 : 0.35) : 0)], o=d._v||[];
+      if(v[0]!==o[0]) d.style.left=v[0]; if(v[1]!==o[1]) d.style.top=v[1]; if(v[2]!==o[2]){ d.style.color=v[2]; d.style.borderColor=v[2]; } if(v[3]!==o[3]) d.style.opacity=v[3]; d._v=v; });
   }
   // PHONE: the top-down is a landscape table. A phone held upright in a match gets the TURN YOUR PHONE card (as the side game).
   let turn=null;
@@ -921,7 +932,7 @@ function draw(time){
                  : puck.owner==='Y' ? (yk.col||'#ffe23a') : puck.owner==='P' ? (pk.col||'#b14cff') : '#bfffff';
   const GCLIP=!!(GEO&&IMG.bg); if(GCLIP){ ctx.save(); surfacePath(); ctx.clip(); }   // puck + trail live ON the painted surface: past the goal line they're under the goal piece
   for(let i=0;i<puck.trail.length;i++){ const t=puck.trail[i], al=(i/puck.trail.length); const p=S(t[0],t[1]);
-    ctx.save(); ctx.globalAlpha=al*.4; ctx.fillStyle=trailCol; ctx.shadowColor=trailCol; ctx.shadowBlur=14*al;
+    ctx.save(); ctx.globalAlpha=al*.4; ctx.fillStyle=trailCol;   /* PERF 1117: no shadowBlur per trail dot (16 blur passes a frame) */
     ctx.beginPath(); ctx.arc(p[0],p[1],u(PR)*al,0,6.28); ctx.fill(); ctx.restore(); }
   if(GCLIP) ctx.restore();
 
@@ -933,7 +944,8 @@ function draw(time){
     const img=STRIKE[g.team], kk=g.t/g.life;
     if(kk>=1 || !img){ strikes.splice(i,1); continue; }
     const fr=Math.min(STRIKE.frames-1, Math.floor(kk*STRIKE.frames)), fw=img.width/STRIKE.frames, fh=img.height;
-    const c=S(g.a,g.b), size=u(0.5);
+    if(i<strikes.length-2 || kk>0.75) continue;   // PERF 1117: the 2 newest strike ghosts only (one per knocker), short-lived
+    const c=S(g.a,g.b), size=u(0.38);
     ctx.save(); ctx.globalAlpha=Math.max(0,1-kk*0.25)*0.8;   // normal composite — no white bloom
     ctx.translate(c[0], c[1]-size*0.18); ctx.scale(g.flip,1);
     ctx.drawImage(img, fr*fw,0,fw,fh, -size/2,-size/2,size,size); ctx.restore();

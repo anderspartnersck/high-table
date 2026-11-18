@@ -1364,6 +1364,45 @@ function step(dt){
   hist.push([puck.X,puck.Y]); if(hist.length>10)hist.shift();
 }
 const hist=[];
+// FX DRAW BUDGET (Joe 1117: "cut down on some of the impact bubbles around knockers ... FPS crasher type slowdowns").
+//   RENDER-ONLY: spawning, ageing and expiry of fx[] are untouched (the spawn gates read fx.length, and the spawns draw
+//   from Math.random, so the pool's life must stay byte-identical for the sim). This only picks what is DRAWN:
+//   - a contact puff (one teamBurst = the new dots of one frame) is drawn only if the last drawn puff is >= FXB.gap s old
+//     and fewer than FXB.bursts are still visible (2 = one per knocker); at most FXB.perBurst dots of it; visible for the
+//     first FXB.dotLife of its life (was the whole life). A GET BIG / BLAST swarm (>= 12 dots) always shows (capped 10);
+//   - rail/scuff spark rings: at most FXB.rings at once, FXB.ringGap apart;
+//   - ADAPTIVE: when the measured frame time stays high (EMA > 24 ms; back under 19 ms) new puffs and rings are not
+//     drawn at all (the contact squash + clack carry the hit, as in 2D since 0618).
+const FXB={gap:0.12,bursts:2,perBurst:6,dotLife:0.6,rings:2,ringGap:0.10,ringLife:0.55,low:false,ema:16.7,last:0,lastB:-9,lastR:-9,shownB:[],shownR:[]};
+const _fxDots={};
+function fxDot(col){ let c=_fxDots[col]; if(c) return c; c=document.createElement('canvas'); c.width=c.height=32; const g=c.getContext('2d'),gr=g.createRadialGradient(16,16,0,16,16,16);
+  gr.addColorStop(0,col); gr.addColorStop(0.42,col); gr.addColorStop(0.5,col==='#0c0c0c'?'rgba(12,12,12,0.25)':col+'66'); gr.addColorStop(1,col==='#0c0c0c'?'rgba(12,12,12,0)':col+'00');
+  g.fillStyle=gr; g.fillRect(0,0,32,32); return (_fxDots[col]=c); }
+function fxBudget(){ const now=performance.now()/1000;
+  if(FXB.last){ const ms=Math.min(100,(now-FXB.last)*1000); FXB.ema+=(ms-FXB.ema)*0.08; FXB.low=FXB.low?FXB.ema>19:FXB.ema>24; } FXB.last=now;
+  FXB.shownB=FXB.shownB.filter(t=>now-t<0.45); FXB.shownR=FXB.shownR.filter(t=>now-t<0.3);
+  let nd=0, nr=0; for(const f of fx){ if(f._v!==undefined) continue; if(f.dot) nd++; else if(!f.aura) nr++; }
+  if(!nd&&!nr) return;
+  const big=nd>=12, showB=nd>0&&(big||(!FXB.low&&now-FXB.lastB>=FXB.gap&&FXB.shownB.length<FXB.bursts)), cap=big?10:FXB.perBurst;
+  const showR=nr>0&&!FXB.low&&now-FXB.lastR>=FXB.ringGap&&FXB.shownR.length<FXB.rings;
+  if(showB){ FXB.lastB=now; FXB.shownB.push(now); } if(showR){ FXB.lastR=now; FXB.shownR.push(now); }
+  let d=0; for(let i=fx.length-1;i>=0;i--){ const f=fx[i]; if(f._v!==undefined) continue;
+    if(f.dot) f._v=(showB&&d++<cap)?1:0; else if(f.aura) f._v=1; else f._v=showR?1:0; } }
+// GLOW TEXT CACHE (PERF 1117): the big centre-screen words (GET READY / FACE-OFF / GO! / the msg banners) were filled with
+//   shadowBlur 18-30 EVERY frame they are up: GET READY alone holds ~2.2 s before EVERY drop, the exact moment you are
+//   gripping the mouse for the rush, and at 4x CPU those frames ran ~90-120 ms (tools/_qa/perf3d.mjs). Each (text, font,
+//   colours, blur) is painted ONCE into a small canvas at the device scale and blitted (globalAlpha still applies).
+//   Center-aligned, alphabetic baseline: the same anchor fillText(txt, x, y) used. Same pixels, one blit.
+const _glowT=new Map();
+function glowText(txt,x,y,fill,glow,blur,stroke,lw){ const font=String(ctx.font), sc=DPR||1, key=txt+'|'+font+'|'+fill+'|'+glow+'|'+blur+'|'+(stroke||'')+'|'+(lw||0)+'|'+sc;
+  let c=_glowT.get(key);
+  if(!c){ if(_glowT.size>48) _glowT.clear(); const px=+((font.match(/(\d+(?:\.\d+)?)px/)||[0,VH*0.06])[1]), w=ctx.measureText(txt).width, pad=Math.ceil(blur*1.6+(lw||0)+4);
+    c=document.createElement('canvas'); const W=Math.ceil(w+2*pad), H=Math.ceil(px*1.35+2*pad); c.width=Math.ceil(W*sc); c.height=Math.ceil(H*sc);
+    const g=c.getContext('2d'); g.scale(sc,sc); g.font=font; g.textAlign='center'; g.textBaseline='alphabetic'; const ax=W/2, ay=pad+px*1.02;
+    if(stroke){ g.lineWidth=lw; g.strokeStyle=stroke; g.strokeText(txt,ax,ay); }
+    g.fillStyle=fill; g.shadowColor=glow; g.shadowBlur=blur*sc; g.fillText(txt,ax,ay);
+    c.W=W; c.H=H; c.ax=ax; c.ay=ay; _glowT.set(key,c); }
+  ctx.drawImage(c, x-c.ax, y-c.ay, c.W, c.H); }
 function spark(X,Y,col){if(fx.length>FX_MAX)return;fx.push({tx:X,ty:Y/AR,t:0,life:0.4,col,big:false});}
 // GRAYSCALE GHOST GATE: a cooldown + a hard ceiling so no input (held blast, mashed trap) can ever
 //   stack the sprawl flash into a frame-stall again. `force` bypasses the cooldown for the faceoff drop
@@ -1446,14 +1485,14 @@ function sprite(img,TXv,TYv,r,fb,anch,def,dgain){const p=project(TXv,TYv),s=dept
 //       as an emanation off the mallet, not a ring stuck around it. GET BIG itself stays the loud moment.
 function chargedTell(k,col,phase){ const pp=project(tx(k),ty(k)), ss=depth(ty(k))*kgain(ty(k)),
     rr=KR*GEOM.krMul*ss*Math.min(VW,VH)*1.7;
-  ctx.save(); ctx.globalCompositeOperation='lighter'; ctx.strokeStyle=col; ctx.shadowColor=col;
-  if(k.chgT>0){ const c=k.chgT;                              // (1) fill flare: ring blooms outward + fades
-    ctx.globalAlpha=0.55*c; ctx.shadowBlur=22; ctx.lineWidth=Math.max(2,VH*0.006*(0.4+c));
-    ctx.beginPath(); ctx.arc(pp[0],pp[1],rr*(1+(1-c)*0.8),0,6.28); ctx.stroke();
+  ctx.save(); ctx.globalCompositeOperation='lighter'; ctx.strokeStyle=col;   // PERF 1117: the glow is a wide faint stroke under the line, not shadowBlur
+  if(k.chgT>0){ const c=k.chgT, lw=Math.max(2,VH*0.006*(0.4+c));   // (1) fill flare: ring blooms outward + fades
+    ctx.beginPath(); ctx.arc(pp[0],pp[1],rr*(1+(1-c)*0.8),0,6.28);
+    ctx.globalAlpha=0.16*c; ctx.lineWidth=lw*4; ctx.stroke(); ctx.globalAlpha=0.55*c; ctx.lineWidth=lw; ctx.stroke();
   } else { const per=2.8, ph=(((clock+(phase||0))%per)+per)%per/per, w=0.22;   // (2) intermittent pulse
-    if(ph<w){ const e=Math.sin(ph/w*Math.PI);
-      ctx.globalAlpha=0.22*e; ctx.shadowBlur=12; ctx.lineWidth=Math.max(2,VH*0.004);
-      ctx.beginPath(); ctx.arc(pp[0],pp[1],rr*(1+0.09*e),0,6.28); ctx.stroke(); } }
+    if(ph<w){ const e=Math.sin(ph/w*Math.PI), lw=Math.max(2,VH*0.004);
+      ctx.beginPath(); ctx.arc(pp[0],pp[1],rr*(1+0.09*e),0,6.28);
+      ctx.globalAlpha=0.07*e; ctx.lineWidth=lw*4; ctx.stroke(); ctx.globalAlpha=0.22*e; ctx.lineWidth=lw; ctx.stroke(); } }
   ctx.restore(); }
 // squash on contact (wide/short -> spring back) + a smooth expand pop on GET BIG. keeps the knocker coherent.
 function knockDef(k){ let sx=1,sy=1;
@@ -1494,7 +1533,8 @@ function celebDef(k,topImg,botImg){ const sq=knockDef(k), c=celebPose(k);
   if(!c) return sq;
   const useBottom = c.showBottom && botImg && botImg.complete && botImg.naturalWidth;
   return { sx:(sq?sq.sx:1)*c.sx, sy:(sq?sq.sy:1)*c.sy, lift:c.lift, rot:c.rot, img:useBottom?botImg:topImg, skew:(sq&&sq.skew)||0 }; }
-function goalGlow(ty,col){const l=project(0.5-GOAL,ty),r=project(0.5+GOAL,ty);ctx.save();ctx.strokeStyle=col;ctx.lineWidth=Math.max(4,VH*0.011);ctx.lineCap='round';ctx.shadowColor=col;ctx.shadowBlur=26;ctx.globalAlpha=0.85;ctx.beginPath();ctx.moveTo(l[0],l[1]);ctx.lineTo(r[0],r[1]);ctx.stroke();ctx.restore();}
+function goalGlow(ty,col){const l=project(0.5-GOAL,ty),r=project(0.5+GOAL,ty),lw=Math.max(4,VH*0.011);ctx.save();ctx.strokeStyle=col;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(l[0],l[1]);ctx.lineTo(r[0],r[1]);
+  ctx.globalAlpha=0.10;ctx.lineWidth=lw+26;ctx.stroke();ctx.globalAlpha=0.18;ctx.lineWidth=lw+12;ctx.stroke();ctx.globalAlpha=0.85;ctx.lineWidth=lw;ctx.stroke();ctx.restore();}   // PERF 1117: drawn EVERY frame at both ends -> the glow is two wide faint strokes (was shadowBlur 26 = a blur pass per goal per frame)
 function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
 // UI KIT (3D PIPELINE lib/ui, games/high-table/ui — RENDER-ONLY): Blender-built GET BIG plate + glass tube, graded to the
 // game's own neon; Q237 (Joe 1113) adds the chrome `title` plate behind the banners and the `scoreplate` behind the floating SCORE BUG.
@@ -1562,7 +1602,9 @@ function drawBigMeter(){
   ctx.save();
   // plate: dark glass parallelogram, team rim, glow pulse when FULL
   para(px,py,pw,ph); const pg=ctx.createLinearGradient(0,py,0,py+ph); pg.addColorStop(0,'rgba(18,14,30,0.86)'); pg.addColorStop(1,'rgba(4,4,10,0.86)');
-  ctx.fillStyle=pg; ctx.shadowColor=rd?col:'rgba(0,0,0,0.6)'; ctx.shadowBlur=rd?12+14*pulse:6; ctx.fill(); ctx.shadowBlur=0;
+  if(rd){ ctx.strokeStyle=col; ctx.globalAlpha=0.10+0.10*pulse; ctx.lineWidth=14+10*pulse; ctx.stroke(); ctx.globalAlpha=0.22+0.12*pulse; ctx.lineWidth=6; ctx.stroke(); }   // PERF 1117: the HUD is drawn EVERY frame ->
+  else { ctx.strokeStyle='rgba(0,0,0,0.22)'; ctx.lineWidth=8; ctx.stroke(); }   //   the glow / drop shadow are wide faint strokes, not shadowBlur (was a blur pass per frame)
+  ctx.globalAlpha=1; ctx.fillStyle=pg; ctx.fill();
   ctx.lineWidth=2; ctx.strokeStyle='rgba(0,0,0,0.9)'; ctx.stroke();
   para(px+1.5,py+1.5,pw-3,ph-3); ctx.lineWidth=1.5; ctx.strokeStyle=col; ctx.globalAlpha=rd?0.75+0.25*pulse:0.6; ctx.stroke(); ctx.globalAlpha=1;
   // label: the brush plate, cap top exactly P below the frame, left on the bar's slanted left edge
@@ -1574,7 +1616,7 @@ function drawBigMeter(){
   ctx.save(); para(bx,by,bwi,bh); ctx.clip();
   if(f>0){ const fw=Math.max(bh*0.5,bwi*f);
     const fg=ctx.createLinearGradient(0,by,0,by+bh); fg.addColorStop(0,'#ffffff'); fg.addColorStop(0.18,col); fg.addColorStop(0.75,col); fg.addColorStop(1,'rgba(0,0,0,0.55)');
-    para(bx,by,fw,bh); ctx.fillStyle=fg; ctx.shadowColor=col; ctx.shadowBlur=rd?10:4; ctx.fill(); ctx.shadowBlur=0;
+    para(bx,by,fw,bh); ctx.fillStyle=fg; ctx.fill();   // PERF 1117: no shadowBlur (it sat inside the track's clip, so it only cost)
     ctx.fillStyle='rgba(0,0,0,0.25)'; para(bx,by+bh*0.62,fw,bh*0.38); ctx.fill();          // lower half shade = the glossy tube read
     ctx.save(); para(bx,by,fw,bh); ctx.clip(); ctx.fillStyle='rgba(255,255,255,0.32)'; ctx.fillRect(bx,by+Math.max(1,bh*0.12),bwi+K*bh,Math.max(1,bh*0.22)); ctx.restore();   // highlight band on the fill only
     if(!rd){ ctx.fillStyle='rgba(255,255,255,0.85)'; para(bx+fw-2,by,2,bh); ctx.fill(); }          // charging: hot leading edge
@@ -2160,12 +2202,15 @@ function draw(){
     else sprite(IMG.near,tx(near),ty(near),br,NG,0.62,celebDef(near,IMG.near,IMG.nearB),easeDG(near)*(MIRROR2?FARDEPTHMUL:1));}}
   if(near.sup>=1&&near.big<=0){ chargedTell(near,NG,0); }   // CHARGED tell — flare on fill, then an intermittent pulse (not an always-on rim)
   }
-  for(let i=ghosts.length-1;i>=0;i--){const g=ghosts[i];g.t+=0.016;const k=g.t/g.life;if(k>=1){ghosts.splice(i,1);continue;}const im=STRIKE[g.team];if(im){const fr=Math.min(STRIKE.frames-1,Math.floor(k*STRIKE.frames)),fw=im.width/STRIKE.frames,pp=project(g.tx,g.ty),d=depth(g.ty)*g.sc*Math.min(VW,VH)*0.95;ctx.save();ctx.globalAlpha=Math.max(0,1-k*0.3)*0.85;ctx.drawImage(im,fr*fw,0,fw,im.height,pp[0]-d/2,pp[1]-d*0.55,d,d);ctx.restore();}}   // strike ghost, normal composite (no white bloom)
+  for(let i=ghosts.length-1;i>=0;i--){const g=ghosts[i];g.t+=0.016;const k=g.t/g.life;if(k>=1){ghosts.splice(i,1);continue;}const im=STRIKE[g.team];if(im&&k<0.8&&!FXB.low){const fr=Math.min(STRIKE.frames-1,Math.floor(k*STRIKE.frames)),fw=im.width/STRIKE.frames,pp=project(g.tx,g.ty),d=depth(g.ty)*g.sc*Math.min(VW,VH)*0.78;ctx.save();ctx.globalAlpha=Math.max(0,1-k*0.3)*0.85*Math.min(1,(0.8-k)*6);ctx.drawImage(im,fr*fw,0,fw,im.height,pp[0]-d/2,pp[1]-d*0.55,d,d);ctx.restore();}}   // strike ghost, normal composite (no white bloom). PERF 1117: 18% smaller (it is a near-full-height sprite = the biggest overdraw on a rally), gone at 80% of its life, skipped when the frame budget is blown; the pool ages as before
   for(let i=celes.length-1;i>=0;i--){const c=celes[i];c.t+=0.016;const k=c.t/c.life;if(k>=1){celes.splice(i,1);continue;}const im=CELE[c.team];if(im){const fr=Math.min(CELE.frames-1,Math.floor(k*CELE.frames)),fw=im.width/CELE.frames,pp=project(c.tx,c.ty),d=depth(c.ty)*Math.min(VW,VH)*1.7;ctx.save();ctx.globalAlpha=Math.max(0,1-k);ctx.drawImage(im,fr*fw,0,fw,im.height,pp[0]-d/2,pp[1]-d*0.6,d,d);ctx.restore();}}
+  fxBudget();   // PERF 1117: which contact puffs/sparks get DRAWN (render-only; the pool below ages + expires exactly as before)
   for(let i=fx.length-1;i>=0;i--){const f=fx[i];f.t+=0.016;const k=f.t/f.life;if(k>=1){fx.splice(i,1);continue;}
-    if(f.dot){f.tx+=(f.vx||0)*0.016;f.ty+=(f.vy||0)*0.016;f.vx*=0.9;f.vy*=0.9;const p=project(f.tx,f.ty),s=depth(f.ty);ctx.save();ctx.globalAlpha=Math.max(0,1-k)*0.85;ctx.fillStyle=f.col;if(f.col!=='#0c0c0c'){ctx.globalCompositeOperation='lighter';ctx.shadowColor=f.col;ctx.shadowBlur=3;}ctx.beginPath();ctx.arc(p[0],p[1],Math.max(1,(f.sz||1)*s*Math.min(VW,VH)*0.006),0,6.28);ctx.fill();ctx.restore();continue;}
+    if(f.dot){f.tx+=(f.vx||0)*0.016;f.ty+=(f.vy||0)*0.016;f.vx*=0.9;f.vy*=0.9; if(f._v!==1||k>FXB.dotLife) continue;   // a budgeted puff, short-lived
+      const p=project(f.tx,f.ty),s=depth(f.ty),r=Math.max(1,(f.sz||1)*s*Math.min(VW,VH)*0.0048),im=fxDot(f.col); ctx.globalAlpha=Math.max(0,1-k/FXB.dotLife)*0.85; ctx.drawImage(im,p[0]-r*2,p[1]-r*2,r*4,r*4); ctx.globalAlpha=1; continue;}   // pre-rendered dot (its glow is baked: no shadowBlur, no 'lighter')
     if(f.aura){const p=project(f.tx,f.ty),s=depth(f.ty),rad=Math.min(Math.min(VW,VH)*0.15,((f.r||1)*0.04+k*0.05)*Math.min(VW,VH)*s*2.0);ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=Math.max(0,(1-k)*0.4);const gg=ctx.createRadialGradient(p[0],p[1],0,p[0],p[1],rad);gg.addColorStop(0,f.col);gg.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=gg;ctx.beginPath();ctx.arc(p[0],p[1],rad,0,6.28);ctx.fill();ctx.restore();continue;}
-    const p=project(f.tx,f.ty);ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=1-k;ctx.strokeStyle=f.col;ctx.shadowColor=f.col;ctx.shadowBlur=14;ctx.lineWidth=3;ctx.beginPath();ctx.arc(p[0],p[1],(f.big?VW*0.10:VW*0.03)*k+6,0,6.28);ctx.stroke();ctx.restore();}
+    if(f._v!==1||k>FXB.ringLife) continue;   // rail/scuff spark ring: at most FXB.rings at once, short, small, two plain strokes (was 'lighter' + shadowBlur 14 growing to 3% of the screen)
+    {const p=project(f.tx,f.ty),q=k/FXB.ringLife,rad=(f.big?VW*0.10:VW*0.02)*q+5;ctx.save();ctx.strokeStyle=f.col;ctx.globalAlpha=(1-q)*0.28;ctx.lineWidth=6;ctx.beginPath();ctx.arc(p[0],p[1],rad,0,6.28);ctx.stroke();ctx.globalAlpha=(1-q)*0.9;ctx.lineWidth=2;ctx.stroke();ctx.restore();}}
   ctx.restore();
   // (score lives in the SCORE BUG now — the old corner "flowing numbers" are gone)
   if(TIMED&&state!=='title'&&state!=='select'&&state!=='boot'&&state!=='win'&&state!=='champion'){   // CASTLE RULES clock + period readout
@@ -2181,11 +2226,11 @@ function draw(){
     const handY = inReady ? cp[1]-VH*(0.05+0.16*((foT-FO_DROP)/(FOT-FO_DROP)))
                           : cp[1]-VH*0.05-VH*0.34*(1-Math.max(0,foT)/FO_DROP);
     drawRef(cp[0], handY, inReady?0.6:0.6*Math.max(0,foT/FO_DROP));
-    {const rr=VH*0.20*Math.max(0,foT/FOT)+VH*0.02;ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=0.30+0.25*Math.sin(clock*10);ctx.strokeStyle='#27f6ff';ctx.shadowColor='#27f6ff';ctx.shadowBlur=20;ctx.lineWidth=Math.max(2,VH*0.005);ctx.beginPath();ctx.arc(cp[0],cp[1],rr,0,6.28);ctx.stroke();ctx.restore();}   // drop ring contracts onto the centre dot
+    {const rr=VH*0.20*Math.max(0,foT/FOT)+VH*0.02;ctx.save();ctx.globalCompositeOperation='lighter';const _ra=0.30+0.25*Math.sin(clock*10),_lw=Math.max(2,VH*0.005);ctx.strokeStyle='#27f6ff';ctx.beginPath();ctx.arc(cp[0],cp[1],rr,0,6.28);ctx.globalAlpha=_ra*0.3;ctx.lineWidth=_lw*5;ctx.stroke();ctx.globalAlpha=_ra;ctx.lineWidth=_lw;ctx.stroke();ctx.restore();}   // PERF 1117: glow = a wide faint stroke, not shadowBlur 20   // drop ring contracts onto the centre dot
     ctx.textAlign='center';
-    if(inReady){ ctx.globalAlpha=0.7+0.3*Math.sin(clock*5);ctx.fillStyle='#fff';ctx.shadowColor='#27f6ff';ctx.shadowBlur=26;ctx.font=`900 ${Math.round(VH*0.075)}px "Helvetica Neue",Arial`;ctx.fillText('GET READY',VW/2,VH*0.30);
-      ctx.globalAlpha=1;ctx.fillStyle='#9fb6c8';ctx.shadowBlur=8;ctx.font=`700 ${Math.round(VH*0.03)}px "Helvetica Neue",Arial`;ctx.fillText('FACE-OFF',VW/2,VH*0.355); }
-    else { ctx.globalAlpha=Math.min(1,0.4+foT/FO_DROP);ctx.fillStyle='#ffe23a';ctx.shadowColor='#ff37c7';ctx.shadowBlur=30;ctx.font=`900 ${Math.round(VH*0.13)}px "Helvetica Neue",Arial`;ctx.fillText('GO!',VW/2,VH*0.40); }
+    if(inReady){ ctx.globalAlpha=0.7+0.3*Math.sin(clock*5);ctx.font=`900 ${Math.round(VH*0.075)}px "Helvetica Neue",Arial`;glowText('GET READY',VW/2,VH*0.30,'#fff','#27f6ff',26);   // PERF 1117: cached glow text
+      ctx.globalAlpha=1;ctx.font=`700 ${Math.round(VH*0.03)}px "Helvetica Neue",Arial`;glowText('FACE-OFF',VW/2,VH*0.355,'#9fb6c8','#27f6ff',8); }
+    else { ctx.globalAlpha=Math.min(1,0.4+foT/FO_DROP);ctx.font=`900 ${Math.round(VH*0.13)}px "Helvetica Neue",Arial`;glowText('GO!',VW/2,VH*0.40,'#ffe23a','#ff37c7',30); }
     ctx.restore();}
   if(estT>0&&state!=='title'&&state!=='champion'&&state!=='win'){ if(CARPETINTRO) drawCarpetIntro(); else if(estImg&&IMG[estImg]) drawVenueEstablish(); else drawEstablish(); }   // neutral 2-up = powered carpet intro · else the venue cold-open (or text fallback) over the first drop
   if(msgT>0){ctx.save();ctx.textAlign='center';
@@ -2195,11 +2240,9 @@ function draw(){
     { const bx=VW/2-tw/2-VH*0.05, by=my-VH*0.095, bw=tw+VH*0.10, bh=VH*0.13;   // UI KIT (Q237): the chrome + black-glass TITLE plate; text stays live
       ctx.globalAlpha=a*0.92; if(!UIK.nine('title',bx,by,bw,bh,bh/84)){
     ctx.globalAlpha=a*0.5; ctx.fillStyle='rgba(4,6,14,0.55)'; rr(VW/2-tw/2-VH*0.03,my-VH*0.088,tw+VH*0.06,VH*0.118,VH*0.02); ctx.fill(); } }   // soft dark plate = legible over the busy table
-    ctx.globalAlpha=a; ctx.lineWidth=Math.max(3,VH*0.007); ctx.strokeStyle='rgba(0,0,0,0.92)'; ctx.strokeText(msg,VW/2,my);
-    ctx.fillStyle='#fff'; ctx.shadowColor='#27f6ff'; ctx.shadowBlur=24; ctx.fillText(msg,VW/2,my); ctx.restore();}
+    ctx.globalAlpha=a; glowText(msg,VW/2,my,'#fff','#27f6ff',24,'rgba(0,0,0,0.92)',Math.max(3,VH*0.007)); ctx.restore();}   // PERF 1117: cached glow text (stroke, then the glowing fill, as before)
   if(msg2T>0){ctx.save();ctx.textAlign='center';const my2=((state==='faceoff')?VH*0.155:VH*0.30)+VH*0.095, a2=Math.min(1,msg2T*2);
-    fitFont(msg2,800,VH*0.058,VW*0.9); ctx.globalAlpha=a2; ctx.lineWidth=Math.max(2,VH*0.005); ctx.strokeStyle='rgba(0,0,0,0.92)'; ctx.strokeText(msg2,VW/2,my2);
-    ctx.fillStyle='#ffe23a'; ctx.shadowColor='#ff37c7'; ctx.shadowBlur=18; ctx.fillText(msg2,VW/2,my2); ctx.restore();}
+    fitFont(msg2,800,VH*0.058,VW*0.9); ctx.globalAlpha=a2; glowText(msg2,VW/2,my2,'#ffe23a','#ff37c7',18,'rgba(0,0,0,0.92)',Math.max(2,VH*0.005)); ctx.restore();}
   if(REG){const cs=corners();ctx.save();ctx.strokeStyle='#27f6ff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cs[0][0],cs[0][1]);ctx.lineTo(cs[1][0],cs[1][1]);ctx.lineTo(cs[3][0],cs[3][1]);ctx.lineTo(cs[2][0],cs[2][1]);ctx.closePath();ctx.stroke();for(let i=0;i<4;i++){ctx.fillStyle=i===dragC?'#ffe23a':'#ff37c7';ctx.beginPath();ctx.arc(cs[i][0],cs[i][1],9,0,6.28);ctx.fill();}ctx.fillStyle='#cfe6ff';ctx.font='13px monospace';ctx.textAlign='left';ctx.fillText('REG · '+(TNAME[tbl]||tbl)+' ('+tbl+')  ·  drag the 4 corners onto the painted rink  ·  S=save (prints preset)  R=reset',16,24);ctx.fillText(JSON.stringify(RINK),16,44);ctx.restore();}
   if(state==='title'){ctx.save();ctx.fillStyle='rgba(2,2,10,.45)';ctx.fillRect(0,0,VW,VH);ctx.textAlign='center';
     let logoBot=VH*0.52;   // the logo is the hero, fit into a BOUNDED box; all text anchors BELOW its real bottom (no overlap)
