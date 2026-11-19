@@ -2,7 +2,7 @@
    Pages/scripts: NETWORK-FIRST (a pushed update shows up on the next launch), cache as fallback offline.
    Art/audio: CACHE-FIRST, filled as the game fetches them -- one full play-through and it runs offline.
    Bump CACHE to drop everything cached by an old version. */
-const CACHE = 'high-table-side-v1';
+const CACHE = 'high-table-side-v2-x12';   // 1118 X12 look: same plate file names, new pixels -> drop the cache-first art once
 const CORE = ['./', './index.html', './side.html', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon-180.png',
   './lib/rink-geo.js', './lib/pucks.js', './lib/ghost.js', './lib/catalog.js', './lib/menu.js'];
