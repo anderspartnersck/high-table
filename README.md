@@ -17,7 +17,7 @@ Penalty Box Nachos, the turbo apex, where the game runs fastest.
 
 Free, in your browser, nothing to install.
 
-The knockers and puck are 3D, rendered in Blender.
+The knockers and puck are the hand-painted originals, lit and shadowed in 3D venues rendered in Blender.
 
 ## How to play
 

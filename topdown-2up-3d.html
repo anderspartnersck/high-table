@@ -123,7 +123,7 @@
 <script src="lib/pucks.js?v=noglow1"></script>
 <script src="lib/menu.js?v=1"></script>
 <script>window.TD3D_MAN={"version":1,"made_by":"tools/td_bake.py","note":"HIGH TABLE top-down 3D runtime set (blender/topdown/*)","plates":{"nachos":{"file":"plate_nachos.webp","size":[2048,1365],"boards":[],"preset":"nachos_mouse"},"killscreen":{"file":"plate_killscreen.webp","size":[2048,1298],"boards":[],"preset":"killscreen_mouse"},"rivalry":{"file":"plate_rivalry.webp","size":[2048,1365],"boards":[[0.3671875,0.08187134502923976,0.4921875,0.1286549707602339],[0.5078125,0.08187134502923976,0.62890625,0.1286549707602339]],"preset":"rivalry_top"},"rivalry_flip":{"file":"plate_rivalry_flip.webp","size":[2048,1365],"boards":[[0.37109375,0.08187134502923976,0.4921875,0.1286549707602339],[0.5078125,0.08187134502923976,0.6328125,0.1286549707602339]],"preset":"rivalry_top~flip"},"bees":{"file":"plate_bees.webp","size":[2048,1365],"boards":[],"preset":"honey_top"},"throne":{"file":"plate_throne.webp","size":[2048,1365],"boards":[[0.40625,0.10526315789473684,0.48828125,0.14035087719298245],[0.5078125,0.10526315789473684,0.58984375,0.14035087719298245]],"preset":"throne_top"}},"thumbs":{"nachos":"thumb_nachos.webp","killscreen":"thumb_killscreen.webp","rivalry":"thumb_rivalry.webp","bees":"thumb_bees.webp","throne":"thumb_throne.webp"},"knocker":{"cell":384,"unit_px":80.0,"frames":17,"cols":6,"tumble_deg_per_frame":-22.5},"kthumbs":{"knocker_yellow":"kthumb_yellow.webp","knocker_purple":"kthumb_purple.webp","knocker_white":"kthumb_white.webp","knocker_blue":"kthumb_blue.webp","knocker_green":"kthumb_green.webp","knocker_red":"kthumb_red.webp"},"puck":{"cell":218,"unit_px":64,"styles":{"classic":1,"lit":1,"zebra":8,"hive":8,"royal":8,"contested":8}},"light":{"note":"THE top-down key light, shared by td_tables.py (plates) and td_pieces.py (mallet/puck sprites + their contact shadows) so every shadow on the table falls the same way. azim = screen-space angle the light COMES FROM (0 = right, 90 = top): 135 = upper-left, shadows fall lower-right.","elev_deg":52,"azim_deg":128,"sun_energy":1.45,"sun_soft_deg":6,"sun_color":[1.0,0.96,0.92],"ambient":0.3,"rim_energy":0.22,"rim_color":[0.62,0.48,1.0],"sheen_energy":60.0},"uipucks":{"classic":1,"lit":1,"zebra":16,"hive":16,"royal":16,"contested":16},"venues":{"bee":"bee_est.webp","queens":"queens_est.webp","bees":"bees_est.webp","throne":"throne_est.webp","nachos":"nachos_est.webp"}};window.TD_2P=true;</script>
-<script>/* art3d/td3d.js (inlined by build_topdown3d.py, ba5f3edf) */
+<script>/* art3d/td3d.js (inlined by build_topdown3d.py, da9c3479) */
 // TD3D — HIGH TABLE · TOP-DOWN 3D EDITION (Joe 1116: "rebuild all versions [of the top down] in 3d, including the
 // 2 up 2 player"). RENDER + INPUT LAYER ONLY, loaded by the generated topdown-3d.html / topdown-2up-3d.html
 // (tools/build_topdown3d.py builds them from table_temp_engine.html — never edit those by hand).
@@ -138,6 +138,9 @@
 //   2 PLAYER (?2p / topdown-2up-3d.html): one table, two humans. P1 = mouse or WASD (or pad 1), P2 = arrow keys
 //           (or pad 2); on a phone/tablet each player's finger drives the knocker on their OWN half. It only routes
 //           input to the far knocker — the sim, AI and physics are the 1P engine's, byte for byte.
+// PAINTERLY (Joe 1118: "preserve our painterly sprites 2d + 3d sweetening"): the PAINTED knocker tops and the 2D puck ship
+//   by default, on the 3D tables, with the 3D contact shadow under the painted knocker as the sweetening. ?knock3d=1 /
+//   ?puck3d=1 (this page or the framing page) = the 3D pieces and the 3D knocker/puck menu cards (opt-in).
 // The sim never reads anything here. Every draw call returns false until its image has decoded -> the 2D art draws.
 (function(){
   'use strict';
@@ -146,7 +149,9 @@
   const MAN = window.TD3D_MAN || null;                       // td.json, inlined by build_topdown3d.py
   const OFF = Q.has('flat') || !MAN;                         // ?flat = the 2D art (A/B in the same page)
   const TWO = !!(window.TD_2P || Q.has('2p'));
-  const FAIR = TWO && Q.get('fair')!=='0';                   // 2P: alternate the two collide()s each substep (see the page's FAIRNESS note)
+  const FAIR = TWO && Q.get('fair')!=='0';
+  const QQ = location.search + (()=>{ try{ return top.location.search; }catch(e){ return ''; } })();
+  const KN3D = /[?&]knock3d=1\b/.test(QQ), PK3D = /[?&]puck3d=1\b/.test(QQ);   // 1118: 3D pieces = opt-in                   // 2P: alternate the two collide()s each substep (see the page's FAIRNESS note)
   const I = {};
   function ld(f){ if(I[f]) return I[f]; const im=new Image(); im.decoding='async'; im.src=ROOT+f; I[f]=im; return im; }
   function ok(im){ return !!(im && im.complete && im.naturalWidth>0); }
@@ -162,12 +167,17 @@
 
   // ---------------------------------------------------------------- pieces
   let SK=['knocker_yellow','knocker_purple'], PST='classic';
-  function skins(a,b){ SK=[a,b]; if(!OFF){ ld(a.replace('knocker_','k_')+'.webp'); ld(b.replace('knocker_','k_')+'.webp'); ld('k_shadow.webp'); } }
-  function puckStyle(s){ PST=s; if(!OFF && MAN.puck.styles[s]){ ld('p_'+s+'.webp'); ld('p_shadow.webp'); } }
+  function skins(a,b){ SK=[a,b]; if(!OFF){ if(KN3D){ ld(a.replace('knocker_','k_')+'.webp'); ld(b.replace('knocker_','k_')+'.webp'); } ld('k_shadow.webp'); } }
+  function puckStyle(s){ PST=s; if(!OFF && PK3D && MAN.puck.styles[s]){ ld('p_'+s+'.webp'); ld('p_shadow.webp'); } }
   function cell(im, n, cols, cs, i){ return [ (i%cols)*cs, Math.floor(i/cols)*cs ]; }
   function knocker(ctx, who, k, c, rU){
     if(OFF) return false;
     const K=MAN.knocker, sheet=I[SK[who].replace('knocker_','k_')+'.webp'], sh=I['k_shadow.webp'];
+    if(!KN3D){                                                        // PAINTED default: the 3D contact shadow, then the 2D painting draws
+      if(!(k.celebT>0) && ok(sh)){ const d=K.cell*rU*1.03/K.unit_px; let scl=1;   // (a leaping knocker keeps the 2D's own falling shadow)
+        if(k.hitT>0){ const q=1-k.hitT; scl=1+0.20*Math.cos(q*Math.PI*3)*(1-q); }
+        const ds=d*(1-0.12*(scl-1)); ctx.save(); ctx.globalAlpha*=0.9; ctx.drawImage(sh, c[0]-ds/2, c[1]-ds/2, ds, ds); ctx.restore(); }
+      return false; }
     if(!ok(sheet)) return false;
     const s = rU*1.03/K.unit_px, d=K.cell*s;                          // the drawn top-down knocker is ~1.03 KR (engine KRC)
     let frame=0, lift=0, scl=1, rot=0, shA=0.9;
@@ -184,7 +194,7 @@
   }
   let spin=0, lastP=null;
   function puck(ctx, p, c, rU, along, perp, rot){
-    if(OFF) return false;
+    if(OFF || !PK3D) return false;                                   // PAINTED default: the 2D puck
     const P=MAN.puck, n=P.styles[PST], sheet=I['p_'+PST+'.webp'], sh=I['p_shadow.webp'];
     if(!n || !ok(sheet)) return false;                               // ENERGY has no 3D model: its 2D chip draws
     if(lastP){ const dd=Math.hypot(p.a-lastP[0], p.b-lastP[1]); if(dd<0.5) spin+=dd/0.052*0.35; } lastP=[p.a,p.b];   // render-only spin from travel
@@ -236,9 +246,9 @@
   function rinks(list){ return OFF ? list : list.map(R => Object.assign({}, R, { top: (MAN.thumbs[R.key] ? null : R.top) })); }
   function decorateRinks(grid){ if(OFF) return; grid.querySelectorAll('.rcard').forEach(card => { const t=MAN.thumbs[card.dataset.key]; if(!t) return;
       const im=new Image(); im.className='td3d'; im.alt=''; im.src=ROOT+t; card.insertBefore(im, card.firstChild); }); }
-  function decorateKnockers(grid, knockers){ if(OFF) return; const imgs=grid.querySelectorAll('.kcard img');
+  function decorateKnockers(grid, knockers){ if(OFF || !KN3D) return;   // painted cards by default const imgs=grid.querySelectorAll('.kcard img');
     knockers.filter(K => !K.sideOnly).forEach((K,i) => { const f=MAN.kthumbs[K.base]; if(f && imgs[i]) imgs[i].src=ROOT+f; }); }
-  function decoratePucks(grid, pucks){ if(OFF) return; const cards=grid.querySelectorAll('.pcard'), U=(window.HT3D_ROOT||'sprites3d/')+'ui/';
+  function decoratePucks(grid, pucks){ if(OFF || !PK3D) return;   // 2D puck cards by default const cards=grid.querySelectorAll('.pcard'), U=(window.HT3D_ROOT||'sprites3d/')+'ui/';
     pucks.forEach((P,i) => { const n=MAN.uipucks[P.style]; const card=cards[i]; if(!n||!card) return; const cv=card.querySelector('canvas'); if(!cv) return;
       const d=document.createElement('div'); d.className='td3dp'+(n>1?'':' still'); d.style.backgroundImage=`url('${U}ui_puck_${P.style}.webp')`; card.replaceChild(d, cv); }); }
   function venueLoad(loadEl, key, team){ if(OFF) return; const v = key==='rivalry' ? (team==='bees'?'bee':'queens') : key;
