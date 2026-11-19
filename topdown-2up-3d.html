@@ -31,6 +31,10 @@
     background:rgba(4,8,16,.55); backdrop-filter:blur(3px); white-space:nowrap;
     transition:opacity .8s ease; text-shadow:0 0 8px rgba(39,246,255,.4); }
   #hint.gone{ opacity:0; pointer-events:none; }
+  #hint{ border:2px solid transparent; border-radius:7px;   /* HT PLATES 1119: the UI KIT look (chrome rim + black glass + neon line), not a pill */
+    background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,0) 42%) padding-box,linear-gradient(180deg,#141418,#060609) padding-box,
+      linear-gradient(180deg,#f2f2f5,#9a9aa3 38%,#3b3b42 52%,#8d8d96 70%,#e6e6ea) border-box;
+    box-shadow:inset 0 0 0 1px #000,inset 0 0 0 2px rgba(39,246,255,.35),0 4px 14px rgba(0,0,0,.6); }
   #drop{ position:fixed; inset:0; display:none; align-items:center; justify-content:center;
     background:rgba(20,4,40,.6); color:#fff; font-size:20px; letter-spacing:.2em;
     text-transform:uppercase; z-index:9; border:3px dashed rgba(177,76,255,.7); }

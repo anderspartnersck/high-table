@@ -38,6 +38,7 @@
   /* ?solo split */
   #split{position:fixed;inset:0;display:none;flex-direction:column;background:#04040a}
   #split.on{display:flex}
+  html:has(#split.on),html:has(#split.on) body{overflow:hidden}   /* 1119: the launcher card under the fixed split kept the page scrollable: a visible scrollbar down the right edge in the desktop app (headless QA hides scrollbars) */
   #sbar{flex:none;display:flex;align-items:center;gap:8px;padding:6px 10px;background:#0a0c14;border-bottom:1px solid #1c2740;overflow-x:auto;white-space:nowrap;
     font:800 11px/1 "Helvetica Neue",Arial;letter-spacing:.12em;color:#7f97a8;overflow-x:auto;white-space:nowrap}
   #sbar .ven{padding:7px 11px}
@@ -54,6 +55,17 @@
   #sframes .half.q .gbig.ready{background:radial-gradient(circle,rgba(177,76,255,.45),rgba(177,76,255,0) 70%);box-shadow:0 0 22px 5px rgba(177,76,255,.55)}
   @keyframes gbpulse{to{filter:brightness(1.4)}}
   #sframes .half .pscore{position:absolute;transform:translate(-50%,-50%);font:900 16px/1 "Helvetica Neue",Arial;pointer-events:none;text-shadow:0 1px 0 rgba(255,255,255,.25);transition:transform .08s}
+  /* HT PLATES (1119, Joe: no placeholder pills): the table / mode / sides chips wear the UI KIT look (chrome rim + black
+     glass + neon line), the picked one lit gold. Style only. */
+  .ven{border:2px solid transparent;border-radius:7px;
+    background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,0) 42%) padding-box,linear-gradient(180deg,#141418,#060609) padding-box,
+      linear-gradient(180deg,#f2f2f5,#9a9aa3 38%,#3b3b42 52%,#8d8d96 70%,#e6e6ea) border-box;
+    box-shadow:inset 0 0 0 1px #000,inset 0 0 0 2px var(--neon,rgba(177,76,255,.45)),0 3px 10px rgba(0,0,0,.6)}
+  .ven:hover,.ven.sel,.ven.high.sel{border-color:transparent;background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,0) 42%) padding-box,linear-gradient(180deg,#141418,#060609) padding-box,
+      linear-gradient(180deg,#f2f2f5,#9a9aa3 38%,#3b3b42 52%,#8d8d96 70%,#e6e6ea) border-box}
+  .ven:hover{--neon:#c79bff}
+  .ven.sel{--neon:#ffd23f;box-shadow:inset 0 0 0 1px #000,inset 0 0 0 2px var(--neon),0 0 18px rgba(255,210,63,.4)}
+  .ven.high.sel{--neon:#ff7a1a;box-shadow:inset 0 0 0 1px #000,inset 0 0 0 2px var(--neon),0 0 18px rgba(255,122,26,.5)}
 </style><link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSczMicgaGVpZ2h0PSczMic+PGVsbGlwc2UgY3g9JzE2JyBjeT0nMjEnIHJ4PScxMicgcnk9JzYnIGZpbGw9JyMxNDE0MTknLz48cmVjdCB4PSc0JyB5PScxMycgd2lkdGg9JzI0JyBoZWlnaHQ9JzgnIGZpbGw9JyMxNDE0MTknLz48ZWxsaXBzZSBjeD0nMTYnIGN5PScxMycgcng9JzEyJyByeT0nNicgZmlsbD0nI2YwYjQyOScvPjxlbGxpcHNlIGN4PScxNicgY3k9JzEzJyByeD0nNycgcnk9JzMuMicgZmlsbD0nI2ZmZDc2YicvPjwvc3ZnPg==">   <!-- gold puck — inline so there is no favicon.ico request (every build was 404ing one) -->
 <style data-ui3d>html{background:linear-gradient(180deg,rgba(5,3,12,.70),rgba(5,3,12,.86) 55%,rgba(5,3,12,.94)),url(sprites3d/ui/ui_title.webp) center 40%/cover fixed,#07050e!important}body{background:transparent!important}</style>
 </head>

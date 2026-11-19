@@ -174,6 +174,44 @@
     font:900 20px/1.2 "Helvetica Neue",Arial;letter-spacing:.06em;text-align:center}
   #trot .ph{width:46px;height:78px;border:3px solid #ffe23a;border-radius:9px;animation:tRot 1.6s ease-in-out infinite}
   @keyframes tRot{40%,100%{transform:rotate(-90deg)}}
+  /* HT PLATES (1119, Joe: "no placeholder boxes", every selectable in the game's own cab style). The UI KIT look (Q237:
+     chrome rim + black glass + a thin neon line) in CSS, over the pause menu, the phone pad's pause / STICK chip, the
+     TURN YOUR PHONE card and the title hint bar. Style only: no markup, ids or behaviour changed. */
+  #pause{font-family:'Helvetica Neue',Arial,sans-serif}
+  #pause .card,#pause .ctog,#pause button,#hint,#esccue,#tpause,#tchip{border:2px solid transparent;
+    background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,0) 42%) padding-box,linear-gradient(180deg,#141418,#060609) padding-box,
+      linear-gradient(180deg,#f2f2f5,#9a9aa3 38%,#3b3b42 52%,#8d8d96 70%,#e6e6ea) border-box;
+    box-shadow:inset 0 0 0 1px #000,inset 0 0 0 2px var(--neon,rgba(177,76,255,.55)),0 4px 14px rgba(0,0,0,.6)}
+  #pause .card{border-radius:12px;--neon:rgba(255,207,42,.6);box-shadow:inset 0 0 0 1px #000,inset 0 0 0 2px var(--neon),0 18px 70px rgba(0,0,0,.7)}
+  #pause h2{color:#fff;text-shadow:0 0 16px rgba(255,174,0,.5)}
+  #pause .psub{color:#ffcf2a;font-weight:800;letter-spacing:.34em;text-shadow:0 0 12px rgba(255,174,0,.5)}
+  #pause .seclbl{color:#ffcf2a;letter-spacing:.24em}
+  #pause .ctog{border-radius:7px;--neon:rgba(177,76,255,.45)}
+  #pause .ctog:hover,#pause .ctog.pf{--neon:#ffe23a;outline:none;box-shadow:inset 0 0 0 1px #000,inset 0 0 0 2px var(--neon),0 0 20px rgba(255,226,58,.35)}
+  #pause .ctog .hk{color:#93a7b8;font:600 11px/1.4 'Helvetica Neue',Arial;letter-spacing:.05em}
+  #pause .ctog .box{width:34px;height:12px;border-radius:6px;background:#1b1b22!important;box-shadow:inset 0 1px 3px rgba(0,0,0,.9),0 0 0 1px #4a4a55}   /* a neon tube (the GET BIG bar), not a phone switch */
+  #pause .ctog .box i{display:none}
+  #pause .ctog.on .box{background:linear-gradient(180deg,#fff6b0,#ffe23a 45%,#e0a800)!important;box-shadow:0 0 0 1px #8a6a00,0 0 12px #ffcf2a,0 0 24px rgba(255,174,0,.45)}
+  #pause #preset .box{box-shadow:inset 0 1px 3px rgba(0,0,0,.9),0 0 0 1px #6a2030}
+  #pause .vbar{font-family:'Helvetica Neue',Arial}
+  #pause button{border-radius:7px;color:#cfe6ff;font:800 12px/1 'Helvetica Neue',Arial;letter-spacing:.14em;--neon:rgba(177,76,255,.45)}
+  #pause button:hover,#pause button.pf{--neon:#ffe23a;color:#fff;outline:none;box-shadow:inset 0 0 0 1px #000,inset 0 0 0 2px var(--neon),0 0 20px rgba(255,226,58,.35)}
+  #pause button.primary{color:#ffe23a;--neon:rgba(255,207,42,.75)}
+  #pause .ctog:hover,#pause button:hover,#pause button.primary{border-color:transparent;background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,0) 42%) padding-box,linear-gradient(180deg,#141418,#060609) padding-box,
+      linear-gradient(180deg,#f2f2f5,#9a9aa3 38%,#3b3b42 52%,#8d8d96 70%,#e6e6ea) border-box}
+  #pause .pnav{color:#7f8fa0;font:700 10px/1.4 'Helvetica Neue',Arial;letter-spacing:.2em}
+  #hint{border-radius:7px;--neon:rgba(39,246,255,.35)}
+  #esccue{border-radius:7px;--neon:rgba(39,246,255,.4)}
+  #tpause{border-radius:8px;--neon:rgba(255,207,42,.7);color:#ffe23a;line-height:36px}
+  #tchip{border-radius:7px;--neon:rgba(255,207,42,.6);line-height:26px}
+  body.trot #trot{background:radial-gradient(ellipse at center,rgba(4,4,12,.35),rgba(2,2,8,.95)),#04040a url('sprites/carpet_hyscore.png') center/cover no-repeat;
+    color:#fff;font:900 18px/1.25 'Helvetica Neue',Arial;letter-spacing:.24em;text-shadow:0 0 18px rgba(0,0,0,.9)}
+  body.trot #trot::before{content:'';width:min(78vw,420px);height:min(30vh,200px);background:url('sprites/title_high_table.png') center/contain no-repeat;
+    filter:drop-shadow(0 6px 24px rgba(0,0,0,.85));margin-bottom:2vh}
+  #trot .ph{border:3px solid transparent;border-radius:10px;
+    background:linear-gradient(180deg,#141418,#060609) padding-box,linear-gradient(180deg,#f2f2f5,#9a9aa3 38%,#3b3b42 52%,#8d8d96 70%,#e6e6ea) border-box;
+    box-shadow:inset 0 0 0 1px #000,inset 0 0 0 2px #ffcf2a,0 0 22px rgba(255,174,0,.45)}
+  #trot span{color:#ffcf2a!important;letter-spacing:.3em;text-transform:uppercase;font-size:12px!important;font-weight:800!important;text-shadow:0 0 12px rgba(255,174,0,.5)}
 </style>
 <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSczMicgaGVpZ2h0PSczMic+PGVsbGlwc2UgY3g9JzE2JyBjeT0nMjEnIHJ4PScxMicgcnk9JzYnIGZpbGw9JyMxNDE0MTknLz48cmVjdCB4PSc0JyB5PScxMycgd2lkdGg9JzI0JyBoZWlnaHQ9JzgnIGZpbGw9JyMxNDE0MTknLz48ZWxsaXBzZSBjeD0nMTYnIGN5PScxMycgcng9JzEyJyByeT0nNicgZmlsbD0nI2YwYjQyOScvPjxlbGxpcHNlIGN4PScxNicgY3k9JzEzJyByeD0nNycgcnk9JzMuMicgZmlsbD0nI2ZmZDc2YicvPjwvc3ZnPg==">   <!-- gold puck — inline so there is no favicon.ico request (every build was 404ing one) -->
 </head>
