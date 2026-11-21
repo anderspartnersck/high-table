@@ -386,6 +386,10 @@ const CELE={frames:5}; for(const tt of['bees','queens']){const im=new Image();im
 
 /* ---- audio (quiet; goal sirens low) ---- */
 let menuCueDuck=0;   // while a menu CUE (player_select/mode_select/...) plays, the bed ducks under it so they CROSSFADE, never double
+// quietPlay (1121): HTMLMediaElement.play() returns a promise; before the first user gesture the public web REJECTS it, and a
+//   try/catch never sees a rejected promise -> an 'Uncaught (in promise) NotAllowedError' per SFX on the bare front door.
+//   Same behaviour, no console noise. Returns true if play() was issued (the promise sits on el._pp).
+function quietPlay(el){ try{ const p=el.play(); el._pp=(p&&p.catch)?p:Promise.resolve(); el._pp.catch(()=>{}); return true; }catch(e){ return false; } }
 const SFX=(()=>{ const lib={},names=['slap','bomb','wave_off','bees_goal','queens_goal','center_countdown','bees_game_start','player_select','mode_confirm','mode_select','move_cursor','bees_faceoff','queens_faceoff','killscreen','select','title_logo_drop','bees_breakaway','queens_breakaway'];
   // SOLO menu cues (breakaway model): the musical stings (player_select / mode_confirm / move_cursor) must NOT
   //   stack — cycling restarts the sting, never layers. Hold one live instance per cue and stop it before replay.
@@ -400,8 +404,8 @@ const SFX=(()=>{ const lib={},names=['slap','bomb','wave_off','bees_goal','queen
   const sfxLast={};   // per-cue debounce so big moments can't restack and BLOW OUT the mix
   function play(n,v){const s=lib[n];if(!s)return;
     if(MUSCUE[n]){ try{ if(Music.cue(n,s,(v==null?0.6:v)*M)) return; }catch(e){} }   // MUSIC CUE (Joe 1117 "cue overlap"): one cue voice, owned by Music -- a new cue fades the old one + the bed ducks for as long as the cue sounds
-    if(SOLOSET[n]){ if(solo[n]){ try{solo[n].pause();}catch(e){} } const c=s.cloneNode(); c.volume=(v==null?0.6:v)*M; solo[n]=c; try{c.play();}catch(e){} return; }   // SOLO: restart, never stack
-    if(sfxLast[n]!=null&&clock-sfxLast[n]<0.05)return; sfxLast[n]=clock; try{const c=s.cloneNode();c.volume=(v==null?0.6:v)*M;c.play();}catch(e){}}
+    if(SOLOSET[n]){ if(solo[n]){ try{solo[n].pause();}catch(e){} } const c=s.cloneNode(); c.volume=(v==null?0.6:v)*M; solo[n]=c; quietPlay(c); return; }   // SOLO: restart, never stack
+    if(sfxLast[n]!=null&&clock-sfxLast[n]<0.05)return; sfxLast[n]=clock; try{const c=s.cloneNode();c.volume=(v==null?0.6:v)*M;quietPlay(c);}catch(e){}}
   function actx(){try{if(!ac)ac=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}return ac;}
   function resume(){const c=actx();if(c&&c.state==='suspended')c.resume();}
   function noise(dur,f0,f1,peak,type){const c=actx();if(!c)return;const t=c.currentTime,n=Math.floor(c.sampleRate*dur),b=c.createBuffer(1,n,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1);const s=c.createBufferSource();s.buffer=b;const fl=c.createBiquadFilter();fl.type=type;fl.frequency.setValueAtTime(f0,t);fl.frequency.exponentialRampToValueAtTime(f1,t+dur);fl.Q.value=0.6;const g=c.createGain();g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(peak*M,t+0.1);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);s.connect(fl).connect(g).connect(c.destination);s.start(t);s.stop(t+dur);}
@@ -465,16 +469,16 @@ const Music=(()=>{ if(Q.has('mute')||Q.get('cab2')==='p2') return {kick(){},upda
   function Bed(src){ let A=null,B=null,cur=null,lvl=0,tgt=0,go=false;
     function mk(){ const e=new Audio(src); e.loop=false; e.volume=0; e.preload='auto'; return e; }   // loop=false — WE do the loop, with a crossfade
     return {
-      start(){ if(!A){ try{ A=mk(); B=mk(); cur=A; }catch(e){} } if(!go&&A){ go=true; try{A.play();}catch(e){} } },
+      start(){ if(!A){ try{ A=mk(); B=mk(); cur=A; }catch(e){} } if(!go&&A){ go=true; if(!quietPlay(A)) go=false; else A._pp.catch(()=>{ go=false; }); } },   // a blocked start (no user activation yet, e.g. the first key was Esc) re-arms: the next gesture's kick() tries again
       set(v){ tgt=v; },
       tick(dt){ if(!A)return; const r=(tgt<lvl)?5.2:1.8; lvl=Math.max(0,Math.min(1,lvl+(tgt-lvl)*Math.min(1,(dt||0.016)*r)));   // ramp the master level (fast down, gentle up)
         const other=(cur===A)?B:A, d=cur.duration;
         if(d&&isFinite(d)&&cur.currentTime>=d-XF){                        // in the loop-seam crossfade window
-          if(other.paused){ try{ other.currentTime=0; other.play(); }catch(e){} }   // spin up the second copy from the top
+          if(other.paused){ try{ other.currentTime=0; quietPlay(other); }catch(e){} }   // spin up the second copy from the top
           const k=Math.min(1,(cur.currentTime-(d-XF))/XF);
           cur.volume=lvl*MUSV*(1-k); other.volume=lvl*MUSV*k;                        // crossfade tail→head across the seam
           if(cur.ended||cur.currentTime>=d-0.03){ try{cur.pause();}catch(e){} cur=other; }   // hand off before the actual end (no gap)
-        } else { if(cur.ended){ try{ cur.currentTime=0; cur.play(); }catch(e){} }   // safety: a frame hitch overran the seam → restart rather than go silent
+        } else { if(cur.ended){ try{ cur.currentTime=0; quietPlay(cur); }catch(e){} }   // safety: a frame hitch overran the seam → restart rather than go silent
           cur.volume=lvl*MUSV; if(!other.paused){ try{other.pause();}catch(e){} other.volume=0; } }   // steady state: one copy, at level
       }
     };
@@ -496,7 +500,7 @@ const Music=(()=>{ if(Q.has('mute')||Q.get('cab2')==='p2') return {kick(){},upda
       if(over){ cv=null; cn=null; } else if(cMax&&cT>=cMax){ fadeOut(cv,0.6); cv=null; cn=null; } } }
   return {
     setVol(x){ MUSV=x; },
-    kick(){ if(!ready){ ready=true; for(const k in beds) beds[k].start(); } },   // start every bed (muted) on the first gesture
+    kick(){ ready=true; for(const k in beds) beds[k].start(); },   // start every bed (muted) on the first gesture; start() is a no-op once a bed runs, so a blocked start retries on the next gesture
     cue(n,src,vol){ if(DEMO&&DEMOQUIET[n]) return true;
       if(cv&&cn===n&&cT<0.3) return true;                                  // double-fire guard
       if(cv){ fadeOut(cv,XC); cv=null; }
