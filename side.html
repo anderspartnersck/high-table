@@ -903,7 +903,7 @@ function tuneHUD(){ if(!TUNE)return;
 function faceoff(dir){puck.X=0.5;puck.Y=AR/2;puck.vX=0;puck.vY=0;puck.ot=0;puckHeld=null;grabT=0;grabCool=0;farGrabT=0;farGrabCool=0;farShootReq=false;foDir=dir||(Math.random()<.5?1:-1);foT=FOT;foDropped=false;foWhistled=false;state='faceoff';   // release any TRAPPED puck at the drop (Castle-Rules clock could expire mid-hold → the held puck used to re-glue at the next period/match)
   // HOME the near knocker at the faceoff (fixes the "P1 darts to a corner at game start" bug — a stale/edge
   // pointer or a bad homography could pre-yank near.TX before play). Center target + kill glide + stick velocity.
-  near.TX=0.5; near.TY=0.5; near.X=0.5; near.Y=0.5; near.gvX=0; near.gvY=0; near._svx=0; near._svy=0; near._stickArm=false; if(typeof vcur!=='undefined'&&vcur){ const c=project(0.5,0.5); vcur={x:c[0],y:c[1]}; } }   // a captured mouse re-centres with the knocker   // SFX now fire across the lead-in (whistle) + release (drop), not all at once. _stickArm=false: a controller HELD across the drop must return to neutral once before it can steer again (else it zips the knocker to a corner at the whistle — Joe 2026-07-11)
+  near.TX=0.5; near.TY=0.5; near.X=0.5; near.Y=0.5; near.gvX=0; near.gvY=0; near._svx=0; near._svy=0; near._stickArm=false; if(typeof vcur!=='undefined'&&vcur){ const c=project(0.5,0.5/AR); vcur={x:c[0],y:c[1]}; } }   // a captured mouse re-centres with the knocker (MOUSE B 1121: TY 0.5 is rink-Y; project() wants 0.5/AR -- it used to park the hidden hand on the CENTRE LINE after every faceoff)   // SFX now fire across the lead-in (whistle) + release (drop), not all at once. _stickArm=false: a controller HELD across the drop must return to neutral once before it can steer again (else it zips the knocker to a corner at the whistle — Joe 2026-07-11)
 
 function moveKnocker(k,tX,tY,maxStep,dt){
   const ox=k.X,oy=k.Y, ks=Math.min(1,(maxStep)*dt);
@@ -3116,7 +3116,7 @@ function aimAt(px,py){ var hp=BG.ok?homoPreset():null, rx, rv;
   if(hp){ var cV=(hp.centerV==null?0.5:hp.centerV), r=window.RinkGeo.screenToRink(hp,(px-BG.dx)/BG.dw,(py-BG.dy)/BG.dh); rx=r[0]; rv=vUnwarp(r[1],cV); }
   else { var u0=unproject(px,py); rx=u0[0]; rv=u0[1]; }
   var on=isFinite(rx)&&isFinite(rv)&&rv>=-0.06&&rv<=1.0&&rx>=-0.12&&rx<=1.12, s=GLIDE.sens||1, ux=Math.max(0,Math.min(1,rx)), uv=Math.max(0,Math.min(1,rv));   // MOUSE SENS amplifies the TARGET around centre; the glide spring is untouched
-  return { on:on, tx:0.5+(ux-0.5)*s, ty:0.5+(uv*AR-0.5)*s }; }
+  return { on:on, tx:0.5+(ux-0.5)*s, ty:0.5+(uv*AR-0.5)*s, rx:0.5+(rx-0.5)*s }; }   // rx = the UNCLAMPED across value (MOUSE C 1121: the locked hand's out() test)
 function pointer(px,py){ SFX.resume();
   if(CAB2==='p2'){ const u=unproject(px,py); p2local.tx=Math.max(0,Math.min(1,1-u[0])); p2local.ty=Math.max(AR*0.5,Math.min(AR-KR,AR*(1-u[1]))); return; }   // CLIENT: unproject (already mirrored) -> host's FAR target
   if(!CTRL.mouse) return;                     // mouse steering toggled off in the pause menu (stick/keyboard cab)
@@ -3146,7 +3146,7 @@ function menuTap(x,y){ if(state==='select'){ if(x<innerWidth*0.30){selCycle(-1);
 cv.addEventListener('mousedown',e=>{if(REG){regDown(e.clientX,e.clientY);return;} if(INI.on&&state==='champion'){ iniTap(e.clientX,e.clientY); return; } if(AUTOFS&&!_fsTried){_fsTried=true;goFullscreen();}
   if(state==='select'||state==='config'){ menuTap(e.clientX,e.clientY); return; }   // CONFIG: click a row L/R to change it; bottom = PLAY
   mouseDown=true; var _wasLive=(state==='play');
-  begin(); if(_wasLive){ pointer(e.clientX,e.clientY); grabMouse(); } });   // the click that STARTS a match must not set the play target (clicking a corner to begin used to zip the knocker there past faceoff's re-center); only steer on clicks during live play
+  begin(); if(_wasLive){ if(!(PLOCK && document.pointerLockElement===cv)) pointer(e.clientX,e.clientY); grabMouse(); } });   // MOUSE A (1121): under pointer lock clientX/Y are FROZEN at the lock spot -> a TRAP click yanked the target there; the locked hand steers only from mousemove (vcur)   // the click that STARTS a match must not set the play target (clicking a corner to begin used to zip the knocker there past faceoff's re-center); only steer on clicks during live play
 cv.addEventListener('mouseup',()=>dragC=-1); addEventListener('mouseup',()=>{mouseDown=false;});
 // POINTER LOCK (Joe 2026-10-14: "other games do this"): click into a live match and the game CAPTURES the mouse -- hidden,
 //   can't wander off the window -- and steers from raw hand movement (a virtual cursor kept inside your half, see aimAt).
@@ -3157,9 +3157,9 @@ let vcur=null;
 function lockable(){ return PLOCK && CTRL.mouse && !TMODE && CAB2!=='p2' && (state==='play'||state==='faceoff'||state==='serve'||state==='goal') && !PAUSED; }
 function grabMouse(){ if(lockable() && document.pointerLockElement!==cv){ try{ const r=cv.requestPointerLock(); if(r&&r.catch) r.catch(()=>{}); }catch(_){} } }
 cv.addEventListener('mousemove',e=>{if(REG){if(e.buttons)regMove(e.clientX,e.clientY);return;}
-  if(PLOCK && document.pointerLockElement===cv){ if(!vcur){ const c=project(near.TX,near.TY); vcur={x:c[0],y:c[1]}; }   // start the virtual hand ON the knocker's target
+  if(PLOCK && document.pointerLockElement===cv){ if(!vcur){ const c=project(near.TX,near.TY/AR); vcur={x:c[0],y:c[1]}; }   // start the virtual hand ON the knocker's target (MOUSE B 1121: project() wants the FRACTION; near.TY is rink-Y 0..AR, so the hand started at 2x depth = the centre line)
     // how far a screen point is outside YOUR half (0 = inside): off-table, past the centre line, behind your rail, past a side rail
-    const out=(x,y)=>{ const a=aimAt(x,y); return a.on ? Math.max(0,a.ty-1.0)+Math.max(0,KR-a.ty)+Math.max(0,-a.tx)+Math.max(0,a.tx-1) : 9; };
+    const out=(x,y)=>{ const a=aimAt(x,y); return a.on ? Math.max(0,a.ty-1.0)+Math.max(0,KR-a.ty)+Math.max(0,-a.rx)+Math.max(0,a.rx-1) : 9; };   // MOUSE C: the raw rx, so a hand past a side rail counts as outside (no hidden dead zone)
     const nx=vcur.x+(e.movementX||0), ny=vcur.y+(e.movementY||0), o0=out(vcur.x,vcur.y);
     const take=(x,y)=>{ const o=out(x,y); return o<=1e-6 || o<o0; };   // inside -> take it · outside -> only if it heads back in
     if(take(nx,ny)){ vcur.x=nx; vcur.y=ny; } else { if(take(nx,vcur.y)) vcur.x=nx; if(take(vcur.x,vcur.y+(e.movementY||0))) vcur.y=ny; }   // the virtual hand never leaves YOUR half: no dead zone, the pull-back answers at once
