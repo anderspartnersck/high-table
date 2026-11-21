@@ -74,6 +74,7 @@
     background:#04040a center/cover no-repeat;transform:translateX(-118%) skewX(-9deg);
     transition:transform .56s cubic-bezier(.45,0,.22,1);box-shadow:14px 0 60px rgba(255,174,0,.35),-14px 0 60px rgba(177,76,255,.35)}
   #m-load::after{content:'';position:absolute;inset:0;background:linear-gradient(100deg,rgba(255,174,0,.10),rgba(4,4,12,.86) 45%,rgba(177,76,255,.12))}
+  #m-load.venue::after{background:linear-gradient(100deg,rgba(255,174,0,.06),rgba(4,4,12,.30) 40%,rgba(4,4,12,.55) 70%,rgba(177,76,255,.10))}   /* LOOK PASS 1121: a venue render shows through */
   #m-load.in{transform:translateX(0) skewX(0deg)}
   #m-load.out{transform:translateX(118%) skewX(9deg)}
   .m-loadcard{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:1.4vh;animation:logoIn .56s cubic-bezier(.22,.7,.36,1) both}
@@ -321,9 +322,11 @@ const CELEB={bee:'both',queens:'both',bees:'home',throne:'home',nachos:'none'};
 const VENUE_EST={
   bee:['venue_arena_bees'], queens:['venue_arena_queens'],
   bees:['honeyhole_slip_color'],
-  throne:['throne_color','throne_buttoned_color'],
+  throne:['throne_ext_open','throne_ext_line'],   // LOOK PASS 1121: our own 3D 6715 Hollywood (doors open / the line + bouncer), clean vector signs; replaces the GPT plates
   nachos:['penaltybox_color','penaltybox_sign_nachos','penaltybox_sign_onetimer','penaltybox_fans','penaltybox_sign_cheese'] };   // PENALTY BOX gets the neon signage + fan-table imagery mixed into its venue establishing (Joe 2026-06-23, no story text)
-Object.values(VENUE_EST).forEach(a=>a.forEach(k=>load(k,'sprites/'+k+'.png')));   // preload establishing stills (cached; local build)
+const VENUE_SRC={ throne_ext_open:'sprites/venue_ext/throne_open_title.webp', throne_ext_line:'sprites/venue_ext/throne_line_title.webp' };   // WebP stills (perf budget); everything else is a sprites/<key>.png
+const VENUE_LOAD={ throne:'sprites/venue_ext/throne_line_loading.webp' };   // LOOK PASS 1121: the venue's own loading card (menu wipe into a match there)
+Object.values(VENUE_EST).forEach(a=>a.forEach(k=>load(k,VENUE_SRC[k]||('sprites/'+k+'.png'))));   // preload establishing stills (cached; local build)
 // the green twin-panel SCOREBOARD baked into the side renders (cx = split between panels, pw = one panel
 // width, y/h = top/height — all fractions of the bg image). _def is a sane center-top fallback; tune per table.
 // PAINTED score-screen windows per table (two panels, top-centre — measured off the art 2026-06-27).
@@ -3216,13 +3219,13 @@ function cabReport(){ try{ if(parent===window) return; }catch(_){ return; }   //
     const cap=document.createElement('div'); cap.className='cap'; cap.textContent=R.name;
     cap.style.color = R.team==='bees'?'#ffcf2a':R.team==='queens'?'#b14cff':'#dfefff';
     const im=new Image(); im.onload=()=>{ card.insertBefore(blacklight(im),card.firstChild); }; im.onerror=()=>{}; im.src=R.side;
-    card.appendChild(cap); card.onclick=()=>{ pick.rink=R; SFX.resume(); goLoad(()=>show(pPuck),{title:'CHOOSE YOUR PUCK',sub:R.name,sting:()=>SFX.psel()}); }; rgrid.appendChild(card); }); }   // rink selection = PLAYER_SELECT
+    card.appendChild(cap); card.onclick=()=>{ pick.rink=R; SFX.resume(); goLoad(()=>show(pPuck),{title:'CHOOSE YOUR PUCK',sub:R.name,bg:VENUE_LOAD[R.key],sting:()=>SFX.psel()}); }; rgrid.appendChild(card); }); }   // rink selection = PLAYER_SELECT
   function buildPucks(){ PSEL.forEach(P=>{ const card=document.createElement('div'); card.className='card pcard';
     const cv=document.createElement('canvas'); cv.width=cv.height=128; const x=cv.getContext('2d');   // procedural thumbnail — matches the in-game puck
     if(window.PuckArt) PuckArt.draw(x,64,70,36,{style:P.style||'classic',t:0,spin:8,blk:true});
     card.appendChild(cv);
     card.insertAdjacentHTML('beforeend','<div class="cap" style="color:'+P.col+'">'+P.name+'</div>');
-    card.onclick=()=>{ pick.puck=P; SFX.resume(); goLoad(()=>launch(),{title:'DROPPING THE PUCK',sub:P.name,sting:()=>SFX.mconf()}); }; pgrid.appendChild(card); }); }   // confirm into the game = MODE_CONFIRM
+    card.onclick=()=>{ pick.puck=P; SFX.resume(); goLoad(()=>launch(),{title:'DROPPING THE PUCK',sub:P.name,bg:pick.rink&&VENUE_LOAD[pick.rink.key],sting:()=>SFX.mconf()}); }; pgrid.appendChild(card); }); }   // confirm into the game = MODE_CONFIRM
 
   // ===== JAILBREAK in-game selector (Joe 2026-06-23): boot with ?jail → pick ANY table/cab/lab from INSIDE the
   //   game, no separate grid page. Mouse (hover+click) · keyboard (← → ↑ ↓ + Enter) · stick (left stick/d-pad + A,
@@ -3240,11 +3243,11 @@ function cabReport(){ try{ if(parent===window) return; }catch(_){ return; }   //
   function activateSel(){ const it=jailItems[jailSel]; if(it&&it.go){ try{SFX.resume();}catch(e){} it.go(); } }
   function jailLaunch(rkey){ const R=RSEL.find(r=>r.key===rkey)||RSEL[0], d=JDEF[rkey]||{k:'house',p:'lit'};
     pick.rink=R; pick.knock=KSEL.find(k=>k.key===d.k)||KSEL[0]; pick.puck=PSEL.find(p=>p.key===d.p)||PSEL[0];
-    try{SFX.resume();}catch(e){} goLoad(()=>launch(),{title:R.name,sub:'JAILBREAK',sting:()=>SFX.mconf()}); }   // table pick -> confirm into the game
+    try{SFX.resume();}catch(e){} goLoad(()=>launch(),{title:R.name,sub:'JAILBREAK',bg:VENUE_LOAD[R.key],sting:()=>SFX.mconf()}); }   // table pick -> confirm into the game
   // AWAY-GAME secrets: play the rival's team in the rival's house (BEE AFRAID = QUEENS @ Honey Hole, etc.)
   function awayLaunch(mk){ const m=AWAY[mk], R=RSEL.find(r=>r.key===m.venue)||RSEL[0];
     pick.rink=R; pick.knock=KSEL.find(k=>k.key===m.knock)||KSEL[0]; pick.puck=PSEL.find(p=>p.key===m.puck)||PSEL[0];
-    try{SFX.resume();}catch(e){} goLoad(()=>launch(),{title:m.name,sub:m.blurb,sting:()=>SFX.mconf()}); }   // away-game -> confirm into the game
+    try{SFX.resume();}catch(e){} goLoad(()=>launch(),{title:m.name,sub:m.blurb,bg:pick.rink&&VENUE_LOAD[pick.rink.key],sting:()=>SFX.mconf()}); }   // away-game -> confirm into the game
   // after an arcade unlock playoff, surface the unlocked away-game as a bonus card on the rink page (this run only)
   const awayAdded={};
   function addAwayRinks(){ Object.keys(AWAY).forEach(mk=>{ if(!UNLOCKED[mk]||awayAdded[mk])return; awayAdded[mk]=true; const m=AWAY[mk], R=RSEL.find(r=>r.key===m.venue);
@@ -3291,6 +3294,7 @@ function cabReport(){ try{ if(parent===window) return; }catch(_){ return; }   //
   const CREST={bees:'sprites/logo_hivemind.png',queens:'sprites/logo_queens_table.png'};
   const CHANT={bees:'BEE-AT DOWN',queens:'LONG LIVE THE QUEENS'};
   function goLoad(then,content){ content=content||{};
+    loadEl.style.backgroundImage=content.bg?('url("'+content.bg+'")'):''; loadEl.classList.toggle('venue',!!content.bg);   // LOOK PASS 1121: a venue's own render behind the card
     if(content.crest){ crestEl.src=content.crest; crestEl.style.display='block'; } else { crestEl.style.display='none'; }
     txtEl.textContent=content.title||'DROPPING THE PUCK…'; subEl.textContent=content.sub||'';
     loadEl.classList.remove('out'); loadEl.classList.add('in');
