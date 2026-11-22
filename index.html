@@ -1790,21 +1790,21 @@ function drawMenuPieces(){ const u=Math.min(VW,VH);
   knk(IMG.near,menuKB); knk(IMG.far,menuKQ); }   // bees left, queens right — with a pop on contact
 function fitFont(txt,weight,px,maxW){ px=Math.round(px); ctx.font=`${weight} ${px}px "Helvetica Neue",Arial`;   // shrink to fit maxW so long names/ads never clip the edges
   while(px>11 && ctx.measureText(txt).width>maxW){ px-=2; ctx.font=`${weight} ${px}px "Helvetica Neue",Arial`; } }
-function drawSelect(){ const s=(typeof SELLIST!=='undefined'&&SELLIST[selIdx])||{name:'',team:'none'};
+function drawSelect(){ const s=(typeof SELLIST!=='undefined'&&SELLIST[selIdx])||{name:'',team:'none'}; let _L3=0; const _Y=(a,b)=>_L3?b:a;
   ctx.save();
-  if(UI3D.sel(ctx,s.tbl,VW,VH)){ }   // 3D EDITION: the venue's Blender table plate
+  if(UI3D.sel(ctx,s.tbl,VW,VH)){ _L3=1; }   // 3D EDITION: the venue's Blender table plate
   else if(IMG.carpet){ const im=IMG.carpet,ir=im.width/im.height,br=VW/VH; let dw,dh,dx,dy; if(ir>br){dh=VH;dw=VH*ir;dx=(VW-dw)/2;dy=0;}else{dw=VW;dh=VW/ir;dx=0;dy=(VH-dh)/2;} ctx.drawImage(im,dx,dy,dw,dh); ctx.fillStyle='rgba(4,3,12,.46)'; ctx.fillRect(0,0,VW,VH); }   // CARPET over the rink — the menu lives on the carpet, you transition to the table on pick
   else { ctx.fillStyle='rgba(2,2,10,.72)'; ctx.fillRect(0,0,VW,VH); }
   ctx.textAlign='center';
-  if(TITLE.complete&&TITLE.naturalWidth){const w=Math.min(VW*0.46,VH*0.72),h=w*TITLE.naturalHeight/TITLE.naturalWidth;ctx.drawImage(TITLE,VW/2-w/2,VH*0.04,w,h);}
+  if(TITLE.complete&&TITLE.naturalWidth){const w=_L3?Math.min(VW*0.21,VH*0.33):Math.min(VW*0.46,VH*0.72),h=w*TITLE.naturalHeight/TITLE.naturalWidth;ctx.drawImage(TITLE,VW/2-w/2,VH*_Y(0.04,0.015),w,h);}
   const col=s.team==='bees'?'#ffe23a':s.team==='queens'?'#b14cff':s.turbo?'#ff7a1a':'#dfefff';
   ctx.fillStyle=col; ctx.shadowColor=col; ctx.shadowBlur=10; ctx.font=`900 ${Math.round(VH*0.06)}px "Helvetica Neue",Arial`;
-  ctx.fillText('◄',VW*0.15,VH*0.5); ctx.fillText('►',VW*0.85,VH*0.5);
-  ctx.fillStyle='#fff'; ctx.shadowColor=col; ctx.shadowBlur=28; fitFont(s.name,900,VH*0.088,VW*0.64); ctx.fillText(s.name,VW/2,VH*0.5);
-  if(s.tag){ ctx.fillStyle=col; ctx.shadowBlur=6; fitFont(s.tag,800,VH*0.03,VW*0.7); ctx.fillText(s.tag,VW/2,VH*0.58); }
-  { const on=CUP.on||TIMED; ctx.fillStyle=on?'#ffe23a':'#9fb6c8'; ctx.shadowColor=on?'#ff37c7':'#27f6ff'; ctx.shadowBlur=on?12:0; const mc=(TIMED?'★ CASTLE RULES':(CUP.on?'★ '+RAISE[CUP.variant].name:'EXHIBITION'))+'   (C / ↕ STICK)'; fitFont(mc,800,VH*0.03,VW*0.9); ctx.fillText(mc,VW/2,VH*0.66); }
-  ctx.fillStyle='#7f97a8'; ctx.shadowBlur=0; ctx.font=`700 ${Math.round(VH*0.024)}px "Helvetica Neue",Arial`; ctx.fillText((selIdx+1)+' / '+SELLIST.length,VW/2,VH*0.72);
-  if(Math.floor(clock*1.8)%2===0){ ctx.fillStyle='#ffe23a'; ctx.shadowColor='#ff37c7'; ctx.shadowBlur=16; ctx.font=`800 ${Math.round(VH*0.045)}px "Helvetica Neue",Arial`; ctx.fillText('◄ STICK ►   ·   PUSH BLAST TO PLAY',VW/2,VH*0.82); }
+  ctx.fillText('◄',VW*_Y(0.15,0.07),VH*_Y(0.5,0.6)); ctx.fillText('►',VW*_Y(0.85,0.93),VH*_Y(0.5,0.6));
+  ctx.fillStyle='#fff'; ctx.shadowColor=col; ctx.shadowBlur=28; fitFont(s.name,900,VH*_Y(0.088,0.062),VW*0.64); ctx.fillText(s.name,VW/2,VH*_Y(0.5,0.238));
+  if(s.tag){ ctx.fillStyle=col; ctx.shadowBlur=6; fitFont(s.tag,800,VH*_Y(0.03,0.024),VW*0.7); ctx.fillText(s.tag,VW/2,VH*_Y(0.58,0.276)); }
+  { const on=CUP.on||TIMED; ctx.fillStyle=on?'#ffe23a':'#9fb6c8'; ctx.shadowColor=on?'#ff37c7':'#27f6ff'; ctx.shadowBlur=on?12:0; const mc=(TIMED?'★ CASTLE RULES':(CUP.on?'★ '+RAISE[CUP.variant].name:'EXHIBITION'))+'   (C / ↕ STICK)'; fitFont(mc,800,VH*_Y(0.03,0.022),VW*0.9); ctx.fillText(mc,VW/2,VH*_Y(0.66,0.955)); }
+  ctx.fillStyle='#7f97a8'; ctx.shadowBlur=0; ctx.font=`700 ${Math.round(VH*0.024)}px "Helvetica Neue",Arial`; if(_L3) ctx.textAlign='right'; ctx.fillText((selIdx+1)+' / '+SELLIST.length,_L3?VW*0.97:VW/2,VH*_Y(0.72,0.955)); ctx.textAlign='center';
+  if(Math.floor(clock*1.8)%2===0){ ctx.fillStyle='#ffe23a'; ctx.shadowColor='#ff37c7'; ctx.shadowBlur=16; ctx.font=`800 ${Math.round(VH*_Y(0.045,0.036))}px "Helvetica Neue",Arial`; ctx.fillText('◄ STICK ►   ·   PUSH BLAST TO PLAY',VW/2,VH*_Y(0.82,0.912)); }
   ctx.restore(); }
 // PUCK beat (second half of the cold-open SELECT): pick the puck the DROP squashes into. Big spinning PuckArt
 //   preview, cycled ◄►; stick ↕ / Up-Down backs out to the TABLE beat. Lives on the same carpet as drawSelect.
@@ -2618,7 +2618,7 @@ const UI3D = (function(){
     else { const a = Math.min(1, (now - t0) / SLIDE_MS), e = ease(a), off = VW * 1.04;
       if(prev && a < 1 && ok(I[prev])){ slid(ctx, prev, VW, VH, -dir * off * e, 1 - 0.35 * e); slid(ctx, cur, VW, VH, dir * off * (1 - e), 0.65 + 0.35 * e); }
       else cover(ctx, cur, VW, VH); }
-    shade(ctx, VW, VH, 0.34, 0.20); return true; }
+    shade(ctx, VW, VH, 0.10, 0.12); return true; }   // SELECT BASE 1122 v3: the plate's table sits under the text now (playfield clear of it): the mid blanket lifts so the print reads full
   // a plate drawn shifted by dx (screen px) and dimmed while it travels
   function slid(ctx, k, VW, VH, dx, alpha){ const im = I[k], r = rect(im, VW, VH);
     ctx.save(); ctx.globalAlpha = alpha; ctx.drawImage(im, r.dx + dx, r.dy, r.dw, r.dh); ctx.restore(); last = r; }
