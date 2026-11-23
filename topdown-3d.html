@@ -58,6 +58,12 @@
   .m-go{ margin-top:3vh; letter-spacing:.3em; font-weight:800; font-size:clamp(13px,2.2vw,20px);
     color:#fff; animation:blink 1.1s steps(2,end) infinite; }
   @keyframes blink{ 50%{ opacity:.25 } }
+  /* CPU TIER on the title (1123): the m-sub gold lettering, no box — ◄ ► (or 1 2 3) cycles ROOKIE / PRO / ALL-STAR */
+  .m-tier{ margin-top:1.6vh; letter-spacing:.3em; font-weight:800; font-size:clamp(11px,1.7vw,16px); color:#cfe6ff;
+    text-shadow:0 0 14px rgba(39,246,255,.45); user-select:none; }
+  .m-tier b{ cursor:pointer; padding:0 .7em; color:#27f6ff; }
+  .m-tier b:hover{ color:#fff; text-shadow:0 0 16px #27f6ff; }
+  .m-tier span{ display:inline-block; min-width:8.5em; color:#ffcf2a; text-shadow:0 0 16px rgba(255,174,0,.6); }
   .page h2{ letter-spacing:.28em; font-weight:800; font-size:clamp(16px,3vw,30px);
     margin-bottom:3vh; text-shadow:0 0 18px rgba(0,0,0,.9); }
   .m-grid{ display:flex; flex-wrap:wrap; gap:clamp(10px,2vw,22px); justify-content:center; align-items:flex-end; }
@@ -357,6 +363,7 @@
   <div id="m-title" class="page">
     <img id="m-logo" src="sprites/title_high_table.png" alt="ONE-TIMER: THE HIGH TABLE">
     <div class="m-sub">TO-GO · TOP-DOWN 3D</div>
+    <div class="m-tier" id="m-tier">CPU<b data-d="-1">◄</b><span id="m-tiern">PRO</span><b data-d="1">►</b></div>
     <div class="m-go">PRESS TO START</div>
     <div id="m-cstatus" style="margin-top:18px"></div>
   </div>
@@ -695,26 +702,65 @@ window.addEventListener('drop',e=>{
 });
 
 /* ----- simulation ---------------------------------------------------------- */
+// CPU TIERS (1123, Q3745): the top-down CPU gets the SIDE game's three levels, by the same names and the same ?diff=0..2.
+//   ease  = how hard it chases its spot (your pointer follows at 24; the old untiered CPU was 8.5 and lost 100% to the simplest bot)
+//   lead  = seconds it reads the puck AHEAD (walls folded in)
+//   shots = 0 straight down the middle · 1 + the mouth corner your mallet leaves open · 2 + bank shots off a side rail
+//   read  = on defence, how far it shades toward where YOUR mallet's line through the puck points at its goal (0 = sits centre)
+//   wrap  = when it's caught upfield of the puck it circles round goal-side instead of driving through it at its own net
+//   The tier is picked on the title (◄ ► / 1 2 3, same keys as the side game). Gate: tools/_qa/td_tiers.mjs
+let DIFF=1; { const _d=new URLSearchParams(location.search).get('diff'); if(_d!=null&&_d!=='') DIFF=Math.max(0,Math.min(2,(+_d)|0)); }
+const TDCPU=[{n:'ROOKIE',  ease:4.8,lead:0.00,shots:0,read:0.00,wrap:0,wind:0.20},
+             {n:'PRO',     ease:6,lead:0.04,shots:1,read:0.45,wrap:1,wind:0.20},
+             {n:'ALL-STAR',ease:7,lead:0.08,shots:2,read:0.80,wrap:1,wind:0.22}];
+function foldB(v){ const lo=PR, w=B_MAX-2*PR; let x=(v-lo)%(2*w); if(x<0)x+=2*w; return lo+(x>w?2*w-x:x); }   // a straight-line puck path folded off the side rails
+function cpuSpot(k){   // the CPU's target spot, worked in its OWN frame: u = distance out from its goal line (0..2), v = across
+  const D=TDCPU[DIFF], dir=(k===yk)?1:-1, U=(a)=>(k===yk)?a:2-a, opp=(k===yk)?pk:yk;
+  const pu=U(puck.a), pv=puck.b, vu=puck.va*dir, vv=puck.vb;
+  const lu=pu, lv=pv;
+  const onMyHalf=pu<1.0, loose=Math.abs(puck.a-1.0)<0.14 && Math.hypot(puck.va,puck.vb)<0.85;   // neutral drop at centre → DASH for it
+  let su, sv;
+  if((onMyHalf||loose) && (GAME.state==='play'||GAME.state==='attract')){
+    // THE SHOT: ROOKIE goes straight down the middle; PRO picks the mouth corner your mallet leaves open; ALL-STAR also
+    //   banks it off a side rail. Each candidate is scored by how far its path passes from YOUR mallet where you stand.
+    const ou=U(opp.a), ov=opp.b, c=GOAL*0.6, T=[0.5];
+    if(D.shots>=1) T.push(0.5-c,0.5+c);
+    if(D.shots>=2) T.push(2*PR-(0.5-c),2*PR-(0.5+c),2*(B_MAX-PR)-(0.5-c),2*(B_MAX-PR)-(0.5+c));
+    let gv=0.5, best=-1;
+    for(const tv of T){ const f=Math.max(0,Math.min(1,(ou-lu)/Math.max(0.05,2-lu))), cl=Math.abs(foldB(lv+(tv-lv)*f)-ov)+(tv===0.5?0.01:0);
+      if(cl>best){ best=cl; gv=tv; } }
+    let dx=2-lu, dy=gv-lv; const l=Math.hypot(dx,dy)||1; dx/=l; dy/=l;
+    const ku=U(k.a), kv=k.b, R0=KR+PR+0.03, along=(ku-lu)*dx+(kv-lv)*dy, perp=Math.abs(-(ku-lu)*dy+(kv-lv)*dx);
+    if(!D.wrap){ su=lu-dx*0.05; sv=lv-dy*0.05; }                  // ROOKIE: the old chase, 0.05 behind the puck, straight through it
+    else if(ku>pu-0.04){                                           // upfield of the puck: come ROUND it (never back through it at my own net)
+      let side=(kv<pv)?-1:1; if(pv+side*R0<PR+KR || pv+side*R0>B_MAX-PR-KR) side=-side;
+      if(Math.abs(kv-pv)<R0*0.95){ su=ku; sv=pv+side*R0; }          //   step aside first
+      else { su=pu-0.10; sv=pv+side*R0; } }                        //   then drop goal-side
+    else if(along<-0.08 && perp<0.06){ su=lu+dx*0.12; sv=lv+dy*0.12; }   // lined up behind it: STRIKE through, toward the aim point
+    else { su=lu-dx*D.wind; sv=lv-dy*D.wind; }                    // line up: set the mallet back on the shot line (the wind-up)
+    su=Math.max(KR+0.02,su);
+  } else {
+    su=0.45; sv=0.5;
+    if(D.read>0 && GAME.state==='play'){ const ou=U(opp.a), ov=opp.b, qu=pu+vu*D.lead, qv=foldB(pv+vv*D.lead); let hv=0.5;   // LEAD: read the puck where it WILL be
+      if(vu<-0.4){ hv=foldB(qv+vv*(qu-su)/(-vu)); }                 // a shot on the way: where it crosses my line
+      else if(ou>qu+0.02){ hv=qv+(qv-ov)*(qu-su)/(ou-qu); }         // your mallet's line through the puck, run on to my line
+      hv=Math.max(0.5-GOAL*1.6,Math.min(0.5+GOAL*1.6,hv)); sv=0.5+(hv-0.5)*D.read; }
+  }
+  return [(k===yk)?su:2-su, sv];
+}
 function driveKnocker(k, dt){
   let tx=null,ty=null,bestd=9;
   for(const p of pointers.values()){ if(p.k!==k) continue; const d=Math.hypot(p.a-k.a,p.b-k.b); if(d<bestd){bestd=d;tx=p.a;ty=p.b;} }
   const aiMode = (tx===null) && (k===pk || GAME.state==='attract' || DEMO);
   if(tx===null){
-    if(aiMode){
-      const home = (k===yk)?0.45:1.55;
-      const onMyHalf = (k===yk)? puck.a<1.0 : puck.a>1.0;
-      const loose = Math.abs(puck.a-1.0)<0.14 && Math.hypot(puck.va,puck.vb)<0.85;   // neutral drop at centre → DASH for it
-      if((onMyHalf||loose) && (GAME.state==='play'||GAME.state==='attract')){
-        tx = (k===yk)? Math.max(KR+0.02, puck.a-0.05) : Math.min(2-KR-0.02, puck.a+0.05);
-        ty = puck.b;
-      } else { tx=home; ty=0.5; }
-    } else { tx=k.a; ty=k.b; }     // player idle: rest in place (was k.pa/k.pb = the spawn spot, so lifting a finger snapped the knocker home; QA 2026-11-02)
+    if(aiMode){ [tx,ty]=cpuSpot(k); }
+    else { tx=k.a; ty=k.b; }     // player idle: rest in place (was k.pa/k.pb = the spawn spot, so lifting a finger snapped the knocker home; QA 2026-11-02)
   }
   const KRC=KR*1.04;                                     // the drawn top-down knocker is ~1.03 KR wide: clamp the FOOTPRINT, not just the centre, inside the painted surface
   const loA = (k===yk)? KRC : 1.0;   const hiA = (k===yk)? 1.0 : 2-KRC;
   tx=Math.max(loA, Math.min(hiA, tx));
   ty=Math.max(KRC, Math.min(B_MAX-KRC, ty));
-  const ease = aiMode ? 8.5 : 24;
+  const ease = aiMode ? TDCPU[DIFF].ease : 24;
   const na=k.a+(tx-k.a)*Math.min(1,ease*dt);
   const nb=k.b+(ty-k.b)*Math.min(1,ease*dt);
   k.va=(na-k.a)/dt; k.vb=(nb-k.b)/dt; k.a=na; k.b=nb;
@@ -1228,6 +1274,16 @@ function coverDraw(im,x,y,w,h){
   }
 
   pTitle.onclick=()=>{ SFX.resume(); SFX.bed('title', 0.16); goLoad(()=>show(pKnock),{title:'CHOOSE YOUR KNOCKER'}); };
+  // CPU TIER (1123): ◄ ► on the title chip, or the side game's keys (1 2 3 on the title / the win screen; ← → on the title).
+  //   The 2-player table has no CPU, so it has no chip.
+  const tierEl=document.getElementById('m-tier'), tierN=document.getElementById('m-tiern');
+  function setTier(d){ DIFF=Math.max(0,Math.min(2,d)); if(tierN) tierN.textContent=TDCPU[DIFF].n; }
+  if(tierEl){ if(window.TD_2P) tierEl.style.display='none'; setTier(DIFF);
+    tierEl.querySelectorAll('b').forEach(b=>b.addEventListener('click',e=>{ e.stopPropagation(); SFX.resume(); setTier((DIFF+(+b.dataset.d)+3)%3); try{SFX.play&&SFX.play('select',0.5);}catch(_){} })); }
+  window.addEventListener('keydown',e=>{ if(window.TD_2P||DEMO) return;
+    const onTitle=!menu.classList.contains('hidden') && !pTitle.classList.contains('hidden');
+    if(e.key>='1'&&e.key<='3'&&(onTitle||GAME.state==='win')){ setTier(+e.key-1); if(GAME.state==='win') banner('CPU · '+TDCPU[DIFF].n,'#ffcf2a',0.9); }
+    else if(onTitle&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){ setTier((DIFF+(e.key==='ArrowLeft'?-1:1)+3)%3); } });
   window.addEventListener('keydown',e=>{ if(menu.classList.contains('hidden'))return;
     if(e.key==='Enter'||e.key===' '){ e.preventDefault(); if(!pTitle.classList.contains('hidden')) pTitle.onclick(); } });
 
