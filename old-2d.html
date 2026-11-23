@@ -771,7 +771,21 @@ if(!RAISE[CUP.variant]) CUP.variant='standard';
 let TARGET=7, champT=0;              // TARGET = goals to win this match (the series sets it per game); champT = trophy-cinematic clock
 let mouseDown=false, puckHeld=null, grabT=0, grabCool=0, grabPrev=false, blastPrev=false, bigPrev1=false, farBigPrev=false, deckGrab=false, deckBlast=false, trapArmed=false;   // TRAP = hold (mouse / C / deck) to catch+charge · BLAST = tap (V / X / deck) to fire / lunge
 addEventListener('blur',function(){ mouseDown=false; if(typeof keys==='object')for(var k in keys)keys[k]=false; });   // clear stuck input on focus loss
-let DIFF=1; const DIFFS=[{n:'ROOKIE',spd:5.0,lead:0.0},{n:'PRO',spd:7.5,lead:0.06},{n:'ALL-STAR',spd:10.5,lead:0.14}];
+let DIFF=1; const DIFFS=[{n:'ROOKIE',spd:5.0,lead:0.0},{n:'PRO',spd:7.5,lead:0.06},{n:'ALL-STAR',spd:8.5,lead:0.10}];   // ALL-STAR 1123 (Joe, Q3741 SOFTER): lead 0.14 -> 0.10 (the long lead OVER-COMMITTED on every intercept, so ALL-STAR played EASIER than PRO: striker 30% vs 18%) and spd 10.5 -> 8.5, so a skilled player wins ~70% with the CPU SOUL verbs on. Gate: tools/_qa/cpu_tiers.mjs
+// CPU SOUL (1123): the 1P CPU gets the player's verbs + the old yomi READ (breakaway's DIFF.read lineage .40/.58/.80).
+//   read  = chance it reads the side of your shot from your mallet-vs-puck line and commits its guard there (else it
+//           commits the WRONG way, and its save is slowed by `wrong` until the commit lapses)
+//   blast = chance it LUNGES (the player's BLAST, same cooldown) when it has the puck lined up in front of it
+//   trap  = chance it TRAPS a slow puck on its half, holds `hold` s (charge), then fires at the open side of your mouth
+//   big   = GET BIG roll per frame when not ahead · bigShot = chance it GETS BIG to meet a live shot (once per shot)
+//   lean  = how far the guard slides onto its read (0..1)
+//   ?cpuverbs=0 = the pre-1123 CPU exactly (A/B switch). The 2-player paths and the attract DEMO never read this.
+const CPUSOUL=[{read:0.40,lean:0.70,wrong:0.55,blast:0.15,trap:0.10,hold:0.30,big:0.02,bigShot:0.00},
+               {read:0.58,lean:0.45,wrong:0.80,blast:0.30,trap:0.25,hold:0.55,big:0.04,bigShot:0.25},
+               {read:0.80,lean:0.45,wrong:0.85,blast:0.50,trap:0.35,hold:0.80,big:0.04,bigShot:0.60}];   // lean = how far the guard moves onto a read (0..1)
+const CPUV=Q.get('cpuverbs')!=='0';
+const P2FOLLOW=+(Q.get('p2follow')||16);   // single-screen 2P: how fast P2's mallet follows its keys/pad target (?p2follow=24 = pre-1123)
+const cpuRead={t:0,x:0.5,right:true,shotX:0.5,bigRolled:false};
 let twoP=false; const keys={};
 // ===== 2-UP TWO-SCREEN LINK (Joe 2026-06-19): one machine, two monitors, both side angles played live.
 //   ?cab2=p1 = HOST (runs the sim, owns P1/near, broadcasts state) · ?cab2=p2 = CLIENT (renders P2's flipped
@@ -967,7 +981,7 @@ const KNOCK={ rest:0.55 };   // knocker-vs-knocker restitution on a hard clank (
 // TRAP feel (Joe 2026-06-22): catch leniency, charge time, and the shot. AIM pulls the fired puck UP-ICE toward
 //   the far mouth so a trapped shot can't dribble sideways into your own net (the old own-goal-rally cause). aim=0
 //   = straight off the knocker (old behavior); 1 = dead at the goal.
-const TRAP={ catch:1.25, charge:0.9, powMin:1.0, powMax:1.9, aim:0.35 };
+const TRAP={ catch:1.25, charge:0.9, powMin:1.0, powMax:1.9, aim:0.10 };   // aim 0.35 -> 0.10 (Joe 1123, Q3744): a trapped shot keeps YOUR swing (aim a corner, bank it) instead of being pulled to the keeper; trapped shots scored 1.4-9% at 0.35
 try{ const g=JSON.parse(LS.getItem('sideGlide')); if(g&&g.accel&&g.damp){ GLIDE.accel=g.accel; GLIDE.damp=g.damp; } }catch(e){}
 // THE FEEL LAB HOOK (Joe 2026-06-19): expose every feel knob on window so FEEL LAB.html can drive the LIVE
 //   engine through an iframe (zero divergence — the lab tunes the real objects). Saved blob re-applies on boot.
@@ -1106,7 +1120,8 @@ function step(dt){
     moveKnocker(near,0.5,0.30,6,dt);                                      // player mallet settles home for the lead-in
     const ready = foT>FO_DROP;
     // FIRST drop: hold the count under the venue establishing card so the beats SEQUENCE (card → ready → drop)
-    if(!(ready && estT>0.5)) foT-=dt;
+    if(keyCardT>0 && estT<=0.3) keyCardT=Math.max(0,keyCardT-dt);   // the KEY MAP clock starts once the venue card has cleared
+    if(!(ready && (estT>0.5 || keyCardT>0.9))) foT-=dt;   // + the 2P KEY MAP card holds GET READY until it has been up long enough to read
     if(ready){ moveKnocker(far,0.5,AR-0.24,6,dt);                         // CPU waits at home through GET READY...
       if(!foWhistled && foT<FOT-0.25){ foWhistled=true; SFX.drop(); } }   // ...a whistle/countdown cue opens the beat (the team horn lands on THE RELEASE below, not stacked here)
     else moveKnocker(far,0.5,AR*0.5+0.16,DIFFS[DIFF].spd*0.9,dt);         // THE CONTEST: CPU rushes the centre drop (its one centre-rush)
@@ -1185,7 +1200,7 @@ function step(dt){
     var fBig=(!!keys[',']);
     if(fBig && !farBigPrev && state==='play' && !PAUSED && far.sup>=1) bigUp(far,OTEAM); farBigPrev=fBig;
     if(farBlastReq){ if(puckHeld==='far') farShootReq=true; else triggerFarLunge(); farBlastReq=false; }   // P2 BLAST ('.' key or 2nd pad) → far lunge (or SHOOT a trapped puck)
-    if(far.lungeT>0) farLungeMove(dt); else moveKnocker(far, far.TX, far.TY, 24, dt);
+    if(far.lungeT>0) farLungeMove(dt); else moveKnocker(far, far.TX, far.TY, P2FOLLOW, dt);   // P2FOLLOW 24 -> 16 (1123): at 24 the far mallet snapped to its target and P2 won ~76% of mirrored key-vs-key games; 16 measures 48/52 (tools/_qa/twop_keys.mjs)
   } else {
     if(settle>0) settle-=dt;
     const D=DIFFS[DIFF];
@@ -1206,11 +1221,32 @@ function step(dt){
     const loose  = Math.abs(puck.Y-HALF)<0.12 && pspd<0.85;     // neutral drop at centre
     const fastIn = onMine && pspd>=0.7;                         // a live shot incoming
     let cX, cY, spd=D.spd*ease;
+    const S=CPUSOUL[DIFF];
     // DEFAULT = PROTECT THE MOUTH: sit goal-side, slide with the puck's lane, a small screen shuffle.
     cX = lerp(0.5, puck.X, 0.30) + Math.sin(clock*1.7)*0.03;  cY = AR-0.22;
-    if(farRetreat>0){ far.plan=null; }                          // just-broke-out: hold the mouth, don't re-pin the puck
+    if(CPUV){ if(cpuRead.t>0) cpuRead.t-=dt;
+      // READ (the yomi soul): you're lined up behind a puck on YOUR half -> the CPU guesses where that line meets its
+      //   mouth and COMMITS its guard there. A right read = a ready save; a wrong one leaves it leaning the other way.
+      if(!onMine && cpuRead.t<=0 && settle<=0){ const dx=puck.X-near.X, dy=puck.Y-near.Y;
+        if(dy>0.02 && Math.hypot(dx,dy/(CONTACT.kyStretch||1))<0.20){
+          const lane=Math.max(-1,Math.min(1,(puck.X+dx/dy*(AR-puck.Y)-0.5)/GOAL));   // where your line meets my goal, in half-mouths
+          cpuRead.right=Math.random()<S.read;
+          const side=cpuRead.right?lane:-(Math.sign(lane)||(Math.random()<0.5?1:-1))*Math.max(0.5,Math.abs(lane));
+          cpuRead.x=0.5+side*GOAL*0.75; cpuRead.t=0.9; } }
+      if(onMine && !fastIn) cpuRead.t=0;                        // the puck settled on my half: the read is spent
+      if(cpuRead.t>0 && !onMine) cX=lerp(cX,cpuRead.x,S.lean);     // lean the guard onto the read
+      if(!fastIn) cpuRead.bigRolled=false; }
+    if(CPUV && puckHeld==='far'){                               // TRAPPED: wind up, then swing through at the open side and fire
+      const wind=farGrabT<S.hold*0.45, ux=cpuRead.shotX-far.X, uy=-far.Y, ul=Math.hypot(ux,uy)||1;
+      if(wind){ cX=far.X+(far.X-cpuRead.shotX)*0.15; cY=Math.min(AR-KR,far.Y+0.10); spd=D.spd*0.8; }
+      else { cX=far.X+ux/ul*0.35; cY=far.Y+uy/ul*0.35; spd=D.spd; }
+      farTrapIn=true; if(farGrabT>=S.hold) farShootReq=true;
+    }
+    else if(farRetreat>0){ far.plan=null; if(CPUV) farTrapIn=false; }   // just-broke-out: hold the mouth, don't re-pin the puck
     else if(settle<=0 && fastIn){                               // live shot -> intercept with lead (unchanged reaction)
       cX = puck.X + puck.vX*D.lead*ease; cY = Math.min(AR-KR, puck.Y+0.16); far.plan=null;
+      if(CPUV){ farTrapIn=false; if(cpuRead.t>0 && !cpuRead.right) spd*=S.wrong;   // leaning the wrong way: slow to recover
+        if(!cpuRead.bigRolled && puck.vY>0){ cpuRead.bigRolled=true; if(far.sup>=1 && Math.random()<S.bigShot) bigUp(far,OTEAM); } }   // meet the shot BIG
     } else if(settle<=0 && (onMine || loose)){                  // a slow puck I can choose to play
       if(!far.plan || far.plan.until<clock) far.plan=rollFarPlan(deep);
       const pl=far.plan;
@@ -1225,13 +1261,25 @@ function step(dt){
           if(pl.pinCommit && !ownMouth){ cX = puck.X; cY = AR-KR*0.5; spd = D.spd*ease*1.1; }  // COMMIT — shove it off the rail
           else { cX = lerp(0.5,puck.X,0.4); cY = AR-0.24; spd = D.spd*ease*0.8; }      // else back off — the cushion + anti-stall free it
         }
+        else if(CPUV && pl.trapGo && behind){                                           // TRAP: ease onto the puck and catch it
+          cX = puck.X; cY = Math.min(AR-KR, puck.Y+0.06); spd = D.spd*ease*0.7; farTrapIn = true;
+          // shoot at the OPEN side of your mouth (away from your mallet) on a read; else a coin flip
+          if(pl.shotX==null){ const open=(near.X<0.5?1:-1); pl.shotX=0.5+(Math.random()<S.read?open:(Math.random()<0.5?1:-1))*GOAL*0.7; } cpuRead.shotX=pl.shotX; }
         else if(!behind){ cX = puck.X; cY = Math.min(AR-KR, puck.Y+0.22); }          // get behind it first
-        else { cX = pl.aimX; cY = Math.max(HALF, pl.aimY); spd = D.spd*ease*pl.power; }   // drive THROUGH toward the aim
+        else { cX = pl.aimX; cY = Math.max(HALF, pl.aimY); spd = D.spd*ease*pl.power;    // drive THROUGH toward the aim
+          if(CPUV && pl.style!=='poke' && pl.blastRoll==null && far.blastCD<=0){       // BLAST: the puck is lined up in front -> lunge through it
+            const ahead=far.Y-puck.Y; if(ahead>0 && ahead<0.22 && Math.abs(puck.X-far.X)<0.09){ pl.blastRoll=Math.random()<S.blast; if(pl.blastRoll){ far.TX=cX; triggerFarLunge(); } } } }
+        if(CPUV && pl.trapGo==null && !pinned && pspd<0.9 && (pl.style==='attack'||pl.style==='blast') && Math.hypot(puck.X-far.X,puck.Y-far.Y)<0.30) pl.trapGo=Math.random()<S.trap;   // roll TRAP once per plan
       }
     } else far.plan=null;                                       // puck on the player's half -> pure mouth guard
+    if(CPUV && puckHeld!=='far' && !(far.plan&&far.plan.trapGo)) farTrapIn=false;
     cX=Math.max(KR,Math.min(1-KR,cX)); cY=Math.max(HALF,cY);
-    moveKnocker(far, cX, cY, spd, dt);
-    if(far.sup>=1 && settle<=0 && margin<=0 && puck.Y>AR*0.6 && Math.random()<0.04) bigUp(far,OTEAM);   // CPU only unleashes GET BIG when NOT ahead and not in grace
+    if(!CPUV) moveKnocker(far, cX, cY, spd, dt);
+    else { far.TX=cX;
+      if(far.lungeT>0) farLungeMove(dt);                        // the CPU's BLAST = the same lunge P2 gets
+      else { const oy=far.Y; moveKnocker(far, cX, cY, spd, dt);
+        if(oy<HALF){ far.Y=Math.min(far.Y, oy+BLAST.retract*dt); far.vY=Math.min(far.vY, BLAST.retractVCap); } } }   // back from a lunge: ease home, capped own-goal-ward velocity (mirror of the near retract)
+    if(far.sup>=1 && settle<=0 && margin<=0 && puck.Y>AR*0.6 && Math.random()<(CPUV?S.big:0.04)) bigUp(far,OTEAM);   // CPU only unleashes GET BIG when NOT ahead and not in grace
   }
   // TRAP (near/Bees): hold mouse / Z / deck-TRAP to catch the puck dead on your half (it charges while held).
   // BLAST: tap C / deck-BLAST to fire the trapped puck goalward (charge-scaled). Let go of TRAP without BLAST = a gentle drop.
@@ -1281,7 +1329,7 @@ function step(dt){
   // ---- P2 TRAP (far, HUMAN only: single-screen 2P or the 2-UP host). The exact mirror of the near trap above:
   //   hold-to-trap (one catch per press), the puck rides the far mallet's front edge, BLAST shoots it at P1's mouth
   //   (charge-scaled, aim pulled toward the goal), let go = a gentle drop, 2.4s auto-fires. ----
-  if((twoP||CAB2==='p1') && !DEMO){
+  if((twoP||CAB2==='p1'||CPUV) && !DEMO){   // + the 1P CPU's TRAP (CPU SOUL 1123: farTrapIn / farShootReq set by its brain)
     if(farGrabCool>0) farGrabCool-=dt;
     const fg=farTrapIn;
     if(fg && !farGrabPrev) farTrapArmed=true; else if(!fg) farTrapArmed=false;
@@ -1739,6 +1787,27 @@ function drawCelebCard(){ const cc=celebCard; if(!cc)return;
   if(!cname) ctx.fillText(bees?'BEE-AT DOWN':'LONG LIVE THE QUEENS',cx,cy+ch*0.30);
   ctx.restore();
 }
+// 2P KEY MAP (1123): ONE KEYBOARD, both players, every verb. The jumbotron LED card (same plate as drawCelebCard), each
+//   half in its end's own colour, keycaps lit like the cab buttons. Up before the first drop of a shared-keyboard match.
+const KEYCARD_T=4.6; let keyCardT=0;
+const KEYMAP2=[{who:'P1',near:true,move:['W','A','S','D'],rows:[['Z','TRAP'],['X','GET BIG'],['C','BLAST']]},
+               {who:'P2',near:false,move:['↑','←','↓','→'],rows:[['M','TRAP'],[',','GET BIG'],['.','BLAST']]}];
+function drawKeyCard(){ const a=Math.min(1,(KEYCARD_T-keyCardT)/0.25)*Math.min(1,keyCardT/0.35); if(a<=0)return;
+  const cw=Math.min(VW*0.86,VH*1.5), ch=cw*0.40, cx=VW/2, cy=VH*0.44, k=ch*0.15;
+  ctx.save(); ctx.globalAlpha=a; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle='rgba(4,4,12,.9)'; rr(cx-cw/2,cy-ch/2,cw,ch,16); ctx.fill();
+  ctx.save(); rr(cx-cw/2,cy-ch/2,cw,ch,16); ctx.clip(); ctx.globalAlpha=a*0.08; ctx.fillStyle='#fff'; for(let yy=cy-ch/2; yy<cy+ch/2; yy+=Math.max(4,VH/150)) ctx.fillRect(cx-cw/2,yy,cw,1); ctx.restore();
+  const cap=(x,y,w,t,col)=>{ ctx.fillStyle='rgba(10,12,24,.95)'; rr(x-w/2,y-k/2,w,k,k*0.18); ctx.fill(); ctx.strokeStyle=col; ctx.lineWidth=2; ctx.shadowColor=col; ctx.shadowBlur=10; rr(x-w/2,y-k/2,w,k,k*0.18); ctx.stroke(); ctx.shadowBlur=0;
+    ctx.fillStyle='#fff'; ctx.font=`900 ${Math.round(k*0.55)}px "Helvetica Neue",Arial`; ctx.fillText(t,x,y+1); };
+  KEYMAP2.forEach((m,i)=>{ const col=endCol(m.near), x0=cx+(i?1:-1)*cw*0.25, top=cy-ch/2;
+    ctx.fillStyle=col; ctx.shadowColor=col; ctx.shadowBlur=16; ctx.font=`900 ${Math.round(ch*0.12)}px "Helvetica Neue",Arial`; ctx.fillText(m.who+' · '+endName(m.near),x0,top+ch*0.13); ctx.shadowBlur=0;
+    const g=k*1.12, my=top+ch*0.36;                                   // the move cluster: ▲ over ◄ ▼ ►
+    cap(x0-cw*0.12,my-g*0.55,k,m.move[0],col); cap(x0-cw*0.12-g,my+g*0.55,k,m.move[1],col); cap(x0-cw*0.12,my+g*0.55,k,m.move[2],col); cap(x0-cw*0.12+g,my+g*0.55,k,m.move[3],col);
+    ctx.fillStyle='#cfe6ff'; ctx.font=`800 ${Math.round(k*0.42)}px "Helvetica Neue",Arial`; ctx.fillText('MOVE',x0-cw*0.12,my+g*1.35);
+    m.rows.forEach((r,j)=>{ const ry=top+ch*(0.30+j*0.19), bx=x0+cw*0.06; cap(bx,ry,k,r[0],col); ctx.textAlign='left'; ctx.fillStyle='#fff'; ctx.font=`900 ${Math.round(k*0.5)}px "Helvetica Neue",Arial`; ctx.fillText(r[1],bx+k*0.75,ry+1); ctx.textAlign='center'; }); });
+  ctx.strokeStyle='rgba(255,255,255,.18)'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(cx,cy-ch*0.38); ctx.lineTo(cx,cy+ch*0.38); ctx.stroke();
+  ctx.fillStyle='#ffe23a'; ctx.shadowColor='#ff37c7'; ctx.shadowBlur=12; ctx.font=`800 ${Math.round(ch*0.07)}px "Helvetica Neue",Arial`; ctx.fillText('ONE KEYBOARD · FIRST TO '+TARGET,cx,cy+ch*0.42);
+  ctx.restore(); }
 // a procedural gold trophy (bowl + handles + stem + base), team-glow behind it
 function drawTrophy(cx,cy){ const u=VH; ctx.save(); ctx.translate(cx,cy);
   ctx.shadowColor='#ffe9a0'; ctx.shadowBlur=36; ctx.fillStyle='#ffd24a'; ctx.strokeStyle='#fff3c0'; ctx.lineWidth=Math.max(2,u*0.004);
@@ -1797,6 +1866,7 @@ function drawSelect(){ const s=(typeof SELLIST!=='undefined'&&SELLIST[selIdx])||
   ctx.fillStyle='#fff'; ctx.shadowColor=col; ctx.shadowBlur=28; fitFont(s.name,900,VH*0.088,VW*0.64); ctx.fillText(s.name,VW/2,VH*0.5);
   if(s.tag){ ctx.fillStyle=col; ctx.shadowBlur=6; fitFont(s.tag,800,VH*0.03,VW*0.7); ctx.fillText(s.tag,VW/2,VH*0.58); }
   { const on=CUP.on||TIMED; ctx.fillStyle=on?'#ffe23a':'#9fb6c8'; ctx.shadowColor=on?'#ff37c7':'#27f6ff'; ctx.shadowBlur=on?12:0; const mc=(TIMED?'★ CASTLE RULES':(CUP.on?'★ '+RAISE[CUP.variant].name:'EXHIBITION'))+'   (C / ↕ STICK)'; fitFont(mc,800,VH*0.03,VW*0.9); ctx.fillText(mc,VW/2,VH*0.66); }
+  if(!CAB2&&!CAMP){ const pc=twoP?'★ 2 PLAYERS · ONE KEYBOARD   (P)':'1 PLAYER VS CPU   (P = 2 PLAYERS)'; ctx.fillStyle=twoP?'#ffe23a':'#7f97a8'; ctx.shadowColor=twoP?'#ff37c7':'#27f6ff'; ctx.shadowBlur=twoP?10:0; const _y3=(typeof _Y==='function');   /* the 3D edition's SELECT lays text around the table plate (_Y): sit under the name/tag, clear of the playfield */ fitFont(pc,800,VH*(_y3?_Y(0.026,0.021):0.026),VW*0.8); ctx.fillText(pc,VW/2,VH*(_y3?_Y(0.765,0.312):0.765)); }   // SHARED-KEYBOARD 2P (1123): P toggles it on the table beat too (it was a hidden title-only key)
   ctx.fillStyle='#7f97a8'; ctx.shadowBlur=0; ctx.font=`700 ${Math.round(VH*0.024)}px "Helvetica Neue",Arial`; ctx.fillText((selIdx+1)+' / '+SELLIST.length,VW/2,VH*0.72);
   if(Math.floor(clock*1.8)%2===0){ ctx.fillStyle='#ffe23a'; ctx.shadowColor='#ff37c7'; ctx.shadowBlur=16; ctx.font=`800 ${Math.round(VH*0.045)}px "Helvetica Neue",Arial`; ctx.fillText('◄ STICK ►   ·   PUSH BLAST TO PLAY',VW/2,VH*0.82); }
   ctx.restore(); }
@@ -2327,6 +2397,7 @@ function draw(){
   if(state==='select'){ if(selPhase==='puck') drawPuck(); else drawSelect(); }
   if(state==='champion') drawChampion();
   if(celebCard) drawCelebCard();
+  if(keyCardT>0 && estT<=0.3) drawKeyCard();
   if(flashT>0){ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=flashT*0.16;ctx.fillStyle=flashCol;ctx.fillRect(0,0,VW,VH);ctx.restore();}
   // attract DEMO overlay text hidden (Joe 2026-06-27) — the demo reads as a clean live game; the splash beat carries the INSERT COIN prompt. Any input (BLAST / START / etc.) still drops into a real game.
 }
@@ -2342,7 +2413,7 @@ function applySeries(){ estAd=null;   // series games show the plain VENUE estab
   pendBanner=RAISE[CUP.variant].name+' · GAME '+(CUP.win+CUP.loss+1)+'  ('+CUP.win+'–'+CUP.loss+')'+(climax?' · THE HIGH TABLE':''); pendBannerD=1.6; }   // ARMED — shows once the establishing beat clears (see estT lifecycle), so the GAME number reads clear of GET READY
 function startPlayoff(){ CUP.inPlayoff=true; setTable('nachos'); DIFF=2; TARGET=3;   // sudden-death single game on the turbo line to unlock a secret
   banner('UNLOCK PLAYOFF · THE HIGH TABLE — '+AWAY[CUP.playoff].name,1.8); startMatch(); }
-function startMatch(){ scoreN=0;scoreF=0;near.sup=0;near.big=0;far.sup=0;far.big=0;far.plan=null;stallT=0;stallSampleT=0;stallRefX=0.5;stallRefY=AR/2;cornerT=0;lingerT=0;farRetreat=0;near.celebT=0;far.celebT=0;settle=0;graceOnServe=false;streakTeam=null;streak=0;hitstop=0;perClock=PERIOD_LEN;period=1;otSudden=false;estImg=pickVenueEst();est0=estImg?3.8:3.4;estT=est0;estTurbo=(tbl==='nachos');if(CUP.on&&(CUP.win+CUP.loss)>0)estT=Math.min(estT,2.4);/*series games 2+ = a trimmed-but-still-deliberate establish (was 1.0s = too rushed); the DROP lead-in stays generous — Joe 2026-09-01*/SFX.resume();if(!DEMO){SFX.start();menuCueDuck=Math.max(menuCueDuck,3.5);}faceoff();hint.classList.add('gone');clearTimeout(hintT); }   // game-start fanfare ducks the bed under it (no double); none in attract DEMO
+function startMatch(){ scoreN=0;scoreF=0;near.sup=0;near.big=0;far.sup=0;far.big=0;far.plan=null;stallT=0;stallSampleT=0;stallRefX=0.5;stallRefY=AR/2;cornerT=0;lingerT=0;farRetreat=0;near.celebT=0;far.celebT=0;settle=0;graceOnServe=false;streakTeam=null;streak=0;hitstop=0;perClock=PERIOD_LEN;period=1;otSudden=false;estImg=pickVenueEst();est0=estImg?3.8:3.4;estT=est0;estTurbo=(tbl==='nachos');if(CUP.on&&(CUP.win+CUP.loss)>0)estT=Math.min(estT,2.4);/*series games 2+ = a trimmed-but-still-deliberate establish (was 1.0s = too rushed); the DROP lead-in stays generous — Joe 2026-09-01*/SFX.resume();if(!DEMO){SFX.start();menuCueDuck=Math.max(menuCueDuck,3.5);}keyCardT=(twoP&&!CAB2&&!DEMO)?KEYCARD_T:0;faceoff();hint.classList.add('gone');clearTimeout(hintT); }   // game-start fanfare ducks the bed under it (no double); none in attract DEMO
 function endPeriod(){   // CASTLE RULES: regulation clock hit 0
   if(period<PERIODS){ period++; perClock=PERIOD_LEN; banner('PERIOD '+period+' OF '+PERIODS,1.8); state='serve'; setTimeout(()=>{ if(state==='serve') faceoff(); }, 1900); }
   else if(scoreN===scoreF){ otSudden=true; banner('OVERTIME · NEXT GOAL WINS',2.0); state='serve'; setTimeout(()=>{ if(state==='serve') faceoff(); }, 2000); }   // tie -> sudden death
@@ -2603,7 +2674,7 @@ function engineCycleMode(){ const order=SELJAIL?['off','standard','homecooked','
   if(typeof __syncMode==='function')__syncMode();   // keep the DOM mode chip in sync when toggled by C-key/stick
   banner(TIMED?'CASTLE RULES · 3 PERIODS':(CUP.on?RAISE[CUP.variant].name:'EXHIBITION'),0.9); }
 if(AUTOQA) window.__htAuto={ peek:()=>({state,DEMO,TIMED,FREE,CAMP,campCleared,cupOn:CUP.on,variant:CUP.variant,w:CUP.win,l:CUP.loss,playoff:CUP.inPlayoff,n:scoreN,f:scoreF,target:TARGET,diff:DIFF,tbl,period,ot:otSudden,perClock,
-  pX:puck.X,pY:puck.Y,pv:Math.hypot(puck.vX,puck.vY),fX:far.X,fY:far.Y,nX:near.X,nY:near.Y,champ:champTeam,unlock:champUnlock,bonus:champBonus}), begin:()=>begin() };   // QA read-only
+  pX:puck.X,pY:puck.Y,pv:Math.hypot(puck.vX,puck.vY),fX:far.X,fY:far.Y,nX:near.X,nY:near.Y,champ:champTeam,unlock:champUnlock,bonus:champBonus,held:puckHeld,flunge:far.lungeT||0,fbig:far.big||0,read:cpuRead.t>0?(cpuRead.right?'right':'wrong'):null}), begin:()=>begin() };   // QA read-only
 function begin(){
   if(TRANS.on) return;   // ignore input mid-transition — MUST be first: held-key auto-repeat / stick+key in one window were re-entering the reel/splash branches below and re-firing the clash wipe + SFX.hit (double impact). The boot intro isn't a transition() so this never blocks skipping it.
   if(UNLOCK_PRESS || performance.now()<CABHOLD) return;   // CK BOOT STANDARD: this press only turned the sound on / the cab reveal is still up
@@ -2731,7 +2802,7 @@ addEventListener('keydown',e=>{ if(pauseNavKey(e)||iniKey(e)) return; if(e.key==
   if(e.key==='Escape' && (state==='win'||state==='champion')){ e.preventDefault(); backToMenu(); return; }
   if(e.key==='Escape' && HOMEURL && (REEL||state==='boot'||state==='splash'||state==='inter'||state==='board'||state==='title')){ e.preventDefault(); location.href=HOMEURL; return; }   // owner: ESC on the attract = back to the console
   if((e.key==='Escape'||e.key.toLowerCase()==='p') && (pausable() || !pauseEl.classList.contains('hidden'))){ e.preventDefault(); togglePause(); return; }   // PAUSE MENU (active match only, so 'win' rematch + title 2P toggle below are untouched)
-  if((state==='title')&&e.key.toLowerCase()==='p'){twoP=!twoP;return;}if(state==='select'&&e.key==='ArrowLeft'){selCycle(-1);return;}if(state==='select'&&e.key==='ArrowRight'){selCycle(1);return;}if(state==='config'&&e.key==='ArrowLeft'){cfgCycle(-1);return;}if(state==='config'&&e.key==='ArrowRight'){cfgCycle(1);return;}if(state==='config'&&e.key==='ArrowUp'){cfgRowMove(-1);return;}if(state==='config'&&e.key==='ArrowDown'){cfgRowMove(1);return;}if(state==='select'&&(e.key==='ArrowUp'||e.key==='ArrowDown')){if(selPhase==='puck')selBack();else if(!CAMP)engineCycleMode();return;}   /* 1122 Joe: ↕ must cycle EXHIBITION → RAISE IT → CASTLE RULES on the table beat, as the chip says (was back-out only) */if(!CAMP&&(state==='title'||(state==='select'&&selPhase!=='puck'))&&e.key.toLowerCase()==='c'){engineCycleMode();return;}if((state==='title')&&e.key.toLowerCase()==='t'){setTable(TKEYS[(TKEYS.indexOf(tbl)+1)%TKEYS.length]);return;}if(e.key.toLowerCase()==='m'&&!((twoP||CAB2)&&(state==='play'||state==='faceoff'||state==='serve'))){MONO=!MONO;banner(MONO?'MONOCHROME':'COLOR',0.8);return;}if(e.key.toLowerCase()==='y'){const w=window.__toggleWays?window.__toggleWays():8;banner(w+'-WAY STICK',1.0);return;}if(state==='play'&&!DEMO&&near.sup>=1&&(e.key===' '||e.key.toLowerCase()==='f')){e.preventDefault();bigUp(near,PTEAM);return;}if(state==='play'&&twoP&&!CAB2&&far.sup>=1&&(e.key==='Enter'||e.key==='/')){e.preventDefault();bigUp(far,OTEAM);return;}if(REG&&e.key.toLowerCase()==='s'){try{LS.setItem('sideRink.'+tbl,JSON.stringify(RINK));}catch(_){}const j=JSON.stringify({nearY:+RINK.nearY.toFixed(3),farY:+RINK.farY.toFixed(3),nearHalf:+RINK.nearHalf.toFixed(3),farHalf:+RINK.farHalf.toFixed(3),cx:+RINK.cx.toFixed(3)});console.log('RINKPRESET '+tbl+':  '+j);banner('SAVED '+(TNAME[tbl]||tbl),1.2);return;}if(REG&&e.key.toLowerCase()==='r'){try{LS.removeItem('sideRink.'+tbl);}catch(_){}location.reload();return;}if(e.key>='1'&&e.key<='3'&&(state==='title'||state==='win'))DIFF=+e.key-1;if(e.key===' '||e.key==='Enter'){e.preventDefault();if(AUTOFS&&!_fsTried){_fsTried=true;goFullscreen();}begin();}});
+  if((state==='title'||(state==='select'&&selPhase!=='puck'&&!CAMP&&!CAB2))&&e.key.toLowerCase()==='p'){twoP=!twoP;banner(twoP?'2 PLAYERS · ONE KEYBOARD':'1 PLAYER VS CPU',0.9);try{SFX.modeblip(twoP);}catch(_){}return;}if(state==='select'&&e.key==='ArrowLeft'){selCycle(-1);return;}if(state==='select'&&e.key==='ArrowRight'){selCycle(1);return;}if(state==='config'&&e.key==='ArrowLeft'){cfgCycle(-1);return;}if(state==='config'&&e.key==='ArrowRight'){cfgCycle(1);return;}if(state==='config'&&e.key==='ArrowUp'){cfgRowMove(-1);return;}if(state==='config'&&e.key==='ArrowDown'){cfgRowMove(1);return;}if(state==='select'&&(e.key==='ArrowUp'||e.key==='ArrowDown')){if(selPhase==='puck')selBack();else if(!CAMP)engineCycleMode();return;}   /* 1122 Joe: ↕ must cycle EXHIBITION → RAISE IT → CASTLE RULES on the table beat, as the chip says (was back-out only) */if(!CAMP&&(state==='title'||(state==='select'&&selPhase!=='puck'))&&e.key.toLowerCase()==='c'){engineCycleMode();return;}if((state==='title')&&e.key.toLowerCase()==='t'){setTable(TKEYS[(TKEYS.indexOf(tbl)+1)%TKEYS.length]);return;}if(e.key.toLowerCase()==='m'&&!((twoP||CAB2)&&(state==='play'||state==='faceoff'||state==='serve'))){MONO=!MONO;banner(MONO?'MONOCHROME':'COLOR',0.8);return;}if(e.key.toLowerCase()==='y'){const w=window.__toggleWays?window.__toggleWays():8;banner(w+'-WAY STICK',1.0);return;}if(state==='play'&&!DEMO&&near.sup>=1&&(e.key===' '||e.key.toLowerCase()==='f')){e.preventDefault();bigUp(near,PTEAM);return;}if(state==='play'&&twoP&&!CAB2&&far.sup>=1&&(e.key==='Enter'||e.key==='/')){e.preventDefault();bigUp(far,OTEAM);return;}if(REG&&e.key.toLowerCase()==='s'){try{LS.setItem('sideRink.'+tbl,JSON.stringify(RINK));}catch(_){}const j=JSON.stringify({nearY:+RINK.nearY.toFixed(3),farY:+RINK.farY.toFixed(3),nearHalf:+RINK.nearHalf.toFixed(3),farHalf:+RINK.farHalf.toFixed(3),cx:+RINK.cx.toFixed(3)});console.log('RINKPRESET '+tbl+':  '+j);banner('SAVED '+(TNAME[tbl]||tbl),1.2);return;}if(REG&&e.key.toLowerCase()==='r'){try{LS.removeItem('sideRink.'+tbl);}catch(_){}location.reload();return;}if(e.key>='1'&&e.key<='3'&&(state==='title'||state==='win'))DIFF=+e.key-1;if(e.key===' '||e.key==='Enter'){e.preventDefault();if(AUTOFS&&!_fsTried){_fsTried=true;goFullscreen();}begin();}});
 addEventListener('keyup',e=>{if(e.key==='Shift')keyShift=false;keys[e.key]=false;});
 // ---- PAUSE MENU wiring (live control toggles; PAUSED freezes the sim, render keeps going, NOTHING resets) ----
 const pauseEl=document.getElementById('pause');
