@@ -127,6 +127,7 @@
 <div id="drop">drop to set table backdrop</div>
 
 <script src="lib/store.js?v=1"></script>
+<script src="lib/cabinet.js?v=1"></script>
 <script src="lib/rink-geo.js"></script>
 <script src="lib/catalog.js?v=2"></script>
 <script src="lib/attract.js?v=1"></script>
@@ -1360,6 +1361,22 @@ function coverDraw(im,x,y,w,h){
 
 /* ----- main loop ----------------------------------------------------------- */
 let last=0;
+// FILING CABINET (1124 audit B5): a finished TOP-DOWN match -> {t:'game', mode:'topdown'} (counts only). Same rule as side.html:
+//   to the console (postMessage, ?shell) or straight into lib/cabinet.js on a closed box; never on the web, never for ?demo.
+//   A watcher on its own frame: it reads GAME.state and never touches the sim.
+(function(){ const Q=new URLSearchParams(location.search), SHELL=Q.has('shell')&&window.parent!==window;
+  const CABON=SHELL||(!!window.HTStore&&HTStore.mode==='persist'&&!!window.HTCabinet), TO=(location.origin&&location.origin!=='null')?location.origin:'*';
+  if(!CABON||DEMO||typeof requestAnimationFrame!=='function') return;
+  let was=null, t0=0, secs=0;
+  function emit(ev){ if(SHELL){ try{ parent.postMessage({ht:'rec',ev:ev},TO); }catch(_){} return; } try{ HTCabinet.record(ev); }catch(_){} }
+  (function watch(now){ const s=GAME.state, live=(s==='play'||s==='faceoff'||s==='goal');
+    if(live&&t0) secs+=Math.min(0.25,(now-t0)/1000); t0=live?now:0;
+    if(s!==was){ if(s==='faceoff'&&(was==='menu'||was==='win'||was==='attract'||was===null)) secs=0;
+      if(s==='win'&&was!=='win'&&GAME.winner){ const two=!!(window.TD3D&&TD3D.twoP)||window.TD_2P===true;
+        emit({t:'game', mode:'topdown', won:GAME.winner==='Y', n:scoreY, f:scoreP, tbl:(pick.rink&&pick.rink.key)||_tbl, twoP:two, tier:two?null:DIFF, secs:Math.round(secs)}); }
+      was=s; }
+    requestAnimationFrame(watch); })(0);
+})();
 // 2 PLAYER FAIRNESS (Joe 1116 brief: fix a seat imbalance only as a documented, gated change). The engine resolves
 //   collide(yk) before collide(pk) every substep, and the knocker resolved FIRST wins a contested puck: with the SAME
 //   mirrored bot on both seats P1 won 72% (300 games, tools/_qa/topdown_parity.mjs). Harmless vs the CPU (1P keeps it

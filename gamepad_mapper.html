@@ -3,12 +3,14 @@
 <title>THE HIGH TABLE — Controller Mapper</title>
 <!--
   In-cab gamepad remapper for ONE TIMER: THE HIGH TABLE.
-  Reads/writes ONE localStorage key — `highTableGamepad` — that all three engines honor at load:
+  Reads/writes ONE key — `highTableGamepad` — through lib/store.js (HTStore), the same gate all three engines read at load:
     breakaway.html (Rivalry)  ·  side.html (Side mode)  ·  table_temp_engine.html (Penalty Box Nachos)
   Bind a physical button by pressing it; bind an aim/steer axis by pushing the stick. SAVE, then
   RE-LAUNCH the games to apply (they read the map once at startup).
   IMPORTANT: localStorage is per-origin. Open this page the SAME way you launch the games (via the
   server at http://localhost:…). Saved bindings only carry across pages on the same origin.
+  PUBLIC WEB (HTStore.mode 'session', 1124 audit P2): the web build saves nothing on a visitor's machine, so SAVE is
+  hidden there and the page says maps save on the cab only (the map still works for this page's live test).
 -->
 <style>
   :root{ --uv:#b388ff; --bee:#ffd23f; --queen:#b14cff; --hot:#39ff14; --bg:#0a0512; --pan:#160a28; }
@@ -110,8 +112,10 @@
     <textarea id="json" readonly></textarea>
   </div>
 
-</div><script>
+</div><script src="lib/store.js"></script><script>
 const KEY='highTableGamepad';
+const ST=window.HTStore||{getItem(){return null;},setItem(){},mode:'session'};   // ALL storage through lib/store.js (web = saves nothing)
+const CANSAVE=ST.mode==='persist';
 const DEFAULTS={ v:1, deadzone:0.18, axisX:0, axisY:1, invertX:false, invertY:false,
   buttons:{ snap:0, carom:1, blast:2, confirm:9, getbig:0, tableUp:12, cupDown:13 } };
 const ACTIONS=[
@@ -130,9 +134,11 @@ const AXES=[
 
 function clone(o){ return JSON.parse(JSON.stringify(o)); }
 let map = load();
-function load(){ try{ const m=JSON.parse(localStorage.getItem(KEY)); if(m&&m.v){ const d=clone(DEFAULTS); d.buttons=Object.assign({},DEFAULTS.buttons,m.buttons||{}); return Object.assign(d,m,{buttons:d.buttons}); } }catch(e){} return clone(DEFAULTS); }
+function load(){ try{ const m=JSON.parse(ST.getItem(KEY)); if(m&&m.v){ const d=clone(DEFAULTS); d.buttons=Object.assign({},DEFAULTS.buttons,m.buttons||{}); return Object.assign(d,m,{buttons:d.buttons}); } }catch(e){} return clone(DEFAULTS); }
 
 if(location.protocol==='file:') document.getElementById('fileWarn').classList.add('show');
+if(!CANSAVE){ document.getElementById('save').style.display='none';
+  const m=document.getElementById('savedMsg'); m.textContent='MAPS SAVE ON THE CAB ONLY — this web page keeps nothing'; m.classList.add('show'); m.style.transition='none'; }
 
 /* ---- binding capture state ---- */
 let arming=null;                 // {kind:'btn'|'axis', k} while waiting for input
@@ -172,7 +178,8 @@ dz.addEventListener('input',()=>{ map.deadzone=+dz.value; dzv.textContent=(+dz.v
 
 /* ---- save / reset ---- */
 document.getElementById('save').addEventListener('click',()=>{
-  map.v=1; localStorage.setItem(KEY,JSON.stringify(map));
+  map.v=1; if(!CANSAVE){ refreshJSON(); return; }   // public web: never write the visitor's disk
+  ST.setItem(KEY,JSON.stringify(map));
   const m=document.getElementById('savedMsg'); m.classList.add('show'); setTimeout(()=>m.classList.remove('show'),2200);
   refreshJSON();
 });
