@@ -67,6 +67,15 @@
   .cab.wip .badge{--neon:rgba(255,154,60,.7)}
   .save{--neon:rgba(57,255,20,.55)}
   .save::before{border-radius:2px}
+  /* WINDOW FIT (1125, Joe: "coming in a little big for a window that is unmaximized"): on a landscape desktop window the cabs
+     sit in ONE row, each as tall as the window allows (header + footer ~290px), so the whole garage is on screen with no
+     scroll. Phones / portrait keep the wrapping grid. */
+  @media (orientation:landscape) and (min-width:700px){
+    .grid{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,min(300px,calc((100vh - 290px) * .75)));
+          justify-content:center;max-width:none}
+    header{padding-top:min(26px,3vh)}
+    footer{padding-bottom:min(40px,4vh)}
+  }
 </style><link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSczMicgaGVpZ2h0PSczMic+PGVsbGlwc2UgY3g9JzE2JyBjeT0nMjEnIHJ4PScxMicgcnk9JzYnIGZpbGw9JyMxNDE0MTknLz48cmVjdCB4PSc0JyB5PScxMycgd2lkdGg9JzI0JyBoZWlnaHQ9JzgnIGZpbGw9JyMxNDE0MTknLz48ZWxsaXBzZSBjeD0nMTYnIGN5PScxMycgcng9JzEyJyByeT0nNicgZmlsbD0nI2YwYjQyOScvPjxlbGxpcHNlIGN4PScxNicgY3k9JzEzJyByeD0nNycgcnk9JzMuMicgZmlsbD0nI2ZmZDc2YicvPjwvc3ZnPg==">   <!-- gold puck — inline so there is no favicon.ico request (every build was 404ing one) -->
 <style data-ui3d>html{background:linear-gradient(180deg,rgba(5,3,12,.70),rgba(5,3,12,.86) 55%,rgba(5,3,12,.94)),url(sprites3d/ui/ui_title.webp) center 40%/cover fixed,#07050e!important}body{background:transparent!important}</style>
 </head><body>

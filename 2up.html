@@ -314,4 +314,11 @@
   else { drawCard(); if(ATTRACT) HTAttract.mount({ boot:true, autostart:!Q.has('noboot'), idle:45, first:'side2', isIdle:function(){ return true; } }); }
 })();
 </script>
+<script>/* WINDOW FIT (1125, Joe: "coming in a little big for a window that is unmaximized"): the launcher card is taller than a
+   laptop window with browser chrome (1280x650 needed 730px), so it scaled off the bottom and the page scrolled. When the card
+   is taller than the window it is scaled down (CSS zoom) to fit, on load and every resize. Never scales up. */
+(function(){ var el=document.getElementById('launch'); if(!el) return;
+  function fit(){ el.style.zoom=''; var need=el.getBoundingClientRect().height+4, room=innerHeight; if(need>room) el.style.zoom=String(Math.max(0.45,room/need)); }
+  addEventListener('resize',fit); addEventListener('load',fit); document.addEventListener('click',function(){ requestAnimationFrame(fit); }); fit(); })();
+</script>
 </body></html>
