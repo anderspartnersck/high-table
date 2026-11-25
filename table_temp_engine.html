@@ -164,7 +164,10 @@
 
 /* ----- ART HOOKS — any table works here; pick with ?table= (nachos|rivalry|throne|throneuv|killscreen) -- */
 const _TBL={nachos:'table_nachos_top_land',rivalry:'table_rivalry_bg',bees:'table_bees_bg',throne:'table_throne_bg',throneuv:'table_throne_uv',killscreen:'table_killscreen_top'};
-const _tbl=new URLSearchParams(location.search).get('table')||'nachos';
+// ?table= also takes the SIDE game's names (lib/catalog.js RINKS_SIDE): 'queens' / 'bee' are the two ENDS of THE RIVALRY there
+//   -> the top-down rivalry table (its end follows P1's knocker, BGFLIP). Was: unknown -> the NACHOS painting at boot + RINKS_TOP[0]
+//   (1125 review). Aliased HERE so the boot art, the trace and the launched rink all agree (a late boot-bg load overwrote the plate).
+const _tbl=(t=>({queens:'rivalry',bee:'rivalry'})[t]||t)(new URLSearchParams(location.search).get('table')||'nachos');
 // THE DRAWN TABLE (Joe 2026-10-14: "use the full look of the image while limiting the play area; the puck disappears into
 //   the goal lines as if sliding under those plastic pieces"). Each table plays on the art Joe TRACED in RINK LAB
 //   (lib/rink-geo.js corners / goalHalf / goalAxis / centerV) — the whole render is shown, the logical field (a 0..2 x b 0..1,

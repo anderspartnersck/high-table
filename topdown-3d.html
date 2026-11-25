@@ -134,7 +134,7 @@
 <script src="lib/pucks.js?v=noglow1"></script>
 <script src="lib/menu.js?v=1"></script>
 <script>window.TD3D_MAN={"version":1,"made_by":"tools/td_bake.py","note":"HIGH TABLE top-down 3D runtime set (blender/topdown/*)","plates":{"nachos":{"file":"plate_nachos.webp","size":[2048,1365],"boards":[],"preset":"nachos_mouse"},"killscreen":{"file":"plate_killscreen.webp","size":[2048,1298],"boards":[],"preset":"killscreen_mouse"},"rivalry":{"file":"plate_rivalry.webp","size":[2048,1365],"boards":[[0.3671875,0.08187134502923976,0.4921875,0.1286549707602339],[0.5078125,0.08187134502923976,0.62890625,0.1286549707602339]],"preset":"rivalry_top"},"rivalry_flip":{"file":"plate_rivalry_flip.webp","size":[2048,1365],"boards":[[0.37109375,0.08187134502923976,0.4921875,0.1286549707602339],[0.5078125,0.08187134502923976,0.6328125,0.1286549707602339]],"preset":"rivalry_top~flip"},"bees":{"file":"plate_bees.webp","size":[2048,1365],"boards":[],"preset":"honey_top"},"throne":{"file":"plate_throne.webp","size":[2048,1365],"boards":[[0.40625,0.10526315789473684,0.48828125,0.14035087719298245],[0.5078125,0.10526315789473684,0.58984375,0.14035087719298245]],"preset":"throne_top"},"throneuv":{"file":"plate_throneuv.webp","size":[2048,1366],"boards":[],"preset":"throneuv_mouse"}},"thumbs":{"nachos":"thumb_nachos.webp","killscreen":"thumb_killscreen.webp","rivalry":"thumb_rivalry.webp","bees":"thumb_bees.webp","throne":"thumb_throne.webp","throneuv":"thumb_throneuv.webp"},"grade":{"nachos":{"contrast_gain":1.103,"sat_gain":1.092,"lum2d":0.1,"lum3d":0.108,"sat2d":0.233,"sat3d":0.239,"std2d":0.204,"std3d":0.203},"killscreen":{"contrast_gain":1.116,"sat_gain":1.0,"lum2d":0.761,"lum3d":0.736,"sat2d":0.097,"sat3d":0.102,"std2d":0.178,"std3d":0.177},"rivalry":{"contrast_gain":1.173,"sat_gain":1.015,"lum2d":0.062,"lum3d":0.068,"sat2d":0.101,"sat3d":0.105,"std2d":0.125,"std3d":0.124},"rivalry_flip":{"contrast_gain":1.154,"sat_gain":1.025,"lum2d":0.062,"lum3d":0.07,"sat2d":0.101,"sat3d":0.105,"std2d":0.125,"std3d":0.122},"bees":{"contrast_gain":1.138,"sat_gain":1.012,"lum2d":0.059,"lum3d":0.065,"sat2d":0.07,"sat3d":0.073,"std2d":0.128,"std3d":0.127},"throne":{"contrast_gain":1.109,"sat_gain":1.004,"lum2d":0.757,"lum3d":0.734,"sat2d":0.102,"sat3d":0.106,"std2d":0.229,"std3d":0.227},"throneuv":{"contrast_gain":1.087,"sat_gain":1.084,"lum2d":0.144,"lum3d":0.146,"sat2d":0.112,"sat3d":0.115,"std2d":0.249,"std3d":0.246}},"knocker":{"cell":384,"unit_px":80.0,"frames":17,"cols":6,"tumble_deg_per_frame":-22.5},"kthumbs":{"knocker_yellow":"kthumb_yellow.webp","knocker_purple":"kthumb_purple.webp","knocker_white":"kthumb_white.webp","knocker_blue":"kthumb_blue.webp","knocker_green":"kthumb_green.webp","knocker_red":"kthumb_red.webp"},"puck":{"cell":218,"unit_px":64,"styles":{"classic":1,"lit":1,"zebra":8,"hive":8,"royal":8,"contested":8}},"light":{"note":"THE top-down key light, shared by td_tables.py (plates) and td_pieces.py (mallet/puck sprites + their contact shadows) so every shadow on the table falls the same way. azim = screen-space angle the light COMES FROM (0 = right, 90 = top): 135 = upper-left, shadows fall lower-right.","elev_deg":52,"azim_deg":128,"sun_energy":1.45,"sun_soft_deg":6,"sun_color":[1.0,0.96,0.92],"ambient":0.3,"rim_energy":0.22,"rim_color":[0.62,0.48,1.0],"sheen_energy":60.0},"uipucks":{"classic":1,"lit":1,"zebra":16,"hive":16,"royal":16,"contested":16},"venues":{"bee":"bee_est.webp","queens":"queens_est.webp","bees":"bees_est.webp","throne":"throne_est.webp","nachos":"nachos_est.webp"}};window.TD_2P=false;</script>
-<script>/* art3d/td3d.js (inlined by build_topdown3d.py, f97f2c12) */
+<script>/* art3d/td3d.js (inlined by build_topdown3d.py, 59af1872) */
 // TD3D — HIGH TABLE · TOP-DOWN 3D EDITION (Joe 1116: "rebuild all versions [of the top down] in 3d, including the
 // 2 up 2 player"). RENDER + INPUT LAYER ONLY, loaded by the generated topdown-3d.html / topdown-2up-3d.html
 // (tools/build_topdown3d.py builds them from table_temp_engine.html — never edit those by hand).
@@ -169,12 +169,27 @@
   const PLATE = { nachos_mouse:'nachos', killscreen_mouse:'killscreen', rivalry_top:'rivalry', 'rivalry_top~flip':'rivalry_flip',
                   honey_top:'bees', throne_top:'throne', throneuv_mouse:'throneuv' };   // HT-964 (1124): the alt blacklight Throne art got its own relit plate
   function tagFor(geo){ return geo ? PLATE[geo.id] : null; }
+  // PER-PLATE DRESSING (1125 review, td-1920-1125/REVIEW.md): the blacklight THRONE (throneuv) is a near-black glow table, so the
+  //   dark pieces and the dark parts of the FX vanish or read as dirt there. RENDER ONLY, this plate only (the other 6 untouched):
+  //   rim   a baked light ring under the 2D puck (the navy NEUTRAL puck was a dark disc on a dark table). One drawImage, no blur.
+  //   shA   the knocker's contact shadow (an opaque black disc 1.1x the mallet, offset by the key light) was a black hole on
+  //         the glowing surface -> softer.
+  //   ghost the grayscale strike ghost's first frames are DARK GRAY speckle (luminance-keyed from black): on this table they read
+  //         as a ragged dark fringe round the moving mallet, and the later frames' glow ring was cut square by the sprite cell ->
+  //         re-keyed (dark pixels out) + each cell feathered to its edges, once, cached.
+  //   boards the plate's lit top housing becomes the two LED scoreboards (the plate measured none, so the 2D engine drew the score
+  //         + team name ON the playfield where the mallet parks); P1 / P2 tags on the faces (a QUEENS-vs-QUEENS mirror = one colour).
+  const DRESS = { throneuv: { rim:'rgba(240,228,255,', shA:0.42, ghost:true, tags:true,
+                              boards:[[0.400,0.117,0.492,0.160],[0.508,0.117,0.600,0.160]] } };
+  let CUR=null;   // the plate on screen (set by bgFor, which the page calls for every table it draws)
+  function dress(){ return (!OFF && CUR && DRESS[CUR]) || null; }
 
   // ---------------------------------------------------------------- table plates
-  function bgFor(geo){ const t=tagFor(geo); if(OFF||!t||!MAN.plates[t]) return null; return ROOT+MAN.plates[t].file; }
+  function bgFor(geo){ const t=tagFor(geo); CUR=t||null; if(t && DRESS[t] && DRESS[t].ghost && !OFF) warmGhosts(); if(OFF||!t||!MAN.plates[t]) return null; return ROOT+MAN.plates[t].file; }
   function preFlipped(geo){ return !!(geo && geo.flip && tagFor(geo)==='rivalry_flip' && !OFF); }
   // the plate's scoreboards: measured on the ORIGINAL painting at bake time (the lit 3D housing would fool findBoards)
-  function boards(geo){ const t=tagFor(geo); if(OFF||!t) return null; const p=MAN.plates[t.replace('_flip','')]; return p ? p.boards.map(b=>b.slice()) : null; }
+  function boards(geo){ const t=tagFor(geo); if(OFF||!t) return null; const p=MAN.plates[t.replace('_flip','')], D=DRESS[t];
+    const B=(p&&p.boards&&p.boards.length) ? p.boards : (D&&D.boards); return B ? B.map(b=>b.slice()) : (p ? [] : null); }
 
   // ---------------------------------------------------------------- pieces
   let SK=['knocker_yellow','knocker_purple'], PST='classic';
@@ -187,14 +202,14 @@
     if(!KN3D){                                                        // PAINTED default: the 3D contact shadow, then the 2D painting draws
       if(!(k.celebT>0) && ok(sh)){ const d=K.cell*rU*1.03/K.unit_px; let scl=1;   // (a leaping knocker keeps the 2D's own falling shadow)
         if(k.hitT>0){ const q=1-k.hitT; scl=1+0.20*Math.cos(q*Math.PI*3)*(1-q); }
-        const ds=d*(1-0.12*(scl-1)); ctx.save(); ctx.globalAlpha*=0.9; ctx.drawImage(sh, c[0]-ds/2, c[1]-ds/2, ds, ds); ctx.restore(); }
+        const ds=d*(1-0.12*(scl-1)), X=dress(); ctx.save(); ctx.globalAlpha*=(X?X.shA:0.9); ctx.drawImage(sh, c[0]-ds/2, c[1]-ds/2, ds, ds); ctx.restore(); }
       return false; }
     if(!ok(sheet)) return false;
     const s = rU*1.03/K.unit_px, d=K.cell*s;                          // the drawn top-down knocker is ~1.03 KR (engine KRC)
-    let frame=0, lift=0, scl=1, rot=0, shA=0.9;
+    let frame=0, lift=0, scl=1, rot=0, shA=(dress()?dress().shA:0.9);
     if(k.celebT>0){                                                   // THE STRIKE LEAP — the 2D celebPose, with the real 3D tumble
       const T=k.celebLife||1.0, e=Math.min(1,1-k.celebT/T), damp=Math.max(0,1-e), rise=Math.abs(Math.sin(e*Math.PI*2.2))*damp;
-      rot=e*Math.PI*2.6; scl=1+0.40*rise; lift=rU*2.05*0.34*rise; shA=0.9*(1-rise*0.55);
+      rot=e*Math.PI*2.6; scl=1+0.40*rise; lift=rU*2.05*0.34*rise; shA*=(1-rise*0.55);
       if(e<0.46){ const ang=(e/0.46)*360; frame=1+(Math.round(ang/(360/16))%16); }
     } else if(k.hitT>0){ const q=1-k.hitT; scl=1+0.20*Math.cos(q*Math.PI*3)*(1-q); }
     if(ok(sh)){ ctx.save(); ctx.globalAlpha*=shA; const ds=d*(1-0.12*(scl-1)); ctx.drawImage(sh, c[0]-ds/2, c[1]-ds/2, ds, ds); ctx.restore(); }
@@ -204,7 +219,14 @@
     return true;
   }
   let spin=0, lastP=null;
+  let rimC=null;
+  function rimSprite(col){   // baked once: a crisp light ring just outside the puck edge + a soft falloff (no per-frame shadowBlur)
+    if(rimC && rimC.col===col) return rimC; const N=128, c=document.createElement('canvas'); c.width=c.height=N; c.col=col;
+    const g=c.getContext('2d'), R=N/2, gr=g.createRadialGradient(R,R,0,R,R,R);   // radius 1.0 = 1.5 PR
+    gr.addColorStop(0,col+'0)'); gr.addColorStop(0.60,col+'0)'); gr.addColorStop(0.655,col+'.95)'); gr.addColorStop(0.72,col+'.80)');
+    gr.addColorStop(0.80,col+'.30)'); gr.addColorStop(1,col+'0)'); g.fillStyle=gr; g.fillRect(0,0,N,N); return (rimC=c); }
   function puck(ctx, p, c, rU, along, perp, rot){
+    const X=dress(); if(X&&X.rim){ const d=rU*3; ctx.drawImage(rimSprite(X.rim), c[0]-d/2, c[1]-d/2, d, d); }   // under the puck either way
     if(OFF || !PK3D) return false;                                   // PAINTED default: the 2D puck
     const P=MAN.puck, n=P.styles[PST], sheet=I['p_'+PST+'.webp'], sh=I['p_shadow.webp'];
     if(!n || !ok(sheet)) return false;                               // ENERGY has no 3D model: its 2D chip draws
@@ -221,20 +243,23 @@
   //   once into a small canvas (gradient, glow text, dot mask) and blitted; was a gradient + a shadowBlur text + a pattern
   //   allocated per board per frame.
   let dots=null; const LED=new Map();
-  function ledFace(w, h, val, col, sc){
-    const m=Math.ceil(h*0.6), key=Math.round(w*sc)+'x'+Math.round(h*sc)+'|'+val+'|'+col; let c=LED.get(key); if(c) return c;
+  function ledFace(w, h, val, col, sc, tag){
+    const m=Math.ceil(h*0.6), key=Math.round(w*sc)+'x'+Math.round(h*sc)+'|'+val+'|'+col+'|'+(tag||''); let c=LED.get(key); if(c) return c;
     if(LED.size>24) LED.clear();
     c=document.createElement('canvas'); c.width=Math.ceil((w+2*m)*sc); c.height=Math.ceil((h+2*m)*sc); c.m=m;
     const g=c.getContext('2d'); g.scale(sc,sc); const x=m, y=m;
     g.fillStyle='#04050a'; g.fillRect(x-1,y-1,w+2,h+2);
     const gr=g.createLinearGradient(0,y,0,y+h); gr.addColorStop(0,'rgba(255,255,255,.07)'); gr.addColorStop(.5,'rgba(255,255,255,0)'); g.fillStyle=gr; g.fillRect(x,y,w,h);
     g.textAlign='center'; g.textBaseline='middle'; g.shadowColor=col; g.shadowBlur=h*0.55*sc; g.fillStyle=col;
-    g.font=`800 ${Math.round(h*0.82)}px "Helvetica Neue",Arial`; g.fillText(val, x+w/2, y+h*0.54); g.shadowBlur=0;
+    const vx = tag ? x+w*0.66 : x+w/2;   // tagged face: P1 / P2 on the left, the score on the right
+    g.font=`800 ${Math.round(h*0.82)}px "Helvetica Neue",Arial`; g.fillText(val, vx, y+h*0.54); g.shadowBlur=0;
+    if(tag){ g.fillStyle='rgba(255,255,255,.88)'; g.font=`800 ${Math.round(h*0.46)}px "Helvetica Neue",Arial`; g.fillText(tag, x+w*0.25, y+h*0.54); }
     if(!dots){ dots=document.createElement('canvas'); dots.width=dots.height=4; const d=dots.getContext('2d'); d.fillStyle='rgba(0,0,0,.55)'; d.fillRect(0,0,4,4); d.clearRect(1,1,2,2); }
     try{ g.setTransform(1,0,0,1,0,0); g.globalAlpha=0.6; g.fillStyle=g.createPattern(dots,'repeat'); g.fillRect(Math.round(x*sc),Math.round(y*sc),Math.round(w*sc),Math.round(h*sc)); }catch(e){}
     LED.set(key,c); return c; }
-  function ledBoard(ctx, x, y, w, h, val, col){
-    const t=ctx.getTransform&&ctx.getTransform(), sc=t?Math.max(1,Math.hypot(t.a,t.b)||1):1, c=ledFace(w,h,val,col,sc), m=c.m;
+  function ledBoard(ctx, x, y, w, h, val, col, i){
+    const X=dress(), tag=(X&&X.tags&&i!=null) ? (i?'P2':'P1') : '';
+    const t=ctx.getTransform&&ctx.getTransform(), sc=t?Math.max(1,Math.hypot(t.a,t.b)||1):1, c=ledFace(w,h,val,col,sc,tag), m=c.m;
     ctx.drawImage(c, x-m, y-m, w+2*m, h+2*m); return true; }
 
   // ---------------------------------------------------------------- menus (DOM)
@@ -351,8 +376,24 @@
     addEventListener('resize', chk); addEventListener('orientationchange', chk); setInterval(chk, 700);
   }
 
+  // the strike ghost re-keyed for a DRESS plate (see DRESS.ghost); null = the engine's own keyed sheet draws
+  const GH=new Map(); let STK=null;
+  function ghostSrc(S){ STK=S; }
+  function warmGhosts(){ if(STK) setTimeout(()=>{ ghost(STK,'bees'); ghost(STK,'queens'); }, 0); }   // the re-key off the first strike's frame
+  function ghost(STRIKE, team){
+    const X=dress(), src=STRIKE[team]; if(!X || !X.ghost || !src || !src.getContext) return null;   // file:// fallback = raw <img>: leave it
+    let c=GH.get(src); if(c!==undefined) return c;
+    try{ const w=src.width, h=src.height, fw=w/STRIKE.frames; c=document.createElement('canvas'); c.width=w; c.height=h;
+      const g=c.getContext('2d'); g.drawImage(src,0,0); const im=g.getImageData(0,0,w,h), d=im.data, F=Math.max(1,Math.min(fw,h)*0.16);
+      for(let y=0;y<h;y++){ const ey=Math.min(y,h-1-y);
+        for(let x=0;x<w;x++){ const i=(y*w+x)*4, cx=x%fw, ex=Math.min(cx,fw-1-cx), e=Math.min(1,Math.min(ex,ey)/F);
+          const L=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]; let a=(L-72)/70; a=a<0?0:a>1?1:a;
+          d[i+3]=Math.round(d[i+3]*a*e*e*(3-2*e)); } }
+      g.putImageData(im,0,0); }catch(e){ c=null; }
+    GH.set(src,c); return c; }
+
   style();
-  window.TD3D = { on:!OFF, twoP:TWO, fair:FAIR, man:MAN, bgFor, preFlipped, boards, skins, puckStyle, knocker, puck, ledBoard,
+  window.TD3D = { on:!OFF, twoP:TWO, fair:FAIR, man:MAN, bgFor, preFlipped, boards, skins, puckStyle, knocker, puck, ledBoard, ghost, ghostSrc,
                   rinks, decorateRinks, decorateKnockers, decoratePucks, venueLoad, askP2, p2pick:()=>P2PICK,
                   bind, pre, overlay };
 })();
@@ -389,7 +430,10 @@
 
 /* ----- ART HOOKS — any table works here; pick with ?table= (nachos|rivalry|throne|throneuv|killscreen) -- */
 const _TBL={nachos:'table_nachos_top_land',rivalry:'table_rivalry_bg',bees:'table_bees_bg',throne:'table_throne_bg',throneuv:'table_throne_uv',killscreen:'table_killscreen_top'};
-const _tbl=new URLSearchParams(location.search).get('table')||'nachos';
+// ?table= also takes the SIDE game's names (lib/catalog.js RINKS_SIDE): 'queens' / 'bee' are the two ENDS of THE RIVALRY there
+//   -> the top-down rivalry table (its end follows P1's knocker, BGFLIP). Was: unknown -> the NACHOS painting at boot + RINKS_TOP[0]
+//   (1125 review). Aliased HERE so the boot art, the trace and the launched rink all agree (a late boot-bg load overwrote the plate).
+const _tbl=(t=>({queens:'rivalry',bee:'rivalry'})[t]||t)(new URLSearchParams(location.search).get('table')||'nachos');
 // THE DRAWN TABLE (Joe 2026-10-14: "use the full look of the image while limiting the play area; the puck disappears into
 //   the goal lines as if sliding under those plastic pieces"). Each table plays on the art Joe TRACED in RINK LAB
 //   (lib/rink-geo.js corners / goalHalf / goalAxis / centerV) — the whole render is shown, the logical field (a 0..2 x b 0..1,
@@ -433,6 +477,7 @@ function keyAlpha(img){ try{ const w=img.naturalWidth||img.width,h=img.naturalHe
 const STRIKE={frames:6, bees:null, queens:null};
 for(const t of ['bees','queens']){ const im=new Image(); im.onload=(k=>()=>STRIKE[k]=keyAlpha(im))(t); im.src='sprites/strike_'+t+'.png'; }
 const strikes=[];   // active strike-ghost flashes
+if(window.TD3D&&TD3D.ghostSrc) TD3D.ghostSrc(STRIKE);
 const TITLE=new Image(); TITLE.src='sprites/title_high_table.png';
 /* ----- SFX + MUSIC (ONE TIMER library) ----- */
 const SFX=(()=>{ const lib={}, names=['slap','bomb','wave_off','bees_goal','queens_goal','center_countdown','select','bees_game_start','killscreen','title_logo_drop'];
@@ -1018,7 +1063,7 @@ function draw(time){
 
   // ---- first-strike mash-up ghosts ----
   for(let i=strikes.length-1;i>=0;i--){ const g=strikes[i]; g.t+=0.016;
-    const img=STRIKE[g.team], kk=g.t/g.life;
+    const img=(window.TD3D&&TD3D.ghost&&TD3D.ghost(STRIKE,g.team))||STRIKE[g.team], kk=g.t/g.life;   // 3D: a DRESS plate's clean re-key
     if(kk>=1 || !img){ strikes.splice(i,1); continue; }
     const fr=Math.min(STRIKE.frames-1, Math.floor(kk*STRIKE.frames)), fw=img.width/STRIKE.frames, fh=img.height;
     if(i<strikes.length-2 || kk>0.75) continue;   // PERF 1117: the 2 newest strike ghosts only (one per knocker), short-lived
@@ -1176,7 +1221,7 @@ function drawScore(){
     ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle';
     const BS=GEO.flip ? BOARDS.map(B=>[1-B[2],B[1],1-B[0],B[3]]).sort((p,q)=>p[0]-q[0]) : BOARDS;   // mirrored art -> mirrored boards
     BS.forEach((B,i)=>{ const x=ax+B[0]*aw, y=ay+B[1]*ah, w=(B[2]-B[0])*aw, h=(B[3]-B[1])*ah, col=i?(pk.col||'#b14cff'):(yk.col||'#ffe23a');
-      if(window.TD3D&&TD3D.on){ TD3D.ledBoard(ctx,x,y,w,h,i?scoreP:scoreY,col); return; }
+      if(window.TD3D&&TD3D.on){ TD3D.ledBoard(ctx,x,y,w,h,i?scoreP:scoreY,col,i); return; }
       ctx.fillStyle='#05060b'; ctx.fillRect(x-1,y-1,w+2,h+2);
       ctx.shadowColor=col; ctx.shadowBlur=h*0.5; ctx.fillStyle=col; ctx.font=`800 ${Math.round(h*0.82)}px "Helvetica Neue",Arial`;
       ctx.fillText(i?scoreP:scoreY, x+w/2, y+h*0.54); ctx.shadowBlur=0; });
