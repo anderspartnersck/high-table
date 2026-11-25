@@ -221,7 +221,7 @@
 <div id="tpad"><div class="col L" id="tcolL"><div id="tzone"><canvas id="tstickcv"></canvas></div><div class="tb trap" id="tbTrap"><div class="ring"></div><img alt=""><span class="lb">TRAP</span></div><div class="tb big" id="tbBig"><div class="ring"></div><img alt=""><span class="lb">GET BIG</span></div><div class="tb blast" id="tbBlast"><div class="ring"></div><img src="sprites/btn_blast.png" alt=""><span class="lb">BLAST</span></div></div><div class="col R" id="tcolR"></div><div id="tpause">&#10074;&#10074;</div><div id="tchip">STICK</div></div>
 <div id="trot"><div class="ph"></div>TURN YOUR PHONE<br><span style="font-size:13px;color:#9fb6c8;font-weight:700">the high table plays sideways</span></div>
 <div id="esccue"><b>ESC</b> · MENU</div>
-<div id="hint"><b>P1</b> mouse or <kbd>WASD</kbd> · <kbd>Z</kbd> TRAP · <kbd>X</kbd> GET BIG · <kbd>C</kbd> BLAST &nbsp;·&nbsp; <b>P2</b> <kbd>OKL;</kbd> · <kbd>,</kbd> GET BIG · <kbd>.</kbd> BLAST &nbsp;·&nbsp; score in the far goal</div>
+<div id="hint"><b>P1</b> mouse or <kbd>WASD</kbd> · <kbd>Z</kbd>/click TRAP · <kbd>X</kbd> GET BIG · <kbd>C</kbd>/right-click BLAST &nbsp;·&nbsp; <b>P2</b> <kbd>↑←↓→</kbd> · <kbd>M</kbd> TRAP · <kbd>,</kbd> GET BIG · <kbd>.</kbd> BLAST &nbsp;·&nbsp; score in the far goal</div>
 
 <!-- FRONT-END: title -> knocker select -> rink select -->
 <div id="menu">
@@ -260,7 +260,7 @@
     <h2>PAUSED</h2>
     <div class="psub">THE HIGH TABLE</div>
     <div class="seclbl">CONTROLS — toggle what's live</div>
-    <div class="ctog" data-ctrl="mouse"><div class="box"><i></i></div><div class="txt"><div class="nm">MOUSE</div><div class="hk">move the cursor to steer · click TRAP</div></div></div>
+    <div class="ctog" data-ctrl="mouse"><div class="box"><i></i></div><div class="txt"><div class="nm">MOUSE</div><div class="hk">move the cursor to steer · hold click TRAP · right-click BLAST</div></div></div>
     <div class="ctog" data-ctrl="keyboard"><div class="box"><i></i></div><div class="txt"><div class="nm">KEYBOARD</div><div class="hk">WASD / arrows to steer · Z TRAP · X GET BIG · C BLAST</div></div></div>
     <div class="ctog" data-ctrl="stick"><div class="box"><i></i></div><div class="txt"><div class="nm">STICK (F300 / pad)</div><div class="hk">left stick / d-pad · A TRAP · B GET BIG · RT BLAST</div></div></div>
     <div class="ctog" id="phand"><div class="box"><i></i></div><div class="txt"><div class="nm">FLOP THE HUD · BUTTONS ON THE RIGHT</div><div class="hk" id="phandhk">left-handed: TRAP · GET BIG · BLAST move to the right thumb, steer with the left</div></div></div>
@@ -696,7 +696,8 @@ const fx=[], ghosts=[], celes=[]; let foT=0,foDir=1; const FX_MAX=90;   // hard 
 // THE DROP, paced (Joe 2026-06-19): a real lead-in so play never lands "on top of" you. FOT = full faceoff
 //   clock; while foT>FO_DROP it's the GET READY beat (the ref reaches in, holds the puck); at FO_DROP the
 //   ref releases — flash, the CPU rushes the centre (its ONE sanctioned centre-rush), then play goes live.
-const FOT=2.8, FO_DROP=0.62; let foDropped=false, foWhistled=false;   // GET READY hold = FOT-FO_DROP (~2.18s) — a DELIBERATE lead-in before EVERY drop (match start AND each Castle-Rules period): give players time to shake their hands out (Joe 2026-09-01)
+const FOT=2.8, FO_DROP=0.62; let foDropped=false, foWhistled=false, foHold=false, foHoldT=0;   // foHold (1124, HT-4021): after a goal the face-off waits, unshown, until the goal call (SCORES! / BLAST GOAL! / HAT TRICK!) has faded -- no overlap
+      // GET READY hold = FOT-FO_DROP (~2.18s) — a DELIBERATE lead-in before EVERY drop (match start AND each Castle-Rules period): give players time to shake their hands out (Joe 2026-09-01)
 // FX REBUILD (Joe 2026-06-18): the additive bloom layer (coloured particle swarms/auras, glow rings,
 // colour celebration sprites, ring bursts) is OFF — it was crutching the game and the runaway bloom
 // crashed the tab. We rebuild juice from the ground up out of the CONTACT ANIMATION itself. The only
@@ -791,10 +792,12 @@ const CPUSOUL=[{read:0.40,lean:0.70,wrong:0.55,blast:0.15,trap:0.10,hold:0.30,bi
 //   steers the blast at the side of your mouth it read · ctr = chance it COUNTER-STRIKES an incoming hot puck · bigRead = chance it
 //   reads your wind-up / incoming blast with GET BIG · bigShot2 = GET BIG on an ordinary live shot (the timer makes it precious)
 //   · bigIdle = per-frame idle GET BIG roll when not ahead · pick = how far off-centre your mallet must be before it spends the meter (patience)
+//   · bmX (1124) = the CPU's BLAST meter fill rate vs yours (HT-4018/4019: aim .80/.90 -> .78/.82, ALL-STAR nb .35 -> .50, meter x1.6 at PRO/ALL-STAR:
+//   more chances, less sure; the tier gate bands could not take the full .65/.70 cut, see HT BLAST tuning 1124)
 //   · wary = never blasts into a charging or BIG mallet (it would be READ) · bigCd = the CPU's GET BIG timer vs yours (x cd) · pred = reads a BLAST's rail bank, 0..1 (folds its line off the rails to the goal line). ROOKIE = trigger-happy + wild, ALL-STAR = aimed + reads.
-const CPUBLAST=[{bigCd:1.0,nb:0.80,pred:0,wary:0,pick:0.00,aim:0.55,ctr:0.00,bigRead:0.15,bigShot2:0.00,bigIdle:0.002},
-                {bigCd:0.35,nb:0.60,pred:1,wary:0,pick:0.04,aim:0.80,ctr:0.55,bigRead:0.65,bigShot2:0.20,bigIdle:0.004},
-                {bigCd:0.5,nb:0.35,pred:1,wary:1,pick:0.09,aim:0.90,ctr:0.70,bigRead:0.75,bigShot2:0.55,bigIdle:0.004}];   // lean = how far the guard moves onto a read (0..1)
+const CPUBLAST=[{bmX:1.0,bigCd:1.0,nb:0.80,pred:0,wary:0,pick:0.00,aim:0.55,ctr:0.00,bigRead:0.15,bigShot2:0.00,bigIdle:0.002},
+                {bmX:1.6,bigCd:0.35,nb:0.60,pred:1,wary:0,pick:0.04,aim:0.78,ctr:0.55,bigRead:0.65,bigShot2:0.20,bigIdle:0.004},
+                {bmX:1.6,bigCd:0.5,nb:0.50,pred:1,wary:1,pick:0.09,aim:0.82,ctr:0.70,bigRead:0.75,bigShot2:0.55,bigIdle:0.004}];   // lean = how far the guard moves onto a read (0..1)
 const CPUV=Q.get('cpuverbs')!=='0';
 // 2P MIRROR (1124, HT-4004): single-screen P2 now drives its mallet EXACTLY like P1 -- the same glide spring (glideFar, the
 //   2-UP host's mirror of glideKnocker), the same key speed (1.6), the same target range, the same deke-and-screen, the same
@@ -829,8 +832,14 @@ if(LINK2){ twoP=true;
     else if(CAB2==='p2'&&m.t==='st'){ _netState=m.d; } };
 }
 // HOST: glide the far knocker toward P2's target (mirror of the near glide; clamps to far's half).
+// 2-UP MIRROR (1124, HT-4014): glideKnocker thins P1's air past its REACH arc (heavier + slower off the cushion, a scuffed hit);
+//   glideFar had no arc, so a human P2 (either 2P mode) reached the wings at the centre line on full air. farSupport = P1's arc
+//   from P2's end. ?p2reach=0 = the old arc-less far glide, for A/B only.
+const P2ARC=Q.get('p2reach')!=='0';
+function farSupport(x,y){ return P2ARC?nearSupport(x,AR-y):1; }
 function glideFar(tX,tY,dt){ const k=far,ox=k.X,oy=k.Y; k.gvX=k.gvX||0; k.gvY=k.gvY||0;
-  const damp=GLIDE.damp*(AIR.on?1:3.4), acc=GLIDE.accel*(k.stagT>0?BLASTX.stagCtl:1);   // 1124: knocked back = briefly sluggish, like glideKnocker (moveKnocker had it; the glide path didn't)
+  const sup=farSupport(k.X,k.Y);   // 2-UP MIRROR: P1's thin-air drag, from P2's end
+  const damp=GLIDE.damp*(AIR.on?1:3.4)*(1+(1-sup)*2.0), acc=GLIDE.accel*(0.6+0.4*sup)*(k.stagT>0?BLASTX.stagCtl:1);   // 1124: knocked back = briefly sluggish, like glideKnocker (moveKnocker had it; the glide path didn't)
   k.gvX+=((tX-k.X)*acc-k.gvX*damp)*dt; k.gvY+=((tY-k.Y)*acc-k.gvY*damp)*dt;
   k.X+=k.gvX*dt; k.Y+=k.gvY*dt; k.X=Math.max(KR,Math.min(1-KR,k.X));
   if(oy<AR-REACH.peak){ k.Y=Math.max(oy, Math.min(k.Y, oy+BLAST.retract*dt)); k.gvY=Math.max(k.gvY,0); }   // mirror of glideKnocker (incl. the 2026-10-14 stuck-at-the-line fix) (Fable D): ease back from a far BLAST lunge, never snap-clamp
@@ -850,7 +859,7 @@ function broadcastState(){ if(!LINK2)return; LINK2.postMessage({t:'st',d:{
   px:puck.X,py:puck.Y,pvx:puck.vX,pvy:puck.vY,ps:puck.spin||0,ph:puck.hitT,phx:puck.hnx,phy:puck.hny,
   nx:near.X,ny:near.Y,ns:near.sup,nb:near.big,nh:near.hitT,nc:near.celebT,nl:near.celebLife,nbm:near.bm,nw:near.windT,nst:near.strT,nsm:near.smallT,nfl:near.celebFl,
   fx:far.X,fy:far.Y,fs:far.sup,fb:far.big,fh:far.hitT,fc:far.celebT,fl:far.celebLife,fbm:far.bm,fw:far.windT,fst:far.strT,fsm:far.smallT,ffl:far.celebFl,pbt:puck.blT,pbo:puck.blO,mc:msgC,md:msgD,m2:msg2,m2t:msg2T,m2c:msg2C,m2d:msg2D,spc:SPEC,
-  sn:scoreN,sf:scoreF,st:state,fo:foT,fd:foDropped,mg:msg,mt:msgT,flt:flashT,flc:flashCol,sh:shake,
+  sn:scoreN,sf:scoreF,st:state,fo:foT,fd:foDropped,foh:foHold?1:0,mg:msg,mt:msgT,flt:flashT,flc:flashCol,sh:shake,
   es:estT,e0:est0,ei:estImg,zm:ZOOM,tb:tbl,mo:MONO,p2s:PUCKSTYLE,
   cw:CUP.win,cl:CUP.loss,con:CUP.on?1:0,cvr:CUP.variant,cip:CUP.inPlayoff?1:0,ctg:TARGET,ctm:champTeam,cht:champT,cun:champUnlock,   // RAISE IT series state (so the client's win/champion screen reads right)
   ck:clock }}); }
@@ -861,7 +870,7 @@ function applyNetState(){ const m=_netState; if(!m)return;
   near.X=m.nx;near.Y=m.ny;near.sup=m.ns;near.big=m.nb;near.hitT=m.nh;near.celebT=m.nc;near.celebLife=m.nl;near.bm=m.nbm||0;near.windT=m.nw||0;near.strT=m.nst||0;near.smallT=m.nsm||0;near.celebFl=m.nfl||1;
   far.X=m.fx;far.Y=m.fy;far.sup=m.fs;far.big=m.fb;far.hitT=m.fh;far.celebT=m.fc;far.celebLife=m.fl;far.bm=m.fbm||0;far.windT=m.fw||0;far.strT=m.fst||0;far.smallT=m.fsm||0;far.celebFl=m.ffl||1;
   puck.blT=m.pbt||0;puck.blO=m.pbo||null;msgC=m.mc||null;msgD=m.md||1;msg2=m.m2||'';msg2T=m.m2t||0;msg2C=m.m2c||null;msg2D=m.m2d||1;if(m.spc)SPEC=m.spc;
-  scoreN=m.sn;scoreF=m.sf;state=m.st;foT=m.fo;foDropped=m.fd;msg=m.mg;msgT=m.mt;flashT=m.flt;flashCol=m.flc;shake=m.sh;
+  scoreN=m.sn;scoreF=m.sf;state=m.st;foT=m.fo;foDropped=m.fd;foHold=!!m.foh;msg=m.mg;msgT=m.mt;flashT=m.flt;flashCol=m.flc;shake=m.sh;
   estT=m.es;est0=m.e0;estImg=m.ei;ZOOM=m.zm;MONO=m.mo;clock=m.ck; }
 function sendP2Input(){ if(LINK2) LINK2.postMessage({t:'in',d:p2local}); }
 // 2-UP INPUT (2026-10-07). The client streams p2local every frame; the host now APPLIES it, but only what CHANGED,
@@ -946,7 +955,8 @@ function faceoff(dir,home){puck.X=0.5;puck.Y=AR/2;puck.vX=0;puck.vY=0;puck.ot=0;
   //   keeps the old (0.5, 0.5) reset TARGET (keyboard / stick / 2P feel unchanged), and eases onto your hand after the drop (HAND.ease).
   if(home){ near.X=0.5; near.Y=0.5; } else { near.X=Math.max(KR,Math.min(1-KR,near.X)); near.Y=Math.max(KR,Math.min(1.0,near.Y)); }
   near.TX=0.5; near.TY=0.5; near.gvX=0; near.gvY=0; near._svx=0; near._svy=0; near._stickArm=false;
-  if(twoP && !CAB2){ far.TX=0.5; far.TY=AR-0.5; far.gvX=0; far.gvY=0; }   // 2P MIRROR: single-screen P2's keys/pad target resets with P1's (it used to carry a stale target into every drop)
+  if(twoP){ far.TX=0.5; far.TY=AR-0.5; far.gvX=0; far.gvY=0; far._svx=0; far._svy=0; far._stickArm=false;   // 2P MIRROR: P2's keys/pad target resets with P1's (it used to carry a stale target into every drop) + P2's stick re-arms like P1's
+    if(CAB2==='p1'){ p2in.tx=0.5; p2in.ty=AR-0.5; } }   // 2-UP MIRROR (HT-4014): the host's P2 target too (P1's near.TX/TY reset above)
   if(typeof HAND==='object'&&HAND){ if(HAND.ok&&HAND.inWin&&CTRL.mouse&&!TMODE) HAND.ease=HAND_EASE; else HAND.ease=0; } }
 
 function moveKnocker(k,tX,tY,maxStep,dt){
@@ -1025,7 +1035,7 @@ const KNOCK={ rest:0.55 };   // knocker-vs-knocker restitution on a hard clank (
 const OLDBLAST=Q.get('blast')==='old' && !!(LS.local || LS.app);   // LOCAL A/B only (Joe 1124): file:// / localhost / LAN rig / the box or app. The public Pages site ignores ?blast=old
 const BLASTX={ wind:0.12, strike:0.18, reach:1.6, v:1.7, life:1.1, swing:0.55, minFwd:0.40, spin:0.45, railMu:0.25, spinDecay:0.7,
                assist:0.45, windReach:1.08, windLate:0.5, readV:0.9, readRest:1.0, readKeep:0.75, steal:0.35, blockRest:0.55, blockKeep:0.55, thru:0.75, stag:0.32, stagCtl:0.35, kb:1.8, whiff:0.5, otWin:1.6 };
-const BLASTM={ touch:0.08, volley:0.06, gap:0.18 };   // meter: +touch per contact (refractory gap s), +volley when YOUR touch sends it over centre
+const BLASTM={ touch:0.05, volley:0.04, gap:0.18 };   // 1124 HT-4018: was .08/.06 (~3 blasts a minute a side) -> about one every 30-40 s.   meter: +touch per contact (refractory gap s), +volley when YOUR touch sends it over centre
 const BIGX={ cd:7.0, dur:1.4 };                     // GET BIG: refill time, how long you stay big (was a hit-built meter + 2.6 s)
 const SMALLX={ life:1.6 };                            // GET SMALL (the loser of a blast point deflates)
 // TRAP feel (Joe 2026-06-22): catch leniency, charge time, and the shot. AIM pulls the fired puck UP-ICE toward
@@ -1073,6 +1083,7 @@ function collide(k,cx,cy){
   if(!read && !hot) puck.blKind=null; puck.carom=0;   // a blast deflecting off the defender stays the blaster's
   { let e=(k.big>0)?CONTACT.restBig:CONTACT.rest, scuff=0;
     if(k===near){ const sup=nearSupport(k.X,k.Y); if(sup<0.9) scuff=1-sup; }   // SCUFF: reaching off your air = a mishit
+    else if(twoP && !DEMO){ const sup=farSupport(k.X,k.Y); if(sup<0.9) scuff=1-sup; }   // 2-UP MIRROR: a HUMAN P2 scuffs off its air like P1 (the 1P CPU's far is untouched)
     e*=(1-0.45*scuff);                                                          // weaker contact
     const inCorner=((puck.X<0.15||puck.X>0.85)&&(puck.Y<0.36||puck.Y>AR-0.36));
     if(inCorner) e*=CONTACT.cornerHit;                                          // CORNER SOFTEN: contact barely impacts -> trap it without pinball (Joe)
@@ -1166,7 +1177,16 @@ function stagger(k,Nx,Ny,inSpd){ k.stagT=BLASTX.stag; const g=BLASTX.kb*Math.min
   shake=Math.max(shake,10); try{SFX.wall(0.5);}catch(e){} banner2('KNOCKED BACK',0.7); }
 function staggerMove(dt){ for(const k of [near,far]) if(k.stagT>0){ const f=k.stagT/BLASTX.stag; k.X+=k.kbX*f*dt; k.Y+=k.kbY*f*dt; k.X=Math.max(KR,Math.min(1-KR,k.X));
   if(k===near) k.Y=Math.max(KR,Math.min(Math.max(REACH.peak,k.Y),k.Y)); else k.Y=Math.min(AR-KR,Math.max(Math.min(AR-REACH.peak,k.Y),k.Y)); } }
-function volleyTouch(k){ if(clock-(k._vt==null?-9:k._vt)<BLASTM.gap) return; k._vt=clock; puck.lastT=kSide(k); if(OLDBLAST) return; k.bm=Math.min(1,k.bm+BLASTM.touch); }
+// the 1P CPU's meter fills at its tier's rate (bmX), like its GET BIG timer (bigCd) -- HT-4018/4019: the slower meter + the cut blast aim
+//   took the PRO/ALL-STAR's main threat vs a skilled hand; a quicker meter gives back CHANCES (blasts), not the old sure aim.
+function bmGain(k){ return (k===far&&CPUV&&!twoP&&!CAB2&&!DEMO)?CPUBLAST[DIFF].bmX:1; }
+// OWN-HALF METER CAP (1125 Joe's pick, HT anti-spam: "too easy to build meter if you spam your own corner ... a carom or 2 count on
+//   one's own side"), DEFAULT ON = 2: while the puck stays on YOUR half only your first 2 touches add meter (a save -> own-rail carom ->
+//   second touch still charges in full); the count resets whenever the puck changes halves (and at every drop). The VOLLEY bonus is
+//   unchanged. Both mallets, every mode (1P CPU, 2P, 2-UP, pad). LOCAL tuning only: ?bmcap=0 off (old behaviour), ?bmcap=N, ?bmcap=h halving.
+const BMCAP=((LS.local||LS.app)&&Q.has('bmcap'))?(Q.get('bmcap')==='h'?'h':(Math.max(0,Math.min(9,+Q.get('bmcap')|0)))):2;
+function bmCapGain(k){ if(!BMCAP || (puck.Y<AR*0.5)!==(k===near)) return 1; const c=k._own=(k._own||0)+1; return BMCAP==='h'?Math.pow(0.5,c-1):(c<=BMCAP?1:0); }
+function volleyTouch(k){ if(clock-(k._vt==null?-9:k._vt)<BLASTM.gap) return; k._vt=clock; puck.lastT=kSide(k); if(OLDBLAST) return; k.bm=Math.min(1,k.bm+BLASTM.touch*bmGain(k)*bmCapGain(k)); }
 // the CPU picks a side of your mouth to aim its blast at (open side on a read, else a guess)
 function cpuAimBlast(S){ const open=(near.X<0.5?1:-1); far.blAim=0.5+(Math.random()<S.read?open:(Math.random()<0.5?1:-1))*GOAL*0.6; far.blAimW=S.aim; }
 // FAR-CPU CLEAR PLANNER (Joe 2026-06-19): once the CPU chooses to engage a slow/settled puck, decide HOW
@@ -1234,8 +1254,9 @@ function step(dt){
     const ready = foT>FO_DROP;
     // FIRST drop: hold the count under the venue establishing card so the beats SEQUENCE (card → ready → drop)
     if(keyCardT>0 && estT<=0.3) keyCardT=Math.max(0,keyCardT-dt);   // the KEY MAP clock starts once the venue card has cleared
-    if(!(ready && (estT>0.5 || keyCardT>0.9))) foT-=dt;   // + the 2P KEY MAP card holds GET READY until it has been up long enough to read
-    const p2h = twoP && !CAB2;                                            // 2P MIRROR: a HUMAN P2 homes exactly like P1 (no CPU centre-rush on their mallet)
+    if(foHold && ((msgT<=0 && msg2T<=0) || (foHoldT+=dt)>2.0)){ foHold=false; foHoldT=0; }   // HT-4021: the goal call has faded -> GET READY may start (2 s safety cap)
+    if(!(ready && (estT>0.5 || keyCardT>0.9)) && !foHold) foT-=dt;   // + the 2P KEY MAP card holds GET READY until it has been up long enough to read
+    const p2h = twoP;                                                     // 2P MIRROR: a HUMAN P2 homes exactly like P1 (no CPU centre-rush on their mallet) -- single-screen AND the 2-UP host (HT-4014)
     if(ready){ moveKnocker(far,0.5,p2h?AR-0.30:AR-0.24,6,dt);             // CPU waits at home through GET READY...
       if(!foWhistled && foT<FOT-0.25){ foWhistled=true; SFX.drop(); } }   // ...a whistle/countdown cue opens the beat (the team horn lands on THE RELEASE below, not stacked here)
     else if(p2h) moveKnocker(far,0.5,AR-0.30,6,dt);
@@ -1292,15 +1313,17 @@ function step(dt){
   if(CAB2==='p1'){ // 2-UP HOST: far is P2, gliding toward the target sent from the other screen
     // P2 KEYBOARD (2-UP): same keys as single-screen 2P -- O K L ; or the arrows, comma GET BIG, period BLAST -- but
     //   steered in P2's OWN view (monitor 2 looks from the far end), so left/right mirror like P2's stick does.
+    if(puck.Y<AR*0.5){ p2in.tx += (0.5-p2in.tx)*Math.min(0.5,2.0*dt); }   // 2-UP MIRROR (HT-4014): P1's DEKE-AND-SCREEN from P2's end (the host had none)
     { let kx=0,ky=0; if(keys['ArrowLeft']||keys['k'])kx-=1; if(keys['ArrowRight']||keys[';'])kx+=1; if(keys['ArrowUp']||keys['o'])ky-=1; if(keys['ArrowDown']||keys['l'])ky+=1;
-      if(kx||ky){ const kn2=(kx&&ky)?0.7071:1; p2in.tx=Math.max(0,Math.min(1,p2in.tx-kx*1.5*kn2*dt)); p2in.ty=Math.max(AR*0.5,Math.min(AR-KR,p2in.ty+ky*1.5*kn2*dt)); }
+      if(kx||ky){ const kn2=(kx&&ky)?0.7071:1, ps2=1.6;   // 2-UP MIRROR: P1's WASD speed (was 1.5)
+        p2in.tx=Math.max(0,Math.min(1,p2in.tx-kx*ps2*kn2*dt)); p2in.ty=Math.max(AR*0.5,Math.min(AR-KR,p2in.ty+ky*ps2*kn2*dt)); }
       const kb=!!keys[','], kl=!!keys['.']; if(kb!==_p2kb){ p2in.big=kb; _p2kb=kb; } if(kl!==_p2kl){ p2in.blast=kl; _p2kl=kl; } }
     farTrapIn = !!p2in.trap || !!keys['m'] || !!keys['M'];   // P2 TRAP: the F300's TRAP button / the 2nd screen's deck / M (mirror of Z)
     // Same committed-BLAST rule as the near knocker, applied HOST-side because the lunge lives here:
     // SIDE 2's pointer keeps streaming tx/ty during the lunge, and if we took ty the client would drag
     // its own target up-ice chasing the knocker and park it at the tip. The client has no lungeT to
     // gate on, so the host is the right place. X still tracks, so the lunge stays aimable.
-    far.TX=Math.max(KR,Math.min(1-KR,p2in.tx));
+    far.TX=Math.max(0,Math.min(1,p2in.tx));   // 2-UP MIRROR: P1's target range (0..1 across; glideFar clamps the mallet itself) -- was KR..1-KR
     if(!(far.lungeT>0)) far.TY=Math.max(AR*0.5,Math.min(AR-KR,p2in.ty));
     if(p2in.blast && !p2blastPrev){ if(puckHeld==='far') farShootReq=true; else triggerFarLunge(); } p2blastPrev=!!p2in.blast;   // SIDE 2's BLAST → far lunge (or SHOOT a trapped puck)
     if(far.lungeT>0) farLungeMove(dt); else glideFar(far.TX, far.TY, dt);
@@ -1586,7 +1609,7 @@ function step(dt){
     if(hotN && !slotHotN) SFX.clack(0.3); slotHotN=hotN; }
   // light air-hockey friction + speed clamp
   const f=Math.pow(0.86,dt); puck.vX*=f; puck.vY*=f;
-  { const side=puck.Y<AR*0.5?'n':'f'; if(!OLDBLAST && puck._side && side!==puck._side && puck.lastT===puck._side){ const k=puck.lastT==='n'?near:far; k.bm=Math.min(1,k.bm+BLASTM.volley); } puck._side=side; }   // VOLLEY: your touch sent it over centre
+  { const side=puck.Y<AR*0.5?'n':'f'; if(side!==puck._side){ near._own=0; far._own=0; } if(!OLDBLAST && puck._side && side!==puck._side && puck.lastT===puck._side){ const k=puck.lastT==='n'?near:far; k.bm=Math.min(1,k.bm+BLASTM.volley*bmGain(k)); } puck._side=side; }   // VOLLEY: your touch sent it over centre
   const CAP = puck.blT>0 ? MAXV+(MAXV*BLASTX.v-MAXV)*Math.sqrt(Math.min(1,puck.blT/BLASTX.life)) : MAXV;   // the BLASTED PUCK rides its own cap, decaying to MAXV
   const sp=Math.hypot(puck.vX,puck.vY); if(sp>CAP){ puck.vX*=CAP/sp; puck.vY*=CAP/sp; }
   puck.spin=(puck.spin||0)+(7+sp*9)*dt;   // animation-sheet frame clock — idles slow, spins up with speed
@@ -1692,7 +1715,7 @@ function goal(side){
       setTimeout(()=>{ if(state==='serve'&&DEMO) faceoff(); }, 2400); }
     else { state='win'; banner(winName(scoreN>=TARGET),99,endCol(scoreN>=TARGET)); shutoutCheck(); }   // win-screen press advances the bracket (winPress)
   }
-  else { state='serve'; const breath = pol==='none' ? 1600 : 2100;            // let it breathe — give the other player time to react
+  else { state='serve'; foHold=true; foHoldT=0; const breath = pol==='none' ? 1600 : 2100;            // let it breathe — give the other player time to react
     setTimeout(()=>{ if(state==='serve') faceoff(side==='far'?-1:1); }, breath); }
 }
 
@@ -1862,14 +1885,19 @@ function drawCallout(t,cx,cy,fs0,col,age,rem,pw){ if(!t) return;
   const sc=(pin<1?(0.55+0.45*_ease(pin)):1)*(0.94+0.06*out)*(1+0.05*pw*Math.max(0,1-age/0.5)), rot=(1-pin)*-0.07*pw;
   ctx.save(); ctx.globalAlpha=Math.min(1,age/0.05)*out; ctx.translate(cx,cy-(1-out)*VH*0.035); ctx.rotate(rot); ctx.scale(sc,sc);
   ctx.drawImage(L.c,-L.c.width/2,-L.c.height/2); ctx.restore(); }
-function drawBigMeter(){ if(OLDBLAST) return meterPlate('GET BIG','★ GET BIG ★',near.sup,0,1,true);
-  const by=meterPlate('BLAST','★ BLAST ★',near.bm,0,1,true);
-  meterPlate(near.big>0?'BIG!':'GET BIG',near.big>0?'BIG!':'GET BIG ✓',near.big>0?near.big/BIGX.dur:near.sup,by,0.62,false); }
-function meterPlate(lbl,lblR,fv,y0,S,qa){
+// HUD PLATES (1124, HT-4020): YOUR plate on your side (PADHAND), and in one-keyboard 2P a MIRRORED P2 plate on the other side in
+//   P2's colour (P2 used to see their charge only as the glow on their mallet). The 2-UP P2 screen (MIRROR2) shows P2's OWN meter.
+function drawBigMeter(){ const mine=MIRROR2?far:near, mcol=MIRROR2?(FARGLOW||tcol(OTEAM)):(NEARGLOW||tcol(PTEAM)), mR=PADHAND==='R';
+  plates(mine,mcol,mR,true);
+  if(twoP&&!CAB2) plates(far,FARGLOW||tcol(OTEAM),!mR,false); }
+function plates(k,col,R,qa){ if(OLDBLAST) return meterPlate('GET BIG','★ GET BIG ★',k.sup,0,1,qa,col,R);
+  const by=meterPlate('BLAST','★ BLAST ★',k.bm,0,1,qa,col,R);
+  meterPlate(k.big>0?'BIG!':'GET BIG',k.big>0?'BIG!':'GET BIG ✓',k.big>0?k.big/BIGX.dur:k.sup,by,0.62,false,col,R); }
+function meterPlate(lbl,lblR,fv,y0,S,qa,col,R){
   const u=VH*S, P=Math.max(6,Math.round(u*0.012)), fs=Math.max(12,Math.round(u*0.03)), gap=Math.max(4,Math.round(u*0.009)),
-        bh=Math.max(8,Math.round(u*0.024)), K=0.25, rd=fv>=1, col=NEARGLOW||tcol(PTEAM);
+        bh=Math.max(8,Math.round(u*0.024)), K=0.25, rd=fv>=1;
   const L0=brushLabel(lbl,fs,col,false), cap=L0.cap, ph=P+cap+gap+bh+P, bw=Math.round(VW*0.24*S), pw=bw+2*P;
-  const px=Math.round(PADHAND==='R'?VW*0.96-bw-P:VW*0.04-P), py=Math.round(y0?y0+VH*0.008:VH*0.125);
+  const px=Math.round(R?VW*0.96-bw-P:VW*0.04-P), py=Math.round(y0?y0+VH*0.008:VH*0.125);
   const Lx=y=>px+K*(py+ph-y);                       // the plate's slanted LEFT edge at row y (right edge = Lx(y)+pw)
   const para=(x0,y0,w,h)=>{ ctx.beginPath(); ctx.moveTo(x0+K*h,y0); ctx.lineTo(x0+K*h+w,y0); ctx.lineTo(x0+w,y0+h); ctx.lineTo(x0,y0+h); ctx.closePath(); };
   const pulse=rd?0.5+0.5*Math.sin(clock*7):0;
@@ -1977,7 +2005,7 @@ function drawCelebCard(){ const cc=celebCard; if(!cc)return;
 // 2P KEY MAP (1123): ONE KEYBOARD, both players, every verb. The jumbotron LED card (same plate as drawCelebCard), each
 //   half in its end's own colour, keycaps lit like the cab buttons. Up before the first drop of a shared-keyboard match.
 const KEYCARD_T=4.6; let keyCardT=0;
-const KEYMAP2=[{who:'P1',near:true,move:['W','A','S','D'],rows:[['Z','TRAP'],['X','GET BIG'],['C','BLAST']]},
+const KEYMAP2=[{who:'P1',near:true,move:['W','A','S','D'],rows:[['Z','TRAP'],['X','GET BIG'],['C','BLAST']],foot:'MOUSE · HOLD TRAP · RIGHT-CLICK BLAST'},
                {who:'P2',near:false,move:['↑','←','↓','→'],rows:[['M','TRAP'],[',','GET BIG'],['.','BLAST']]}];
 function drawKeyCard(){ const a=Math.min(1,(KEYCARD_T-keyCardT)/0.25)*Math.min(1,keyCardT/0.35); if(a<=0)return;
   const cw=Math.min(VW*0.86,VH*1.5), ch=cw*0.40, cx=VW/2, cy=VH*0.44, k=ch*0.15;
@@ -1991,7 +2019,8 @@ function drawKeyCard(){ const a=Math.min(1,(KEYCARD_T-keyCardT)/0.25)*Math.min(1
     const g=k*1.12, my=top+ch*0.36;                                   // the move cluster: ▲ over ◄ ▼ ►
     cap(x0-cw*0.12,my-g*0.55,k,m.move[0],col); cap(x0-cw*0.12-g,my+g*0.55,k,m.move[1],col); cap(x0-cw*0.12,my+g*0.55,k,m.move[2],col); cap(x0-cw*0.12+g,my+g*0.55,k,m.move[3],col);
     ctx.fillStyle='#cfe6ff'; ctx.font=`800 ${Math.round(k*0.42)}px "Helvetica Neue",Arial`; ctx.fillText('MOVE',x0-cw*0.12,my+g*1.35);
-    m.rows.forEach((r,j)=>{ const ry=top+ch*(0.30+j*0.19), bx=x0+cw*0.06; cap(bx,ry,k,r[0],col); ctx.textAlign='left'; ctx.fillStyle='#fff'; ctx.font=`900 ${Math.round(k*0.5)}px "Helvetica Neue",Arial`; ctx.fillText(r[1],bx+k*0.75,ry+1); ctx.textAlign='center'; }); });
+    m.rows.forEach((r,j)=>{ const ry=top+ch*(0.30+j*0.19), bx=x0+cw*0.06; cap(bx,ry,k,r[0],col); ctx.textAlign='left'; ctx.fillStyle='#fff'; ctx.font=`900 ${Math.round(k*0.5)}px "Helvetica Neue",Arial`; ctx.fillText(r[1],bx+k*0.75,ry+1); ctx.textAlign='center'; });
+    if(m.foot){ ctx.fillStyle='#cfe6ff'; ctx.font=`800 ${Math.round(k*0.32)}px "Helvetica Neue",Arial`; ctx.fillText(m.foot,x0,top+ch*0.81); } });   // 1124: P1's mouse verbs (the hint bar says the same)
   ctx.strokeStyle='rgba(255,255,255,.18)'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(cx,cy-ch*0.38); ctx.lineTo(cx,cy+ch*0.38); ctx.stroke();
   ctx.fillStyle='#ffe23a'; ctx.shadowColor='#ff37c7'; ctx.shadowBlur=12; ctx.font=`800 ${Math.round(ch*0.07)}px "Helvetica Neue",Arial`; ctx.fillText('ONE KEYBOARD · FIRST TO '+TARGET,cx,cy+ch*0.42);
   ctx.restore(); }
@@ -2260,7 +2289,8 @@ function drawSplash(){ const cx=VW/2, t=clock, wide=(VW/VH)>1.2;
   if(TITLE.complete&&TITLE.naturalWidth){ const r=TITLE.naturalWidth/TITLE.naturalHeight, w=Math.min(VW*0.72,VH*0.62*r), h=w/r; ctx.save(); ctx.shadowColor='rgba(0,0,0,0.85)'; ctx.shadowBlur=26; ctx.drawImage(TITLE,cx-w/2,VH*0.045,w,h); ctx.restore(); }
   // bottom banner + INSERT COIN
   const bv=ctx.createLinearGradient(0,VH*0.74,0,VH); bv.addColorStop(0,'rgba(4,2,10,0)'); bv.addColorStop(1,'rgba(4,2,10,0.88)'); ctx.fillStyle=bv; ctx.fillRect(0,VH*0.74,VW,VH*0.26);
-  if(Math.floor(t*1.8)%2===0){ ctx.save(); ctx.textAlign='center'; ctx.fillStyle='#fff'; ctx.shadowColor='#ff37c7'; ctx.shadowBlur=18; ctx.font=`900 ${Math.round(VH*0.05)}px "Helvetica Neue",Arial`; ctx.fillText('INSERT COIN — PUSH BLAST',cx,VH*0.95); ctx.restore(); } }
+  if(Math.floor(t*1.8)%2===0){ ctx.save(); ctx.textAlign='center'; ctx.fillStyle='#fff'; ctx.shadowColor='#ff37c7'; ctx.shadowBlur=18; ctx.font=`900 ${Math.round(VH*0.05)}px "Helvetica Neue",Arial`; ctx.fillText('INSERT COIN — PUSH BLAST',cx,VH*0.95); ctx.restore(); }
+  ctx.save(); ctx.textAlign='center'; ctx.fillStyle='rgba(234,246,255,0.72)'; ctx.font=`600 ${Math.round(VH*0.017)}px "Helvetica Neue",Arial`; ctx.fillText('Created by Joseph Coleman, Claude, ChatGPT, and Blender · Castle Killscreen · Anders & Partners',cx,VH*0.988,VW*0.94); ctx.restore(); }   // house credit line (PC Order 35)
 // HOCKEY COLD-OPEN (Joe 2026-06-26): grayscale INK skaters face off on a bees/queens rink, the ref drops the
 //   puck, a shooter winds up + SLAPSHOTS — which hands straight into the air-hockey 4th-wall break below.
 const HOCK=2.3;   // duration of the hockey cold-open before the air-hockey smash sequence
@@ -2543,7 +2573,7 @@ function draw(){
     ctx.fillText(otSudden?'OT':(mm+':'+(ss<10?'0':'')+ss),VW/2,_cy);
     ctx.font=`800 ${Math.round(VH*0.024)}px "Helvetica Neue",Arial`;ctx.fillStyle='#9fb6c8';ctx.shadowBlur=0;ctx.fillText(otSudden?'NEXT GOAL WINS':('PERIOD '+period+' / '+PERIODS),VW/2,_cy+VH*0.037);ctx.restore();}
   if(!TMODE&&state!=='title'&&state!=='select'&&state!=='boot'&&state!=='champion') drawBigMeter();   // GET BIG meter (HUD 1117: see drawBigMeter)
-  if(state==='faceoff'){ctx.save();
+  if(state==='faceoff'&&!foHold){ctx.save();
     const cp=project(0.5,0.5), inReady=foT>FO_DROP;
     // the ref's fist: descends through GET READY to hover the dot, then snaps up + fades on the release
     const handY = inReady ? cp[1]-VH*(0.05+0.16*((foT-FO_DROP)/(FOT-FO_DROP)))
@@ -2559,8 +2589,8 @@ function draw(){
   // CALLOUTS (Joe 1124: "lose the dialog boxes"): no plate, no box -- painted lettering in the HUD's own brush style (brushLabel, the
   //   same paint-splash swash as the meters), team/verb coloured, with a punch-in, a settle and a lift-out. Render-only.
   const endScr=(state==='win'||state==='champion'), swNow=state==='win'&&sweepNow();   // 1124: the result screens own the middle -> the goal call steps aside, SHUTOUT! takes the top band (under a SWEEP if there is one)
-  if(msgT>0&&!endScr){ const my=(state==='faceoff')?VH*0.155:VH*0.28; drawCallout(msg,VW/2,my,VH*0.095,msgC||'#27a0ff',msgD-msgT,msgT,1); }
-  if(msg2T>0){ const my2=endScr?(swNow?VH*0.30:VH*0.16):((state==='faceoff')?VH*0.155:VH*0.28)+VH*0.105; drawCallout(msg2,VW/2,my2,VH*0.055,msg2C||'#ff37c7',msg2D-msg2T,msg2T,0.7); }
+  if(msgT>0&&!endScr){ const my=(state==='faceoff'&&!foHold)?VH*0.155:VH*0.28; drawCallout(msg,VW/2,my,VH*0.095,msgC||'#27a0ff',msgD-msgT,msgT,1); }
+  if(msg2T>0){ const my2=endScr?(swNow?VH*0.30:VH*0.16):((state==='faceoff'&&!foHold)?VH*0.155:VH*0.28)+VH*0.105; drawCallout(msg2,VW/2,my2,VH*0.055,msg2C||'#ff37c7',msg2D-msg2T,msg2T,0.7); }
   if(REG){const cs=corners();ctx.save();ctx.strokeStyle='#27f6ff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cs[0][0],cs[0][1]);ctx.lineTo(cs[1][0],cs[1][1]);ctx.lineTo(cs[3][0],cs[3][1]);ctx.lineTo(cs[2][0],cs[2][1]);ctx.closePath();ctx.stroke();for(let i=0;i<4;i++){ctx.fillStyle=i===dragC?'#ffe23a':'#ff37c7';ctx.beginPath();ctx.arc(cs[i][0],cs[i][1],9,0,6.28);ctx.fill();}ctx.fillStyle='#cfe6ff';ctx.font='13px monospace';ctx.textAlign='left';ctx.fillText('REG · '+(TNAME[tbl]||tbl)+' ('+tbl+')  ·  drag the 4 corners onto the painted rink  ·  S=save (prints preset)  R=reset',16,24);ctx.fillText(JSON.stringify(RINK),16,44);ctx.restore();}
   if(state==='title'){ctx.save();ctx.fillStyle='rgba(2,2,10,.45)';ctx.fillRect(0,0,VW,VH);ctx.textAlign='center';
     let logoBot=VH*0.52;   // the logo is the hero, fit into a BOUNDED box; all text anchors BELOW its real bottom (no overlap)
@@ -2984,7 +3014,9 @@ function toggleFullscreen(){ try{ if(document.fullscreenElement){ document.exitF
 //   CONFIG: a row's left/right half cycles it, the bottom strip plays.
 function menuTap(x,y){ if(state==='select'){ if(x<innerWidth*0.30){selCycle(-1);} else if(x>innerWidth*0.70){selCycle(1);} else begin(); return; }
   if(y>innerHeight*0.86){ begin(); return; } cfgRow=Math.max(0,Math.min(3,Math.floor((y/innerHeight-0.215)/0.11))); cfgCycle(x<innerWidth*0.5?-1:1); }
-cv.addEventListener('mousedown',e=>{if(REG){regDown(e.clientX,e.clientY);return;} if(INI.on&&state==='champion'){ iniTap(e.clientX,e.clientY); return; } if(AUTOFS&&!_fsTried){_fsTried=true;goFullscreen();}
+cv.addEventListener('contextmenu',e=>e.preventDefault());   // MOUSE BLAST (1124): the game canvas only -- right-click is BLAST, never the browser menu
+cv.addEventListener('mousedown',e=>{if(REG){regDown(e.clientX,e.clientY);return;}
+  if(e.button===2){ if(state==='play'&&!PAUSED&&!DEMO&&CTRL.mouse) deckBlast=true; return; }   // MOUSE BLAST (1124): right-click = the C key (fires a LOADED meter / shoots a trapped puck); never TRAP, never starts/advances a screen if(INI.on&&state==='champion'){ iniTap(e.clientX,e.clientY); return; } if(AUTOFS&&!_fsTried){_fsTried=true;goFullscreen();}
   if(state==='select'||state==='config'){ menuTap(e.clientX,e.clientY); return; }   // CONFIG: click a row L/R to change it; bottom = PLAY
   mouseDown=true; var _wasLive=(state==='play');
   begin(); if(_wasLive){ if(!(PLOCK && document.pointerLockElement===cv)) pointer(e.clientX,e.clientY); grabMouse(); } });   // MOUSE A (1121): under pointer lock clientX/Y are FROZEN at the lock spot -> a TRAP click yanked the target there; the locked hand steers only from mousemove (vcur)   // the click that STARTS a match must not set the play target (clicking a corner to begin used to zip the knocker there past faceoff's re-center); only steer on clicks during live play
@@ -3311,6 +3343,18 @@ function cabReport(){ try{ if(parent===window) return; }catch(_){ return; }   //
   if(Q.get('stick')==='4way'||Q.get('ways')==='4') WAYS=4; else if(Q.get('stick')==='8way'||Q.get('ways')==='8') WAYS=8;   // ?ways = the console's STICK setting
   window.__toggleWays=function(){ WAYS=WAYS===4?8:4; try{LS.setItem('sideStickWays',String(WAYS));}catch(_){} return WAYS; };   // the Y key (top-level keydown) toggles the restrictor through here (WAYS is private to this IIFE -- 1116)
   function only4(dx,dy,ax,ay){ if(WAYS===4 && dx && dy){ if(Math.abs(ax)>=Math.abs(ay)) dy=0; else dx=0; } return [dx,dy]; }
+  // P1's 8-WAY STICK RULES for ANY seat (1124, HT-4015): re-arm only once centred (a stick held across the drop is inert),
+  //   deadzone 0.3, push-depth speed (PADPROP), the 4-way restrictor, the PADEASE in/out ramp at STSPD. Updates k._svx/_svy
+  //   in STICK space (+x = push right, +y = push down); the caller maps it into its own view. true = the target moves.
+  //   P2 (single-screen 2nd pad, 2-UP host F300, 2-UP client pad) used to step a digital +-1 at full STSPD with no ease/arm.
+  function stickVel(k,ax,ay,PDT){
+    if(Math.abs(ax)<0.30 && Math.abs(ay)<0.30) k._stickArm=true;
+    if(!k._stickArm){ k._svx=0; k._svy=0; return false; }
+    var dz=0.3, wx=Math.abs(ax)>dz?(PADPROP?Math.max(-1,Math.min(1,ax)):(ax>0?1:-1)):0, wy=Math.abs(ay)>dz?(PADPROP?Math.max(-1,Math.min(1,ay)):(ay>0?1:-1)):0;
+    var _o=only4(wx,wy,ax,ay); wx=_o[0]; wy=_o[1];
+    var e=Math.min(1,PDT*PADEASE); k._svx=(k._svx||0)+((wx*STSPD)-(k._svx||0))*e; k._svy=(k._svy||0)+((wy*STSPD)-(k._svy||0))*e;
+    return Math.abs(k._svx)>1e-4||Math.abs(k._svy)>1e-4; }
+  var c2k={}, _cPrevSt=null;   // the 2-UP CLIENT's own stick state (its far is overwritten by the host's net state every frame)
   // 3-BUTTON CAB defaults — A=TRAP (catch/hold) · B=BLAST (fire) · RT=GET BIG (team power). Overridable by the saved map (highTableGamepad).
   var BTN={trap:(M&&M.buttons&&M.buttons.trap!=null)?M.buttons.trap:0, big:(M&&M.buttons&&M.buttons.big!=null)?M.buttons.big:1, blast:(M&&M.buttons&&M.buttons.blast!=null)?M.buttons.blast:7, start:(M&&M.buttons&&M.buttons.start!=null)?M.buttons.start:9};   // A=TRAP · B=GET BIG · RT=BLAST (Joe's cab layout, F300 + 8BitDo)
   var prevBlast=false, prevBig2=false, prevFarBig=false, prevFarBlast=false, prevAnyC=false, prevStart=false;
@@ -3344,6 +3388,7 @@ function cabReport(){ try{ if(parent===window) return; }catch(_){ return; }   //
     var _now=(typeof performance!=='undefined'?performance.now():Date.now());
     var PDT=_pollT?Math.min(0.05,(_now-_pollT)/1000):1/60; _pollT=_now;
     var pads=getPads(), gp=null;
+    if(CAB2==='p2'){ if(state==='faceoff'&&_cPrevSt!=='faceoff'){ c2k._stickArm=false; c2k._svx=0; c2k._svy=0; p2local.tx=0.5; p2local.ty=AR-0.5; } _cPrevSt=state; }   // 2-UP CLIENT: P2's target + stick re-arm at each drop, like the host's faceoff()
     gp=(CAB2==='p2')?resolvePad(2,pads):(padByFamily(pads,'8bitdo')||resolvePad(1,pads));       // NEAR/P1 = the 8BitDo (device-locked); pairing as a fallback
     if(!gp){ var _2p=(twoP||!!CAB2);   // in ANY 2-player mode, NEAR/P1 must never grab P2's family-locked F300 (Fable G 2026-07-16): if the 8BitDo isn't detected, the near fallback used to steal the F300 → P2 dead / roles swap mid-match
       if(pads[PADIDX]&&pads[PADIDX].connected && !(_2p&&padFamily(pads[PADIDX])==='f300')) gp=pads[PADIDX];   // this screen's pad SLOT (2-up: P1=0, P2=1)
@@ -3375,9 +3420,9 @@ function cabReport(){ try{ if(parent===window) return; }catch(_){ return; }   //
       if(state==='title' && !CAMP){ var tmode=Math.abs(ay)>0.6;   // TITLE: stick ↕ cycles the MODE so a stick-only cab can pick RAISE IT / CASTLE RULES before starting
         if(tmode){ if(!modeLatch){ engineCycleMode(); modeLatch=true; } } else modeLatch=false; }
       if(CAB2==='p2'){   // 2-UP CLIENT: this pad drives P2's own target (far), mirrored for the flipped view; big button only (v1)
-        var dz2=0.4, dx2=Math.abs(ax)>dz2?(ax>0?1:-1):0, dy2=Math.abs(ay)>dz2?(ay>0?1:-1):0;
-        var _o2=only4(dx2,dy2,ax,ay); dx2=_o2[0]; dy2=_o2[1];   // 4-WAY restrictor (2-up client)
-        if(dx2||dy2){ p2local.tx=Math.max(0,Math.min(1,p2local.tx-dx2*STSPD*PDT)); p2local.ty=Math.max(AR*0.5,Math.min(AR-KR,p2local.ty+dy2*STSPD*PDT)); }
+        if(state==='play'||state==='faceoff'||state==='serve'){   // 2-UP MIRROR (HT-4015): P1's stick rules (arm / dz 0.3 / push depth / ease), mirrored for the flipped view
+          if(STICK8){ if(stickVel(c2k,ax,ay,PDT)){ p2local.tx=Math.max(0,Math.min(1,p2local.tx-c2k._svx*PDT)); p2local.ty=Math.max(AR*0.5,Math.min(AR-KR,p2local.ty+c2k._svy*PDT)); } }
+          else if(Math.abs(ax)>DEAD||Math.abs(ay)>DEAD){ p2local.tx=Math.max(0,Math.min(1,0.5-ax*0.5)); p2local.ty=Math.max(AR*0.5,Math.min(AR-KR,AR-(1-ay)/2)); } }
         p2local.big=!!(gp.buttons[BTN.big]&&gp.buttons[BTN.big].pressed);
         p2local.blast=!!(gp.buttons[BTN.blast]&&gp.buttons[BTN.blast].pressed);   // CLIENT BLAST → host edge-detects → far lunge
         p2local.trap=!!(gp.buttons[BTN.trap]&&gp.buttons[BTN.trap].pressed);
@@ -3429,10 +3474,10 @@ function cabReport(){ try{ if(parent===window) return; }catch(_){ return; }   //
       if(pad2){
         var G2=Ghost.read(pad2); var fx=G2.ax, fy=G2.ay;   // P2 through the same ghost harness
         if(state==='play'||state==='faceoff'||state==='serve'){
-          var fdz=0.3, fdx=Math.abs(fx)>fdz?(fx<0?-1:1):0, fdy=Math.abs(fy)>fdz?(fy<0?-1:1):0;
-          var _of=only4(fdx,fdy,fx,fy); fdx=_of[0]; fdy=_of[1];   // 4-WAY restrictor for P2 too
-          if(fdx) far.TX=Math.max(KR,Math.min(1-KR, far.TX+fdx*STSPD*PDT));
-          if(fdy) far.TY=Math.max(AR*0.5,Math.min(AR-KR, far.TY+fdy*STSPD*PDT));
+          // 2P MIRROR (HT-4015): P1's stick rules (arm / dz 0.3 / push depth / eased velocity) and P1's target range (0..1 across).
+          //   Was a digital +-1 step at full STSPD, no ease, no re-arm, target KR..1-KR. Up = forward, like P1's stick.
+          if(STICK8){ if(stickVel(far,fx,fy,PDT)){ far.TX=Math.max(0,Math.min(1,far.TX+far._svx*PDT)); far.TY=Math.max(AR*0.5,Math.min(AR-KR,far.TY+far._svy*PDT)); } }
+          else if(Math.abs(fx)>DEAD||Math.abs(fy)>DEAD){ far.TX=Math.max(0,Math.min(1,0.5+fx*0.5)); far.TY=Math.max(AR*0.5,Math.min(AR-KR,AR-(1-fy)/2)); }   // ?stick=analog: absolute, like P1
         }
         var fbg=!!(pad2.buttons[BTN.big]&&pad2.buttons[BTN.big].pressed); if(fbg&&!prevFarBig&&state==='play'&&far.sup>=1) bigUp(far,OTEAM); prevFarBig=fbg;
         var fbl=!!(pad2.buttons[BTN.blast]&&pad2.buttons[BTN.blast].pressed); if(fbl&&!prevFarBlast&&state==='play') farBlastReq=true; prevFarBlast=fbl;   // P2 (2nd pad) BLAST → far lunge
@@ -3447,10 +3492,10 @@ function cabReport(){ try{ if(parent===window) return; }catch(_){ return; }   //
       var gpF=padByFamily(pads,'f300');
       if(gpF && gp && gpF.index===gp.index) gpF=null;   // NEVER let one stick be both players: if P1's pad wasn't family-detected as an 8BitDo, gp fell back to the F300 — and padByFamily('f300') would grab that SAME device → one stick drives near AND far. (This guard mirrors the ?p2=1 path; its absence here was the "one stick controls both knockers" 2-up regression.)
       if(!gpF) for(var pf=0;pf<pads.length;pf++){ if(pads[pf]&&pads[pf].connected!==false&&(!gp||pads[pf].index!==gp.index)){ gpF=pads[pf]; break; } }   // fallback: any stick that ISN'T P1's
-      if(gpF){ var GF=Ghost.read(gpF), fAx=GF.ax*INVX, fAy=GF.ay*INVY, fdz2=0.4;
-        var fx2=Math.abs(fAx)>fdz2?(fAx>0?1:-1):0, fy2=Math.abs(fAy)>fdz2?(fAy>0?1:-1):0;
-        var _o2=only4(fx2,fy2,fAx,fAy); fx2=_o2[0]; fy2=_o2[1];   // 4-way restrictor
-        if(fx2||fy2){ p2in.tx=Math.max(0,Math.min(1,p2in.tx-fx2*STSPD*PDT)); p2in.ty=Math.max(AR*0.5,Math.min(AR-KR,p2in.ty+fy2*STSPD*PDT)); }   // mirrored: P2's right = world-left (monitor 2 is flipped)
+      if(gpF){ var GF=Ghost.read(gpF), fAx=GF.ax*INVX, fAy=GF.ay*INVY;
+        if(state==='play'||state==='faceoff'||state==='serve'){   // 2-UP MIRROR (HT-4015): P1's stick rules (arm / dz 0.3 / push depth / eased velocity); was digital +-1 at dz 0.4, no ease, no re-arm, live in every state
+          if(STICK8){ if(stickVel(far,fAx,fAy,PDT)){ p2in.tx=Math.max(0,Math.min(1,p2in.tx-far._svx*PDT)); p2in.ty=Math.max(AR*0.5,Math.min(AR-KR,p2in.ty+far._svy*PDT)); } }   // mirrored: P2's right = world-left (monitor 2 is flipped)
+          else if(Math.abs(fAx)>DEAD||Math.abs(fAy)>DEAD){ p2in.tx=Math.max(0,Math.min(1,0.5-fAx*0.5)); p2in.ty=Math.max(AR*0.5,Math.min(AR-KR,AR-(1-fAy)/2)); } }
         p2in.big=!!(gpF.buttons[BTN.big]&&gpF.buttons[BTN.big].pressed);
         p2in.blast=!!(gpF.buttons[BTN.blast]&&gpF.buttons[BTN.blast].pressed);   // far update edge-detects p2in.blast → far lunge
         p2in.trap=!!(gpF.buttons[BTN.trap]&&gpF.buttons[BTN.trap].pressed);     // P2 TRAP (hold)

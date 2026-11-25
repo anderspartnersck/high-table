@@ -95,6 +95,15 @@
     ]
    ],
    "preset": "throne_top"
+  },
+  "throneuv": {
+   "file": "plate_throneuv.webp",
+   "size": [
+    2048,
+    1366
+   ],
+   "boards": [],
+   "preset": "throneuv_mouse"
   }
  },
  "thumbs": {
@@ -102,7 +111,80 @@
   "killscreen": "thumb_killscreen.webp",
   "rivalry": "thumb_rivalry.webp",
   "bees": "thumb_bees.webp",
-  "throne": "thumb_throne.webp"
+  "throne": "thumb_throne.webp",
+  "throneuv": "thumb_throneuv.webp"
+ },
+ "grade": {
+  "nachos": {
+   "contrast_gain": 1.103,
+   "sat_gain": 1.092,
+   "lum2d": 0.1,
+   "lum3d": 0.108,
+   "sat2d": 0.233,
+   "sat3d": 0.239,
+   "std2d": 0.204,
+   "std3d": 0.203
+  },
+  "killscreen": {
+   "contrast_gain": 1.116,
+   "sat_gain": 1.0,
+   "lum2d": 0.761,
+   "lum3d": 0.736,
+   "sat2d": 0.097,
+   "sat3d": 0.102,
+   "std2d": 0.178,
+   "std3d": 0.177
+  },
+  "rivalry": {
+   "contrast_gain": 1.173,
+   "sat_gain": 1.015,
+   "lum2d": 0.062,
+   "lum3d": 0.068,
+   "sat2d": 0.101,
+   "sat3d": 0.105,
+   "std2d": 0.125,
+   "std3d": 0.124
+  },
+  "rivalry_flip": {
+   "contrast_gain": 1.154,
+   "sat_gain": 1.025,
+   "lum2d": 0.062,
+   "lum3d": 0.07,
+   "sat2d": 0.101,
+   "sat3d": 0.105,
+   "std2d": 0.125,
+   "std3d": 0.122
+  },
+  "bees": {
+   "contrast_gain": 1.138,
+   "sat_gain": 1.012,
+   "lum2d": 0.059,
+   "lum3d": 0.065,
+   "sat2d": 0.07,
+   "sat3d": 0.073,
+   "std2d": 0.128,
+   "std3d": 0.127
+  },
+  "throne": {
+   "contrast_gain": 1.109,
+   "sat_gain": 1.004,
+   "lum2d": 0.757,
+   "lum3d": 0.734,
+   "sat2d": 0.102,
+   "sat3d": 0.106,
+   "std2d": 0.229,
+   "std3d": 0.227
+  },
+  "throneuv": {
+   "contrast_gain": 1.087,
+   "sat_gain": 1.084,
+   "lum2d": 0.144,
+   "lum3d": 0.146,
+   "sat2d": 0.112,
+   "sat3d": 0.115,
+   "std2d": 0.249,
+   "std3d": 0.246
+  }
  },
  "knocker": {
   "cell": 384,

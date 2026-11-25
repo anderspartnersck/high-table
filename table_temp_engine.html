@@ -585,7 +585,7 @@ function detectBreakaway(){
   if(threatened && sp>2.0){
     const dd=Math.hypot(puck.a-defender.a, puck.b-defender.b);
     const beaten = (threatened==='Y') ? (defender.a<=puck.a) : (defender.a>=puck.a);
-    if(dd>0.45 || beaten){ if(GAME.breakaway<=0) banner('BREAKAWAY','#ffffff',0.8); GAME.breakaway=0.5; }
+    if(dd>0.45 || beaten){ GAME.breakaway=0.5; }   // 1124 Joe: no BREAKAWAY word in top-down (you see the whole chase; the word covered the puck)
   }
 }
 
@@ -697,7 +697,7 @@ function burst(a,b,col,scale){ if(!FXBLOOM)return; fx.push({a,b,col,t:0,life:.45
 function saveFX(a,b){ if(!FXBLOOM)return; fx.push({a,b,col:'#bfefff',t:0,life:.5,r0:KR*.5,r1:KR*4,kind:'ring'});
   for(let i=0;i<10;i++){ const ang=Math.random()*6.28, s=1+Math.random()*2; fx.push({a,b,col:'#dff6ff',t:0,life:.5,kind:'spark',va:Math.cos(ang)*s,vb:Math.sin(ang)*s}); } }
 let flash={col:null,t:0};
-function bigFlash(col){ if(!FXBLOOM)return; flash={col,t:0}; for(let i=0;i<22;i++){ const ang=Math.random()*6.28, sp=1+Math.random()*2.6; fx.push({a:1,b:.5,col,t:0,life:.7,kind:'spark',va:Math.cos(ang)*sp,vb:Math.sin(ang)*sp*.5}); } }
+function bigFlash(col){ if(!FXBLOOM)return; flash={col,t:0,a:(puck.a>A_MAX/2?A_MAX:0)}; for(let i=0;i<22;i++){ const ang=Math.random()*6.28, sp=1+Math.random()*2.6; fx.push({a:1,b:.5,col,t:0,life:.7,kind:'spark',va:Math.cos(ang)*sp,vb:Math.sin(ang)*sp*.5}); } }
 
 /* ----- render helpers ------------------------------------------------------ */
 function neonRoundRect(x,y,w,h,r,col,lw,blur){ ctx.save(); ctx.shadowColor=col; ctx.shadowBlur=blur; ctx.strokeStyle=col; ctx.lineWidth=lw;
@@ -711,6 +711,21 @@ function neonCircle(a,b,rad,col,lw,blur,fill){ const c=S(a,b);
   ctx.save(); ctx.shadowColor=col; ctx.shadowBlur=blur; ctx.beginPath(); ctx.arc(c[0],c[1],u(rad),0,6.2832);
   if(fill){ ctx.fillStyle=fill; ctx.fill(); } ctx.strokeStyle=col; ctx.lineWidth=lw; ctx.stroke(); ctx.restore(); }
 
+// HT 1124 (Joe: "a visible rectangle on the high table top down mode"): the DRAWN TABLE is CONTAINED (whole render, never
+//   cropped), so at any screen aspect other than the plate's own the render ends in a hard straight edge -- its room/floor
+//   (lamp glows, carpet art) cut off against the purple-glow letterbox = a visible rectangle round the table. Fade the
+//   plate's letterboxed edges into the page colour (#04040a, the body bg) and fill the bars with it: the room dissolves
+//   into the dark instead of stopping. Render only; nothing on the table surface is touched (the fade is ~6% of the plate's
+//   short side, well outside every traced rail/goal).
+function featherPlate(){
+  const BX=ax>0.5, BY=ay>0.5; if(!BX && !BY) return;
+  const f=Math.min(aw,ah)*0.06, C='rgba(4,4,10,', g=(x0,y0,x1,y1)=>{ const q=ctx.createLinearGradient(x0,y0,x1,y1); q.addColorStop(0,C+'1)'); q.addColorStop(1,C+'0)'); return q; };
+  ctx.save(); ctx.fillStyle=C+'1)';
+  if(BX){ ctx.fillRect(0,0,Math.ceil(ax),VH); ctx.fillRect(Math.floor(ax+aw),0,VW,VH);
+    ctx.fillStyle=g(ax,0,ax+f,0); ctx.fillRect(ax,0,f,VH); ctx.fillStyle=g(ax+aw,0,ax+aw-f,0); ctx.fillRect(ax+aw-f,0,f,VH); ctx.fillStyle=C+'1)'; }
+  if(BY){ ctx.fillRect(0,0,VW,Math.ceil(ay)); ctx.fillRect(0,Math.floor(ay+ah),VW,VH);
+    ctx.fillStyle=g(0,ay,0,ay+f); ctx.fillRect(0,ay,VW,f); ctx.fillStyle=g(0,ay+ah,0,ay+ah-f); ctx.fillRect(0,ay+ah-f,VW,f); }
+  ctx.restore(); }
 function draw(time){
   const pulse = 0.78 + 0.22*Math.sin(time*0.0016);
   ctx.clearRect(0,0,VW,VH);
@@ -744,6 +759,7 @@ function draw(time){
   // ---- RINK STRUCTURE (boards + goal mouths) — ALWAYS drawn. The venue table-art bg is a
   //      decorative crest only (no rails / no goal mouths baked in), so without this the boards
   //      are invisible and the whole end reads as a goal. This is the drawn rink. ----
+  if(GEO && IMG.bg) featherPlate();   // HT 1124: no hard plate rectangle in the letterbox
   const blur=18*pulse;
   drawRink(pulse);
   // center-ice line + faceoff rings only when there's NO art bg (the venue art supplies its own)
@@ -759,7 +775,7 @@ function draw(time){
   if(GAME.breakaway>0){
     const k=Math.min(1,GAME.breakaway/0.5);
     ctx.save(); if(GEO&&IMG.bg) surfacePath(); else neonRoundRectPath(bx,by,bw,bh,u(.06)); ctx.clip();
-    ctx.fillStyle='rgba(2,2,8,'+(0.62*k)+')'; ctx.fillRect(0,0,VW,VH); ctx.restore();
+    ctx.restore();   // 1124 Joe: no dim veil in top-down (it read as an inset rectangle); the lit seam is the only cue
     neonLine(1,0.04,1,0.96,'#ff37c7',3.5,30);   // seam stays lit
   }
 
@@ -810,8 +826,15 @@ function draw(time){
   }
 
   // ---- big goal flash ----
-  if(flash.col){ flash.t+=0.016; const k=flash.t/0.6; if(k<1){ ctx.save(); ctx.globalAlpha=(1-k)*.3; ctx.fillStyle=flash.col;
-      if(GEO&&IMG.bg) surfacePath(); else neonRoundRectPath(bx,by,bw,bh,u(.06)); ctx.fill(); ctx.restore(); } else flash.col=null; }
+  // HT 1125 (Joe: "that weird overlay of the play area"): on the DRAWN TABLE the flash was a flat 30% fill of the whole traced
+  //   surface = a tinted slab laid over the painted art, edge to edge. Now it is light from the mouth that was scored on
+  //   (a radial wash, clipped to the surface, fading out across the table); the flat-rect fallback keeps the old fill.
+  if(flash.col){ flash.t+=0.016; const k=flash.t/0.6; if(k<1){ ctx.save();
+      if(GEO&&IMG.bg){ surfacePath(); ctx.clip(); const c=S(flash.a==null?1:flash.a,.5), R=Math.max(bw,bh)*0.8, g=ctx.createRadialGradient(c[0],c[1],0,c[0],c[1],R);
+        g.addColorStop(0,flash.col); g.addColorStop(0.55,flash.col); g.addColorStop(1,'rgba(0,0,0,0)');
+        ctx.globalAlpha=(1-k)*.42; ctx.fillStyle=g; ctx.fillRect(c[0]-R,c[1]-R,2*R,2*R); }
+      else { ctx.globalAlpha=(1-k)*.3; ctx.fillStyle=flash.col; neonRoundRectPath(bx,by,bw,bh,u(.06)); ctx.fill(); }
+      ctx.restore(); } else flash.col=null; }
 
   // ---- rail + score + overlays ----
   if(!(GEO&&IMG.bg)) neonRoundRect(bx,by,bw,bh,u(.06),'#27f6ff',Math.max(3,u(.012)),24*pulse);   // the neon frame is the fallback's boundary; the art's rails are the real one
@@ -1016,6 +1039,9 @@ function coverDraw(im,x,y,w,h){
   M.buildPucks(pgrid, C.PUCKS, { onPick:(P)=>{ pick.puck=P; SFX.resume();
     goLoad(()=>launch(), { title:'DROPPING THE PUCK', sub:P.name }); } });
 
+  // ?table= that is an ART VARIANT of a rink (throneuv = THE THRONE ROOM's blacklight art; no rink card, HT-4025 parked): the
+  //   rink is the Throne Room, the trace + plate are the variant's (was: rinkTop(null) -> NACHOS's trace under the UV plate).
+  function rinkFor(k){ const r=C.rinkTop(k); if(r) return r; const ALT={throneuv:'throne'}, b=ALT[k]&&C.rinkTop(ALT[k]); return b?Object.assign({},b,{art:k}):null; }
   function launch(){
     const R=pick.rink, P=pick.puck, pair=TOP_PAIR[R.key];
     if(pair && !P1PICK) pick.knock=C.knock(pair[0]);                       // unpicked (attract demo): the table's own knocker
@@ -1029,11 +1055,11 @@ function coverDraw(im,x,y,w,h){
     yk.lbl=K.name; pk.lbl=opp.name;   // the score labels name the knockers actually playing (were hard-coded BEES / QUEENS)
     const b2=new Image(); b2.onload=()=>IMG.knockerP2B=b2; b2.src=C.knockerBottom(opp,'top');   // P2 underside
     BGFLIP=(R.key==='rivalry' && K.team==='bees');   // your half is YOUR end (see BGFLIP) — set before GEO, which mirrors with it
-    GEO=geoFor(R.key,BGFLIP);                // the traced preset for this table -> its FULL render (not the cropped catalog bg)
+    GEO=geoFor(R.art||R.key,BGFLIP);                // the traced preset for this table -> its FULL render (not the cropped catalog bg)
     const bg=new Image(); bg.onload=()=>{ IMG.bg=bg; findBoards(bg); layout(); }; bg.src=(GEO&&GEO.image)||R.bg;
     if(P){ const pk2=new Image(); pk2.onload=()=>IMG.puck=pk2; pk2.src=P.img; }   // the chosen puck colour
     VENUE_TEAM=R.venue;
-    GOAL=goalHalfFor(R.key);                 // apply the RINK LAB locked goal-mouth width for this table
+    GOAL=goalHalfFor(R.art||R.key);                 // apply the RINK LAB locked goal-mouth width for this table
     menu.classList.add('hidden');
     SFX.resume(); if(SFX.start)SFX.start();
     SFX.bed(venueBed(), 0.15);               // swap the menu bed → the venue gameplay bed (looping)
@@ -1057,10 +1083,10 @@ function coverDraw(im,x,y,w,h){
   // CONSOLE SHELL (console.html, Joe 2026-10-14): ESC hands back to the console's home screen.
   if(new URLSearchParams(location.search).has('shell') && window.parent!==window) window.addEventListener('keydown',e=>{ if(e.key==='Escape'){ try{ parent.postMessage({ht:'menu'},'*'); }catch(_){} } });
   // ATTRACT (?demo): skip the front-end, drop straight into a self-playing CPU-vs-CPU match that loops.
-  if(DEMO){ const DQ=new URLSearchParams(location.search); pick.rink = C.rinkTop(_tbl) || C.RINKS_TOP[0];
+  if(DEMO){ const DQ=new URLSearchParams(location.search); pick.rink = rinkFor(_tbl) || C.RINKS_TOP[0];
     pick.knock = C.knock(DQ.get('k1')||'bees') || C.knock('bees'); if(DQ.get('k1')) P1PICK=true;   // ?k1 / ?puck: the attract's chosen pairing (lib/attract.js)
     pick.puck = C.puck(DQ.get('puck')||'neutral') || C.puck('neutral'); hideHint(); launch(); }
-  else if(new URLSearchParams(location.search).has('go')){ pick.rink = C.rinkTop(_tbl) || C.RINKS_TOP[0]; pick.puck = C.puck('neutral'); launch(); }   // ?go (as in side.html): skip the front end straight into a match on ?table= — you on the gold knocker
+  else if(new URLSearchParams(location.search).has('go')){ pick.rink = rinkFor(_tbl) || C.RINKS_TOP[0]; pick.puck = C.puck('neutral'); launch(); }   // ?go (as in side.html): skip the front end straight into a match on ?table= — you on the gold knocker
   // THE ATTRACT (lib/attract.js, Joe 1117 "be consistent in all game modes with the attract"): a top-level TO-GO page boots into
   //   the TOP-DOWN ATTRACT (A&P PRESENTS -> CK ident -> title -> live top-down demos on every table) and falls back into it after
   //   45 s idle on the menu. Any press -> this TITLE card (never a match). Not under ?demo / ?go / ?shell / ?noattract / ?qa (QA harnesses; &attract forces it), nor in a
