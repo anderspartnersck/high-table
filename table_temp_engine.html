@@ -389,6 +389,10 @@ const fx=[];
 // colour celebration sprite, possession aura) is OFF — rebuild juice from the CONTACT ANIMATION itself.
 // The only kept "fx" is the GRAYSCALE strike-ghost (strikes[]). Flip FXBLOOM=true to restore the bloom.
 const FXBLOOM=false;
+// HT 1127 (review fix 1): the 1125 goal light from the SCORED MOUTH has its own switch. FXBLOOM (off since 1116) used to gate
+//   it too, so bigFlash() returned before setting it and the mouth light never drew. The bloom (rings, sparks, celebration
+//   sprite) stays OFF; only the mouth light is on. Render only: it reads the puck's end, never writes sim state.
+const MOUTHLIGHT=true;
 const motes=[];
 for(let i=0;i<46;i++) motes.push({a:Math.random()*2, b:Math.random(), s:.12+Math.random()*.5, ph:Math.random()*6.28});
 
@@ -700,9 +704,17 @@ function burst(a,b,col,scale){ if(!FXBLOOM)return; fx.push({a,b,col,t:0,life:.45
 function saveFX(a,b){ if(!FXBLOOM)return; fx.push({a,b,col:'#bfefff',t:0,life:.5,r0:KR*.5,r1:KR*4,kind:'ring'});
   for(let i=0;i<10;i++){ const ang=Math.random()*6.28, s=1+Math.random()*2; fx.push({a,b,col:'#dff6ff',t:0,life:.5,kind:'spark',va:Math.cos(ang)*s,vb:Math.sin(ang)*s}); } }
 let flash={col:null,t:0};
-function bigFlash(col){ if(!FXBLOOM)return; flash={col,t:0,a:(puck.a>A_MAX/2?A_MAX:0)}; for(let i=0;i<22;i++){ const ang=Math.random()*6.28, sp=1+Math.random()*2.6; fx.push({a:1,b:.5,col,t:0,life:.7,kind:'spark',va:Math.cos(ang)*sp,vb:Math.sin(ang)*sp*.5}); } }
+function bigFlash(col){ if(MOUTHLIGHT||FXBLOOM) flash={col:(/^#[0-9a-f]{6}$/i.test(col)?col:'#ffffff'),t0:performance.now(),a:(puck.a>A_MAX/2?A_MAX:0)}; if(!FXBLOOM)return; for(let i=0;i<22;i++){ const ang=Math.random()*6.28, sp=1+Math.random()*2.6; fx.push({a:1,b:.5,col,t:0,life:.7,kind:'spark',va:Math.cos(ang)*sp,vb:Math.sin(ang)*sp*.5}); } }
 
 /* ----- render helpers ------------------------------------------------------ */
+// the BREAKAWAY seam glow, painted once (HT 1127): a pale core in a soft magenta falloff, ends feathered; stretched along the line
+let SEAMSPR=null;
+function seamSprite(){ if(SEAMSPR) return SEAMSPR; const W=40, H=512, c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d');
+  const gr=g.createLinearGradient(0,0,W,0); gr.addColorStop(0,'rgba(255,55,199,0)'); gr.addColorStop(0.34,'rgba(255,55,199,.22)'); gr.addColorStop(0.46,'rgba(255,120,215,.75)');
+  gr.addColorStop(0.5,'rgba(255,225,245,.95)'); gr.addColorStop(0.54,'rgba(255,120,215,.75)'); gr.addColorStop(0.66,'rgba(255,55,199,.22)'); gr.addColorStop(1,'rgba(255,55,199,0)');
+  g.fillStyle=gr; g.fillRect(0,0,W,H);
+  const m=g.createLinearGradient(0,0,0,H); m.addColorStop(0,'rgba(0,0,0,0)'); m.addColorStop(0.06,'#000'); m.addColorStop(0.94,'#000'); m.addColorStop(1,'rgba(0,0,0,0)');
+  g.globalCompositeOperation='destination-in'; g.fillStyle=m; g.fillRect(0,0,W,H); return (SEAMSPR=c); }
 function neonRoundRect(x,y,w,h,r,col,lw,blur){ ctx.save(); ctx.shadowColor=col; ctx.shadowBlur=blur; ctx.strokeStyle=col; ctx.lineWidth=lw;
   neonRoundRectPath(x,y,w,h,r); ctx.stroke(); ctx.restore(); }
 function neonRoundRectPath(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y);
@@ -779,7 +791,11 @@ function draw(time){
     const k=Math.min(1,GAME.breakaway/0.5);
     ctx.save(); if(GEO&&IMG.bg) surfacePath(); else neonRoundRectPath(bx,by,bw,bh,u(.06)); ctx.clip();
     ctx.restore();   // 1124 Joe: no dim veil in top-down (it read as an inset rectangle); the lit seam is the only cue
-    neonLine(1,0.04,1,0.96,'#ff37c7',3.5,30);   // seam stays lit
+    // HT 1127 (review fix 10): the seam was a hard #ff37c7 3.5 px stroke with shadowBlur 30 EVERY frame, cutting the painted crown /
+    //   lettering. Now a soft glow strip baked ONCE (seamSprite) laid along the centre line, part-transparent so the art reads through.
+    { const p=S(1,0.04), q=S(1,0.96), L=Math.hypot(q[0]-p[0],q[1]-p[1]), w=Math.max(16,u(0.06)), sp=seamSprite();
+      ctx.save(); ctx.globalAlpha=0.62*Math.max(0.35,k); ctx.translate(p[0],p[1]); ctx.rotate(Math.atan2(q[1]-p[1],q[0]-p[0])-Math.PI/2);
+      ctx.drawImage(sp, -w/2, 0, w, L); ctx.restore(); }
   }
 
   // ---- puck trail (tinted by possession) ----
@@ -795,6 +811,8 @@ function draw(time){
   for(const k of [yk,pk]){ const U0=unit; if(GEO&&IMG.bg) unit=localUnit(k.a,k.b); drawKnocker(k, pulse); unit=U0; }   // sized by the ice under it
 
   // ---- first-strike mash-up ghosts ----
+  // HT 1127 (review fix 2): on a drawn table the ghost lives ON the surface (it used to paint over the rail + goal housing)
+  if(GCLIP){ ctx.save(); surfacePath(); ctx.clip(); }
   for(let i=strikes.length-1;i>=0;i--){ const g=strikes[i]; g.t+=0.016;
     const img=STRIKE[g.team], kk=g.t/g.life;
     if(kk>=1 || !img){ strikes.splice(i,1); continue; }
@@ -804,6 +822,7 @@ function draw(time){
     ctx.translate(c[0], c[1]-size*0.18); ctx.scale(g.flip,1);
     ctx.drawImage(img, fr*fw,0,fw,fh, -size/2,-size/2,size,size); ctx.restore();
   }
+  if(GCLIP) ctx.restore();
 
   // ---- goal celebration ghost ----
   for(let i=celes.length-1;i>=0;i--){ const g=celes[i]; g.t+=0.016; const img=CELE[g.team], kk=g.t/g.life;
@@ -832,11 +851,13 @@ function draw(time){
   // HT 1125 (Joe: "that weird overlay of the play area"): on the DRAWN TABLE the flash was a flat 30% fill of the whole traced
   //   surface = a tinted slab laid over the painted art, edge to edge. Now it is light from the mouth that was scored on
   //   (a radial wash, clipped to the surface, fading out across the table); the flat-rect fallback keeps the old fill.
-  if(flash.col){ flash.t+=0.016; const k=flash.t/0.6; if(k<1){ ctx.save();
-      if(GEO&&IMG.bg){ surfacePath(); ctx.clip(); const c=S(flash.a==null?1:flash.a,.5), R=Math.max(bw,bh)*0.8, g=ctx.createRadialGradient(c[0],c[1],0,c[0],c[1],R);
-        g.addColorStop(0,flash.col); g.addColorStop(0.55,flash.col); g.addColorStop(1,'rgba(0,0,0,0)');
-        ctx.globalAlpha=(1-k)*.42; ctx.fillStyle=g; ctx.fillRect(c[0]-R,c[1]-R,2*R,2*R); }
-      else { ctx.globalAlpha=(1-k)*.3; ctx.fillStyle=flash.col; neonRoundRectPath(bx,by,bw,bh,u(.06)); ctx.fill(); }
+  // HT 1127: wall-clock timed (was +0.016 a frame = tied to the frame rate) and a true falloff from the mouth (stop 0..0.55 was a
+  //   solid disc = a slab over half the table); the flat-rect fallback lights from the mouth too, clipped to its rounded rink.
+  if(flash.col){ const k=(performance.now()-(flash.t0||0))/600; if(k<1){ ctx.save();
+      if(GEO&&IMG.bg) surfacePath(); else neonRoundRectPath(bx,by,bw,bh,u(.06)); ctx.clip();
+      const c=S(flash.a==null?1:flash.a,.5), R=Math.max(bw,bh)*0.42, g=ctx.createRadialGradient(c[0],c[1],0,c[0],c[1],R);
+      g.addColorStop(0,flash.col); g.addColorStop(0.18,flash.col+'b0'); g.addColorStop(0.5,flash.col+'40'); g.addColorStop(1,flash.col+'00');
+      const e=k<0.12?k/0.12:1-(k-0.12)/0.88; ctx.globalAlpha=0.6*e; ctx.fillStyle=g; ctx.fillRect(c[0]-R,c[1]-R,2*R,2*R);
       ctx.restore(); } else flash.col=null; }
 
   // ---- rail + score + overlays ----
@@ -955,6 +976,16 @@ function drawScore(){
       ctx.shadowColor=col; ctx.shadowBlur=h*0.5; ctx.fillStyle=col; ctx.font=`800 ${Math.round(h*0.82)}px "Helvetica Neue",Arial`;
       ctx.fillText(i?scoreP:scoreY, x+w/2, y+h*0.54); ctx.shadowBlur=0; });
     ctx.restore(); return; }
+  // HT 1127 (review fix 11 + fix 4's Killscreen gold): a drawn table WITHOUT scoreboards (Nachos, Killscreen, Honey Hole) had the
+  //   numerals ON the ice at a=0.18 / 1.82 on the centre line = in the goal lane, under the puck and its trail (and gold-on-white
+  //   on Killscreen). They now sit on a small dark chip OFF the playfield, above the top rail at each end (the room above the
+  //   table); with no room there, on the ice hugging the top rail, still out of the lane. Each chip is painted once per value.
+  if(GEO && IMG.bg){
+    const y0=Math.min(S(0.18,0)[1],S(1.82,0)[1]), chipH=Math.max(28,unit*0.13);
+    let yc=y0-bh*0.20; const off=(yc-chipH/2>=6); if(!off) yc=S(1,0.14)[1];
+    [[0.18,scoreY,yk.col||'#ffe23a',yk.lbl||'BEES'],[1.82,scoreP,pk.col||'#b14cff',pk.lbl||'QUEENS']].forEach(([a,v,col,lbl])=>{
+      const c=scoreChip(v,col,lbl,chipH), x=S(a,off?0:0.14)[0]; ctx.drawImage(c, Math.round(x-c.width/2), Math.round(yc-c.height/2)); });
+    return; }
   ctx.save(); ctx.font=`800 ${Math.round(unit*.16)}px "Helvetica Neue",Arial`; ctx.textBaseline='top'; ctx.textAlign='center';
   const yp=S(0.18,0.5), pp=S(1.82,0.5);
   ctx.shadowColor=(yk.col||'#ffe23a'); ctx.shadowBlur=20; ctx.fillStyle=(yk.col||'#ffe23a'); ctx.fillText(scoreY, yp[0], yp[1]-unit*.08);
@@ -966,14 +997,41 @@ function drawScore(){
   ctx.restore();
 }
 
+// HT 1127 (review fix 4): on the light plates (Throne, Killscreen) the pale FACE-OFF title and the white sub line vanished into
+//   the white ice. The banner now sits on a soft dark plate with a dark outline under the letters, so it reads on any table.
+//   PERF: the whole banner (plate + outline + glow) is painted ONCE per message/size into a small canvas and blitted (it was
+//   two shadowBlur text passes every frame, for up to 99 s on the win card).
+const BANNERS=new Map();
+function bannerSprite(msg,col,sub,U){
+  const key=msg+'|'+col+'|'+sub+'|'+Math.round(U); let c=BANNERS.get(key); if(c) return c; if(BANNERS.size>12) BANNERS.clear();
+  const fT=Math.round(U*0.22), fS=Math.round(U*0.07), m=document.createElement('canvas').getContext('2d');
+  m.font=`800 ${fT}px "Helvetica Neue",Arial`; const wT=m.measureText(msg).width; m.font=`700 ${fS}px "Helvetica Neue",Arial`; const wS=sub?m.measureText(sub).width:0;
+  const padX=fT*0.55, padY=fT*0.30, W=Math.ceil(Math.max(wT,wS)+2*padX), Hh=Math.ceil(fT*1.05+(sub?U*0.17:0)+2*padY);
+  c=document.createElement('canvas'); c.width=W; c.height=Hh; const g=c.getContext('2d'); c.cy=padY+fT*0.52;   // title centre line in the sprite
+  const r=Math.min(Hh/2,fT*0.45); g.fillStyle='rgba(4,5,12,.58)'; g.beginPath(); g.moveTo(r,0); g.arcTo(W,0,W,Hh,r); g.arcTo(W,Hh,0,Hh,r); g.arcTo(0,Hh,0,0,r); g.arcTo(0,0,W,0,r); g.closePath(); g.fill();
+  g.textAlign='center'; g.textBaseline='middle'; g.lineJoin='round';
+  g.font=`800 ${fT}px "Helvetica Neue",Arial`; g.strokeStyle='rgba(2,3,8,.92)'; g.lineWidth=Math.max(2,fT*0.10); g.strokeText(msg,W/2,c.cy);
+  g.shadowColor=col; g.shadowBlur=Math.min(30,fT*0.3); g.fillStyle=col; g.fillText(msg,W/2,c.cy); g.shadowBlur=0;
+  if(sub){ const sy=c.cy+U*0.17; g.font=`700 ${fS}px "Helvetica Neue",Arial`; g.lineWidth=Math.max(2,fS*0.16); g.strokeText(sub,W/2,sy); g.fillStyle='#fff'; g.fillText(sub,W/2,sy); }
+  BANNERS.set(key,c); return c; }
+const CHIPS=new Map();
+function scoreChip(v,col,lbl,H){
+  const key=v+'|'+col+'|'+lbl+'|'+Math.round(H); let c=CHIPS.get(key); if(c) return c; if(CHIPS.size>16) CHIPS.clear();
+  const fN=Math.round(H*0.78), fL=Math.round(H*0.30), m=document.createElement('canvas').getContext('2d');
+  m.font=`800 ${fN}px "Helvetica Neue",Arial`; const wN=m.measureText(String(v)).width; m.font=`800 ${fL}px "Helvetica Neue",Arial`; const wL=m.measureText(lbl).width;
+  const pad=H*0.32, gap=H*0.22, W=Math.ceil(pad+wN+gap+wL+pad), Hh=Math.ceil(H);
+  c=document.createElement('canvas'); c.width=W; c.height=Hh; const g=c.getContext('2d'), r=Hh/2;
+  g.fillStyle='rgba(4,5,12,.72)'; g.beginPath(); g.moveTo(r,0); g.arcTo(W,0,W,Hh,r); g.arcTo(W,Hh,0,Hh,r); g.arcTo(0,Hh,0,0,r); g.arcTo(0,0,W,0,r); g.closePath(); g.fill();
+  g.strokeStyle=col; g.globalAlpha=0.45; g.lineWidth=1.5; g.stroke(); g.globalAlpha=1;
+  g.textBaseline='middle'; g.textAlign='left'; g.fillStyle=col; g.shadowColor=col; g.shadowBlur=H*0.25;
+  g.font=`800 ${fN}px "Helvetica Neue",Arial`; g.fillText(String(v), pad, Hh*0.54); g.shadowBlur=0;
+  g.font=`800 ${fL}px "Helvetica Neue",Arial`; g.fillStyle='rgba(255,255,255,.88)'; g.fillText(lbl, pad+wN+gap, Hh*0.53);
+  CHIPS.set(key,c); return c; }
 function drawBanner(){
   if(GAME.msgT<=0) return;
   const a=Math.min(1, GAME.msgT*2.2); const cx=VW/2, cy=by+bh*0.30;
-  ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.globalAlpha=a;
-  ctx.shadowColor=GAME.msgCol; ctx.shadowBlur=30; ctx.fillStyle=GAME.msgCol;
-  ctx.font=`800 ${Math.round(unit*0.22)}px "Helvetica Neue",Arial`; ctx.fillText(GAME.msg, cx, cy);
-  if(GAME.sub){ ctx.font=`700 ${Math.round(unit*0.07)}px "Helvetica Neue",Arial`; ctx.fillStyle='#fff'; ctx.shadowBlur=12; ctx.fillText(GAME.sub, cx, cy+unit*0.17); }
-  ctx.restore();
+  const sp=bannerSprite(GAME.msg, GAME.msgCol, GAME.sub, unit);
+  ctx.save(); ctx.globalAlpha=a; ctx.drawImage(sp, Math.round(cx-sp.width/2), Math.round(cy-sp.cy)); ctx.restore();
 }
 
 function drawAttract(){
@@ -1057,6 +1115,9 @@ function coverDraw(im,x,y,w,h){
     const p2=new Image(); p2.onload=()=>IMG.knockerP2=p2; p2.src=C.knockerSprite(opp,'top'); pk.col=opp.col;
     yk.lbl=K.name; pk.lbl=opp.name;   // the score labels name the knockers actually playing (were hard-coded BEES / QUEENS)
     const b2=new Image(); b2.onload=()=>IMG.knockerP2B=b2; b2.src=C.knockerBottom(opp,'top');   // P2 underside
+    // HT 1127 (review fix 9): a same-knocker table (Throne QUEENS v QUEENS, Honey Hole BEES v BEES) said the same name on every
+    //   GOAL! sub, score label and win banner. Tell the ends apart the way the 2-player page and the throneuv boards already do.
+    if(yk.lbl===pk.lbl){ yk.lbl='P1 · '+yk.lbl; pk.lbl='P2 · '+pk.lbl; }
     BGFLIP=(R.key==='rivalry' && K.team==='bees');   // your half is YOUR end (see BGFLIP) — set before GEO, which mirrors with it
     GEO=geoFor(R.art||R.key,BGFLIP);                // the traced preset for this table -> its FULL render (not the cropped catalog bg)
     const bg=new Image(); bg.onload=()=>{ IMG.bg=bg; findBoards(bg); layout(); }; bg.src=(GEO&&GEO.image)||R.bg;
@@ -1088,7 +1149,9 @@ function coverDraw(im,x,y,w,h){
   // ATTRACT (?demo): skip the front-end, drop straight into a self-playing CPU-vs-CPU match that loops.
   if(DEMO){ const DQ=new URLSearchParams(location.search); pick.rink = rinkFor(_tbl) || C.RINKS_TOP[0];
     pick.knock = C.knock(DQ.get('k1')||'bees') || C.knock('bees'); if(DQ.get('k1')) P1PICK=true;   // ?k1 / ?puck: the attract's chosen pairing (lib/attract.js)
-    pick.puck = C.puck(DQ.get('puck')||'neutral') || C.puck('neutral'); hideHint(); launch(); }
+    pick.puck = C.puck(DQ.get('puck')||'neutral') || C.puck('neutral'); hideHint();
+    try{ hint.style.display='none'; }catch(e){}   // HT 1127 (review fix 8): startMatch() re-arms the gameplay hint on every drop (and the attract's rematch loop); a CPU-vs-CPU demo never shows it
+    launch(); }
   else if(new URLSearchParams(location.search).has('go')){ pick.rink = rinkFor(_tbl) || C.RINKS_TOP[0]; pick.puck = C.puck('neutral'); launch(); }   // ?go (as in side.html): skip the front end straight into a match on ?table= — you on the gold knocker
   // THE ATTRACT (lib/attract.js, Joe 1117 "be consistent in all game modes with the attract"): a top-level TO-GO page boots into
   //   the TOP-DOWN ATTRACT (A&P PRESENTS -> CK ident -> title -> live top-down demos on every table) and falls back into it after

@@ -134,7 +134,7 @@
 <script src="lib/pucks.js?v=noglow1"></script>
 <script src="lib/menu.js?v=1"></script>
 <script>window.TD3D_MAN={"version":1,"made_by":"tools/td_bake.py","note":"HIGH TABLE top-down 3D runtime set (blender/topdown/*)","plates":{"nachos":{"file":"plate_nachos.webp","size":[2048,1365],"boards":[],"preset":"nachos_mouse"},"killscreen":{"file":"plate_killscreen.webp","size":[2048,1298],"boards":[],"preset":"killscreen_mouse"},"rivalry":{"file":"plate_rivalry.webp","size":[2048,1365],"boards":[[0.3671875,0.08187134502923976,0.4921875,0.1286549707602339],[0.5078125,0.08187134502923976,0.62890625,0.1286549707602339]],"preset":"rivalry_top"},"rivalry_flip":{"file":"plate_rivalry_flip.webp","size":[2048,1365],"boards":[[0.37109375,0.08187134502923976,0.4921875,0.1286549707602339],[0.5078125,0.08187134502923976,0.6328125,0.1286549707602339]],"preset":"rivalry_top~flip"},"bees":{"file":"plate_bees.webp","size":[2048,1365],"boards":[],"preset":"honey_top"},"throne":{"file":"plate_throne.webp","size":[2048,1365],"boards":[[0.40625,0.10526315789473684,0.48828125,0.14035087719298245],[0.5078125,0.10526315789473684,0.58984375,0.14035087719298245]],"preset":"throne_top"},"throneuv":{"file":"plate_throneuv.webp","size":[2048,1366],"boards":[],"preset":"throneuv_mouse"}},"thumbs":{"nachos":"thumb_nachos.webp","killscreen":"thumb_killscreen.webp","rivalry":"thumb_rivalry.webp","bees":"thumb_bees.webp","throne":"thumb_throne.webp","throneuv":"thumb_throneuv.webp"},"grade":{"nachos":{"contrast_gain":1.103,"sat_gain":1.092,"lum2d":0.1,"lum3d":0.108,"sat2d":0.233,"sat3d":0.239,"std2d":0.204,"std3d":0.203},"killscreen":{"contrast_gain":1.116,"sat_gain":1.0,"lum2d":0.761,"lum3d":0.736,"sat2d":0.097,"sat3d":0.102,"std2d":0.178,"std3d":0.177},"rivalry":{"contrast_gain":1.173,"sat_gain":1.015,"lum2d":0.062,"lum3d":0.068,"sat2d":0.101,"sat3d":0.105,"std2d":0.125,"std3d":0.124},"rivalry_flip":{"contrast_gain":1.154,"sat_gain":1.025,"lum2d":0.062,"lum3d":0.07,"sat2d":0.101,"sat3d":0.105,"std2d":0.125,"std3d":0.122},"bees":{"contrast_gain":1.138,"sat_gain":1.012,"lum2d":0.059,"lum3d":0.065,"sat2d":0.07,"sat3d":0.073,"std2d":0.128,"std3d":0.127},"throne":{"contrast_gain":1.109,"sat_gain":1.004,"lum2d":0.757,"lum3d":0.734,"sat2d":0.102,"sat3d":0.106,"std2d":0.229,"std3d":0.227},"throneuv":{"contrast_gain":1.087,"sat_gain":1.084,"lum2d":0.144,"lum3d":0.146,"sat2d":0.112,"sat3d":0.115,"std2d":0.249,"std3d":0.246}},"knocker":{"cell":384,"unit_px":80.0,"frames":17,"cols":6,"tumble_deg_per_frame":-22.5},"kthumbs":{"knocker_yellow":"kthumb_yellow.webp","knocker_purple":"kthumb_purple.webp","knocker_white":"kthumb_white.webp","knocker_blue":"kthumb_blue.webp","knocker_green":"kthumb_green.webp","knocker_red":"kthumb_red.webp"},"puck":{"cell":218,"unit_px":64,"styles":{"classic":1,"lit":1,"zebra":8,"hive":8,"royal":8,"contested":8}},"light":{"note":"THE top-down key light, shared by td_tables.py (plates) and td_pieces.py (mallet/puck sprites + their contact shadows) so every shadow on the table falls the same way. azim = screen-space angle the light COMES FROM (0 = right, 90 = top): 135 = upper-left, shadows fall lower-right.","elev_deg":52,"azim_deg":128,"sun_energy":1.45,"sun_soft_deg":6,"sun_color":[1.0,0.96,0.92],"ambient":0.3,"rim_energy":0.22,"rim_color":[0.62,0.48,1.0],"sheen_energy":60.0},"uipucks":{"classic":1,"lit":1,"zebra":16,"hive":16,"royal":16,"contested":16},"venues":{"bee":"bee_est.webp","queens":"queens_est.webp","bees":"bees_est.webp","throne":"throne_est.webp","nachos":"nachos_est.webp"}};window.TD_2P=false;</script>
-<script>/* art3d/td3d.js (inlined by build_topdown3d.py, 59af1872) */
+<script>/* art3d/td3d.js (inlined by build_topdown3d.py, b3f30cfb) */
 // TD3D — HIGH TABLE · TOP-DOWN 3D EDITION (Joe 1116: "rebuild all versions [of the top down] in 3d, including the
 // 2 up 2 player"). RENDER + INPUT LAYER ONLY, loaded by the generated topdown-3d.html / topdown-2up-3d.html
 // (tools/build_topdown3d.py builds them from table_temp_engine.html — never edit those by hand).
@@ -177,23 +177,33 @@
   //   ghost the grayscale strike ghost's first frames are DARK GRAY speckle (luminance-keyed from black): on this table they read
   //         as a ragged dark fringe round the moving mallet, and the later frames' glow ring was cut square by the sprite cell ->
   //         re-keyed (dark pixels out) + each cell feathered to its edges, once, cached.
+  //         HT 1127 (review fix 2): the same square cut + speckle showed on EVERY plate, so the re-key now runs on all 7 (GHOSTALL);
+  //         the engine also clips the ghost to the surface so it no longer paints over the rail.
   //   boards the plate's lit top housing becomes the two LED scoreboards (the plate measured none, so the 2D engine drew the score
   //         + team name ON the playfield where the mallet parks); P1 / P2 tags on the faces (a QUEENS-vs-QUEENS mirror = one colour).
   const DRESS = { throneuv: { rim:'rgba(240,228,255,', shA:0.42, ghost:true, tags:true,
                               boards:[[0.400,0.117,0.492,0.160],[0.508,0.117,0.600,0.160]] } };
+  const GHOSTALL=true;   // HT 1127: the clean ghost re-key on every 3D plate (was DRESS.throneuv.ghost only)
   let CUR=null;   // the plate on screen (set by bgFor, which the page calls for every table it draws)
   function dress(){ return (!OFF && CUR && DRESS[CUR]) || null; }
 
   // ---------------------------------------------------------------- table plates
-  function bgFor(geo){ const t=tagFor(geo); CUR=t||null; if(t && DRESS[t] && DRESS[t].ghost && !OFF) warmGhosts(); if(OFF||!t||!MAN.plates[t]) return null; return ROOT+MAN.plates[t].file; }
+  function bgFor(geo){ const t=tagFor(geo); CUR=t||null; if(t && !OFF && (GHOSTALL || (DRESS[t] && DRESS[t].ghost))) warmGhosts(); if(OFF||!t||!MAN.plates[t]) return null; return ROOT+MAN.plates[t].file; }
   function preFlipped(geo){ return !!(geo && geo.flip && tagFor(geo)==='rivalry_flip' && !OFF); }
   // the plate's scoreboards: measured on the ORIGINAL painting at bake time (the lit 3D housing would fool findBoards)
-  function boards(geo){ const t=tagFor(geo); if(OFF||!t) return null; const p=MAN.plates[t.replace('_flip','')], D=DRESS[t];
-    const B=(p&&p.boards&&p.boards.length) ? p.boards : (D&&D.boards); return B ? B.map(b=>b.slice()) : (p ? [] : null); }
+  // HT 1127 (review fix 3): those rects sit 2-8 px INSIDE the relit plate's chroma-green LED window, so a green border (Throne)
+  //   / top edge (Rivalry) showed round the faces. BOARDFIT = the green window itself, measured on the shipped plates
+  //   (sprites3d/td/plate_*.webp, green g>60 & g>r+18 & g>b+18, +1 px), so the LED face covers it. Rivalry's flip plate uses the
+  //   rivalry rects mirrored by the engine (they land on plate_rivalry_flip's windows to the pixel). Re-measure after a re-bake.
+  const BOARDFIT = { rivalry:[[0.36621,0.07546,0.49365,0.13187],[0.50684,0.07546,0.6333,0.13333]],
+                     throne:[[0.40186,0.1033,0.49219,0.14652],[0.50342,0.1033,0.59424,0.14652]] };
+  function boards(geo){ const t=tagFor(geo); if(OFF||!t) return null; const base=t.replace('_flip',''), p=MAN.plates[base], D=DRESS[t];
+    const B=BOARDFIT[base] || ((p&&p.boards&&p.boards.length) ? p.boards : (D&&D.boards)); return B ? B.map(b=>b.slice()) : (p ? [] : null); }
 
   // ---------------------------------------------------------------- pieces
-  let SK=['knocker_yellow','knocker_purple'], PST='classic';
-  function skins(a,b){ SK=[a,b]; if(!OFF){ if(KN3D){ ld(a.replace('knocker_','k_')+'.webp'); ld(b.replace('knocker_','k_')+'.webp'); } ld('k_shadow.webp'); } }
+  let SK=['knocker_yellow','knocker_purple'], PST='classic', SAME=false;
+  // HT 1127 (review fix 9): SAME = a mirror match (the same knocker at both ends) -> the LED boards carry P1 / P2 tags
+  function skins(a,b){ SK=[a,b]; SAME=(a===b); if(!OFF){ if(KN3D){ ld(a.replace('knocker_','k_')+'.webp'); ld(b.replace('knocker_','k_')+'.webp'); } ld('k_shadow.webp'); } }
   function puckStyle(s){ PST=s; if(!OFF && PK3D && MAN.puck.styles[s]){ ld('p_'+s+'.webp'); ld('p_shadow.webp'); } }
   function cell(im, n, cols, cs, i){ return [ (i%cols)*cs, Math.floor(i/cols)*cs ]; }
   function knocker(ctx, who, k, c, rU){
@@ -226,7 +236,10 @@
     gr.addColorStop(0,col+'0)'); gr.addColorStop(0.60,col+'0)'); gr.addColorStop(0.655,col+'.95)'); gr.addColorStop(0.72,col+'.80)');
     gr.addColorStop(0.80,col+'.30)'); gr.addColorStop(1,col+'0)'); g.fillStyle=gr; g.fillRect(0,0,N,N); return (rimC=c); }
   function puck(ctx, p, c, rU, along, perp, rot){
-    const X=dress(); if(X&&X.rim){ const d=rU*3; ctx.drawImage(rimSprite(X.rim), c[0]-d/2, c[1]-d/2, d, d); }   // under the puck either way
+    const X=dress(); if(X&&X.rim){ const d=rU*3, R=rimSprite(X.rim);   // under the puck either way
+      // HT 1127 (review fix 7): the ring takes the puck's own squash/stretch (it stayed round round an elliptical puck)
+      if(along!==1||perp!==1){ ctx.save(); ctx.translate(c[0],c[1]); if(rot) ctx.rotate(rot); ctx.scale(along,perp); ctx.drawImage(R,-d/2,-d/2,d,d); ctx.restore(); }
+      else ctx.drawImage(R, c[0]-d/2, c[1]-d/2, d, d); }
     if(OFF || !PK3D) return false;                                   // PAINTED default: the 2D puck
     const P=MAN.puck, n=P.styles[PST], sheet=I['p_'+PST+'.webp'], sh=I['p_shadow.webp'];
     if(!n || !ok(sheet)) return false;                               // ENERGY has no 3D model: its 2D chip draws
@@ -258,7 +271,7 @@
     try{ g.setTransform(1,0,0,1,0,0); g.globalAlpha=0.6; g.fillStyle=g.createPattern(dots,'repeat'); g.fillRect(Math.round(x*sc),Math.round(y*sc),Math.round(w*sc),Math.round(h*sc)); }catch(e){}
     LED.set(key,c); return c; }
   function ledBoard(ctx, x, y, w, h, val, col, i){
-    const X=dress(), tag=(X&&X.tags&&i!=null) ? (i?'P2':'P1') : '';
+    const X=dress(), tag=(((X&&X.tags)||SAME)&&i!=null) ? (i?'P2':'P1') : '';
     const t=ctx.getTransform&&ctx.getTransform(), sc=t?Math.max(1,Math.hypot(t.a,t.b)||1):1, c=ledFace(w,h,val,col,sc,tag), m=c.m;
     ctx.drawImage(c, x-m, y-m, w+2*m, h+2*m); return true; }
 
@@ -280,8 +293,15 @@
     @keyframes tdrot{ 0%,30%{ transform:rotate(0) } 60%,100%{ transform:rotate(-90deg) } }`;
   function style(){ if(document.getElementById('td3d-css')) return; const s=document.createElement('style'); s.id='td3d-css'; s.textContent=(OFF?'':CSS_MENU)+CSS; document.head.appendChild(s); }
   function rinks(list){ return OFF ? list : list.map(R => Object.assign({}, R, { top: (MAN.thumbs[R.key] ? null : R.top) })); }
-  function decorateRinks(grid){ if(OFF) return; grid.querySelectorAll('.rcard').forEach(card => { const t=MAN.thumbs[card.dataset.key]; if(!t) return;
-      const im=new Image(); im.className='td3d'; im.alt=''; im.src=ROOT+t; card.insertBefore(im, card.firstChild); }); }
+  // HT 1127 (review fix 3): the Throne / Rivalry thumbs are the whole plate scaled, green LED windows included -> the same LED
+  //   faces are painted over them once (canvas -> the img's src). A tainted canvas (file://) keeps the raw thumb.
+  const THUMBLED = { throne:['#b14cff','#b14cff'], rivalry:['#b14cff','#ffe23a'] };
+  function ledThumb(im, key){ const F=BOARDFIT[key]; if(!F || im.__led) return; im.__led=1;
+    try{ const W=im.naturalWidth, H=im.naturalHeight, c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d');
+      g.drawImage(im,0,0); F.forEach((b,i)=>{ const x=b[0]*W, y=b[1]*H, w=(b[2]-b[0])*W, h=(b[3]-b[1])*H, f=ledFace(w,h,'0',THUMBLED[key][i],1,''); g.drawImage(f, x-f.m, y-f.m, w+2*f.m, h+2*f.m); });
+      im.src=c.toDataURL('image/webp',0.9); }catch(e){} }
+  function decorateRinks(grid){ if(OFF) return; grid.querySelectorAll('.rcard').forEach(card => { const k=card.dataset.key, t=MAN.thumbs[k]; if(!t) return;
+      const im=new Image(); im.className='td3d'; im.alt=''; if(BOARDFIT[k]) im.onload=()=>ledThumb(im,k); im.src=ROOT+t; card.insertBefore(im, card.firstChild); }); }
   function decorateKnockers(grid, knockers){ if(OFF || !KN3D) return;   // painted cards by default const imgs=grid.querySelectorAll('.kcard img');
     knockers.filter(K => !K.sideOnly).forEach((K,i) => { const f=MAN.kthumbs[K.base]; if(f && imgs[i]) imgs[i].src=ROOT+f; }); }
   function decoratePucks(grid, pucks){ if(OFF || !PK3D) return;   // 2D puck cards by default const cards=grid.querySelectorAll('.pcard'), U=(window.HT3D_ROOT||'sprites3d/')+'ui/';
@@ -381,7 +401,7 @@
   function ghostSrc(S){ STK=S; }
   function warmGhosts(){ if(STK) setTimeout(()=>{ ghost(STK,'bees'); ghost(STK,'queens'); }, 0); }   // the re-key off the first strike's frame
   function ghost(STRIKE, team){
-    const X=dress(), src=STRIKE[team]; if(!X || !X.ghost || !src || !src.getContext) return null;   // file:// fallback = raw <img>: leave it
+    const X=dress(), src=STRIKE[team]; if(OFF || !CUR || !(GHOSTALL || (X && X.ghost)) || !src || !src.getContext) return null;   // file:// fallback = raw <img>: leave it
     let c=GH.get(src); if(c!==undefined) return c;
     try{ const w=src.width, h=src.height, fw=w/STRIKE.frames; c=document.createElement('canvas'); c.width=w; c.height=h;
       const g=c.getContext('2d'); g.drawImage(src,0,0); const im=g.getImageData(0,0,w,h), d=im.data, F=Math.max(1,Math.min(fw,h)*0.16);
@@ -656,6 +676,10 @@ const fx=[];
 // colour celebration sprite, possession aura) is OFF — rebuild juice from the CONTACT ANIMATION itself.
 // The only kept "fx" is the GRAYSCALE strike-ghost (strikes[]). Flip FXBLOOM=true to restore the bloom.
 const FXBLOOM=false;
+// HT 1127 (review fix 1): the 1125 goal light from the SCORED MOUTH has its own switch. FXBLOOM (off since 1116) used to gate
+//   it too, so bigFlash() returned before setting it and the mouth light never drew. The bloom (rings, sparks, celebration
+//   sprite) stays OFF; only the mouth light is on. Render only: it reads the puck's end, never writes sim state.
+const MOUTHLIGHT=true;
 const motes=[];
 for(let i=0;i<46;i++) motes.push({a:Math.random()*2, b:Math.random(), s:.12+Math.random()*.5, ph:Math.random()*6.28});
 
@@ -967,9 +991,17 @@ function burst(a,b,col,scale){ if(!FXBLOOM)return; fx.push({a,b,col,t:0,life:.45
 function saveFX(a,b){ if(!FXBLOOM)return; fx.push({a,b,col:'#bfefff',t:0,life:.5,r0:KR*.5,r1:KR*4,kind:'ring'});
   for(let i=0;i<10;i++){ const ang=Math.random()*6.28, s=1+Math.random()*2; fx.push({a,b,col:'#dff6ff',t:0,life:.5,kind:'spark',va:Math.cos(ang)*s,vb:Math.sin(ang)*s}); } }
 let flash={col:null,t:0};
-function bigFlash(col){ if(!FXBLOOM)return; flash={col,t:0,a:(puck.a>A_MAX/2?A_MAX:0)}; for(let i=0;i<22;i++){ const ang=Math.random()*6.28, sp=1+Math.random()*2.6; fx.push({a:1,b:.5,col,t:0,life:.7,kind:'spark',va:Math.cos(ang)*sp,vb:Math.sin(ang)*sp*.5}); } }
+function bigFlash(col){ if(MOUTHLIGHT||FXBLOOM) flash={col:(/^#[0-9a-f]{6}$/i.test(col)?col:'#ffffff'),t0:performance.now(),a:(puck.a>A_MAX/2?A_MAX:0)}; if(!FXBLOOM)return; for(let i=0;i<22;i++){ const ang=Math.random()*6.28, sp=1+Math.random()*2.6; fx.push({a:1,b:.5,col,t:0,life:.7,kind:'spark',va:Math.cos(ang)*sp,vb:Math.sin(ang)*sp*.5}); } }
 
 /* ----- render helpers ------------------------------------------------------ */
+// the BREAKAWAY seam glow, painted once (HT 1127): a pale core in a soft magenta falloff, ends feathered; stretched along the line
+let SEAMSPR=null;
+function seamSprite(){ if(SEAMSPR) return SEAMSPR; const W=40, H=512, c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d');
+  const gr=g.createLinearGradient(0,0,W,0); gr.addColorStop(0,'rgba(255,55,199,0)'); gr.addColorStop(0.34,'rgba(255,55,199,.22)'); gr.addColorStop(0.46,'rgba(255,120,215,.75)');
+  gr.addColorStop(0.5,'rgba(255,225,245,.95)'); gr.addColorStop(0.54,'rgba(255,120,215,.75)'); gr.addColorStop(0.66,'rgba(255,55,199,.22)'); gr.addColorStop(1,'rgba(255,55,199,0)');
+  g.fillStyle=gr; g.fillRect(0,0,W,H);
+  const m=g.createLinearGradient(0,0,0,H); m.addColorStop(0,'rgba(0,0,0,0)'); m.addColorStop(0.06,'#000'); m.addColorStop(0.94,'#000'); m.addColorStop(1,'rgba(0,0,0,0)');
+  g.globalCompositeOperation='destination-in'; g.fillStyle=m; g.fillRect(0,0,W,H); return (SEAMSPR=c); }
 function neonRoundRect(x,y,w,h,r,col,lw,blur){ ctx.save(); ctx.shadowColor=col; ctx.shadowBlur=blur; ctx.strokeStyle=col; ctx.lineWidth=lw;
   neonRoundRectPath(x,y,w,h,r); ctx.stroke(); ctx.restore(); }
 function neonRoundRectPath(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y);
@@ -1046,7 +1078,11 @@ function draw(time){
     const k=Math.min(1,GAME.breakaway/0.5);
     ctx.save(); if(GEO&&IMG.bg) surfacePath(); else neonRoundRectPath(bx,by,bw,bh,u(.06)); ctx.clip();
     ctx.restore();   // 1124 Joe: no dim veil in top-down (it read as an inset rectangle); the lit seam is the only cue
-    neonLine(1,0.04,1,0.96,'#ff37c7',3.5,30);   // seam stays lit
+    // HT 1127 (review fix 10): the seam was a hard #ff37c7 3.5 px stroke with shadowBlur 30 EVERY frame, cutting the painted crown /
+    //   lettering. Now a soft glow strip baked ONCE (seamSprite) laid along the centre line, part-transparent so the art reads through.
+    { const p=S(1,0.04), q=S(1,0.96), L=Math.hypot(q[0]-p[0],q[1]-p[1]), w=Math.max(16,u(0.06)), sp=seamSprite();
+      ctx.save(); ctx.globalAlpha=0.62*Math.max(0.35,k); ctx.translate(p[0],p[1]); ctx.rotate(Math.atan2(q[1]-p[1],q[0]-p[0])-Math.PI/2);
+      ctx.drawImage(sp, -w/2, 0, w, L); ctx.restore(); }
   }
 
   // ---- puck trail (tinted by possession) ----
@@ -1062,6 +1098,8 @@ function draw(time){
   for(const k of [yk,pk]){ const U0=unit; if(GEO&&IMG.bg) unit=localUnit(k.a,k.b); drawKnocker(k, pulse); unit=U0; }   // sized by the ice under it
 
   // ---- first-strike mash-up ghosts ----
+  // HT 1127 (review fix 2): on a drawn table the ghost lives ON the surface (it used to paint over the rail + goal housing)
+  if(GCLIP){ ctx.save(); surfacePath(); ctx.clip(); }
   for(let i=strikes.length-1;i>=0;i--){ const g=strikes[i]; g.t+=0.016;
     const img=(window.TD3D&&TD3D.ghost&&TD3D.ghost(STRIKE,g.team))||STRIKE[g.team], kk=g.t/g.life;   // 3D: a DRESS plate's clean re-key
     if(kk>=1 || !img){ strikes.splice(i,1); continue; }
@@ -1072,6 +1110,7 @@ function draw(time){
     ctx.translate(c[0], c[1]-size*0.18); ctx.scale(g.flip,1);
     ctx.drawImage(img, fr*fw,0,fw,fh, -size/2,-size/2,size,size); ctx.restore();
   }
+  if(GCLIP) ctx.restore();
 
   // ---- goal celebration ghost ----
   for(let i=celes.length-1;i>=0;i--){ const g=celes[i]; g.t+=0.016; const img=CELE[g.team], kk=g.t/g.life;
@@ -1100,11 +1139,13 @@ function draw(time){
   // HT 1125 (Joe: "that weird overlay of the play area"): on the DRAWN TABLE the flash was a flat 30% fill of the whole traced
   //   surface = a tinted slab laid over the painted art, edge to edge. Now it is light from the mouth that was scored on
   //   (a radial wash, clipped to the surface, fading out across the table); the flat-rect fallback keeps the old fill.
-  if(flash.col){ flash.t+=0.016; const k=flash.t/0.6; if(k<1){ ctx.save();
-      if(GEO&&IMG.bg){ surfacePath(); ctx.clip(); const c=S(flash.a==null?1:flash.a,.5), R=Math.max(bw,bh)*0.8, g=ctx.createRadialGradient(c[0],c[1],0,c[0],c[1],R);
-        g.addColorStop(0,flash.col); g.addColorStop(0.55,flash.col); g.addColorStop(1,'rgba(0,0,0,0)');
-        ctx.globalAlpha=(1-k)*.42; ctx.fillStyle=g; ctx.fillRect(c[0]-R,c[1]-R,2*R,2*R); }
-      else { ctx.globalAlpha=(1-k)*.3; ctx.fillStyle=flash.col; neonRoundRectPath(bx,by,bw,bh,u(.06)); ctx.fill(); }
+  // HT 1127: wall-clock timed (was +0.016 a frame = tied to the frame rate) and a true falloff from the mouth (stop 0..0.55 was a
+  //   solid disc = a slab over half the table); the flat-rect fallback lights from the mouth too, clipped to its rounded rink.
+  if(flash.col){ const k=(performance.now()-(flash.t0||0))/600; if(k<1){ ctx.save();
+      if(GEO&&IMG.bg) surfacePath(); else neonRoundRectPath(bx,by,bw,bh,u(.06)); ctx.clip();
+      const c=S(flash.a==null?1:flash.a,.5), R=Math.max(bw,bh)*0.42, g=ctx.createRadialGradient(c[0],c[1],0,c[0],c[1],R);
+      g.addColorStop(0,flash.col); g.addColorStop(0.18,flash.col+'b0'); g.addColorStop(0.5,flash.col+'40'); g.addColorStop(1,flash.col+'00');
+      const e=k<0.12?k/0.12:1-(k-0.12)/0.88; ctx.globalAlpha=0.6*e; ctx.fillStyle=g; ctx.fillRect(c[0]-R,c[1]-R,2*R,2*R);
       ctx.restore(); } else flash.col=null; }
 
   // ---- rail + score + overlays ----
@@ -1226,6 +1267,16 @@ function drawScore(){
       ctx.shadowColor=col; ctx.shadowBlur=h*0.5; ctx.fillStyle=col; ctx.font=`800 ${Math.round(h*0.82)}px "Helvetica Neue",Arial`;
       ctx.fillText(i?scoreP:scoreY, x+w/2, y+h*0.54); ctx.shadowBlur=0; });
     ctx.restore(); return; }
+  // HT 1127 (review fix 11 + fix 4's Killscreen gold): a drawn table WITHOUT scoreboards (Nachos, Killscreen, Honey Hole) had the
+  //   numerals ON the ice at a=0.18 / 1.82 on the centre line = in the goal lane, under the puck and its trail (and gold-on-white
+  //   on Killscreen). They now sit on a small dark chip OFF the playfield, above the top rail at each end (the room above the
+  //   table); with no room there, on the ice hugging the top rail, still out of the lane. Each chip is painted once per value.
+  if(GEO && IMG.bg){
+    const y0=Math.min(S(0.18,0)[1],S(1.82,0)[1]), chipH=Math.max(28,unit*0.13);
+    let yc=y0-bh*0.20; const off=(yc-chipH/2>=6); if(!off) yc=S(1,0.14)[1];
+    [[0.18,scoreY,yk.col||'#ffe23a',yk.lbl||'BEES'],[1.82,scoreP,pk.col||'#b14cff',pk.lbl||'QUEENS']].forEach(([a,v,col,lbl])=>{
+      const c=scoreChip(v,col,lbl,chipH), x=S(a,off?0:0.14)[0]; ctx.drawImage(c, Math.round(x-c.width/2), Math.round(yc-c.height/2)); });
+    return; }
   ctx.save(); ctx.font=`800 ${Math.round(unit*.16)}px "Helvetica Neue",Arial`; ctx.textBaseline='top'; ctx.textAlign='center';
   const yp=S(0.18,0.5), pp=S(1.82,0.5);
   ctx.shadowColor=(yk.col||'#ffe23a'); ctx.shadowBlur=20; ctx.fillStyle=(yk.col||'#ffe23a'); ctx.fillText(scoreY, yp[0], yp[1]-unit*.08);
@@ -1237,14 +1288,41 @@ function drawScore(){
   ctx.restore();
 }
 
+// HT 1127 (review fix 4): on the light plates (Throne, Killscreen) the pale FACE-OFF title and the white sub line vanished into
+//   the white ice. The banner now sits on a soft dark plate with a dark outline under the letters, so it reads on any table.
+//   PERF: the whole banner (plate + outline + glow) is painted ONCE per message/size into a small canvas and blitted (it was
+//   two shadowBlur text passes every frame, for up to 99 s on the win card).
+const BANNERS=new Map();
+function bannerSprite(msg,col,sub,U){
+  const key=msg+'|'+col+'|'+sub+'|'+Math.round(U); let c=BANNERS.get(key); if(c) return c; if(BANNERS.size>12) BANNERS.clear();
+  const fT=Math.round(U*0.22), fS=Math.round(U*0.07), m=document.createElement('canvas').getContext('2d');
+  m.font=`800 ${fT}px "Helvetica Neue",Arial`; const wT=m.measureText(msg).width; m.font=`700 ${fS}px "Helvetica Neue",Arial`; const wS=sub?m.measureText(sub).width:0;
+  const padX=fT*0.55, padY=fT*0.30, W=Math.ceil(Math.max(wT,wS)+2*padX), Hh=Math.ceil(fT*1.05+(sub?U*0.17:0)+2*padY);
+  c=document.createElement('canvas'); c.width=W; c.height=Hh; const g=c.getContext('2d'); c.cy=padY+fT*0.52;   // title centre line in the sprite
+  const r=Math.min(Hh/2,fT*0.45); g.fillStyle='rgba(4,5,12,.58)'; g.beginPath(); g.moveTo(r,0); g.arcTo(W,0,W,Hh,r); g.arcTo(W,Hh,0,Hh,r); g.arcTo(0,Hh,0,0,r); g.arcTo(0,0,W,0,r); g.closePath(); g.fill();
+  g.textAlign='center'; g.textBaseline='middle'; g.lineJoin='round';
+  g.font=`800 ${fT}px "Helvetica Neue",Arial`; g.strokeStyle='rgba(2,3,8,.92)'; g.lineWidth=Math.max(2,fT*0.10); g.strokeText(msg,W/2,c.cy);
+  g.shadowColor=col; g.shadowBlur=Math.min(30,fT*0.3); g.fillStyle=col; g.fillText(msg,W/2,c.cy); g.shadowBlur=0;
+  if(sub){ const sy=c.cy+U*0.17; g.font=`700 ${fS}px "Helvetica Neue",Arial`; g.lineWidth=Math.max(2,fS*0.16); g.strokeText(sub,W/2,sy); g.fillStyle='#fff'; g.fillText(sub,W/2,sy); }
+  BANNERS.set(key,c); return c; }
+const CHIPS=new Map();
+function scoreChip(v,col,lbl,H){
+  const key=v+'|'+col+'|'+lbl+'|'+Math.round(H); let c=CHIPS.get(key); if(c) return c; if(CHIPS.size>16) CHIPS.clear();
+  const fN=Math.round(H*0.78), fL=Math.round(H*0.30), m=document.createElement('canvas').getContext('2d');
+  m.font=`800 ${fN}px "Helvetica Neue",Arial`; const wN=m.measureText(String(v)).width; m.font=`800 ${fL}px "Helvetica Neue",Arial`; const wL=m.measureText(lbl).width;
+  const pad=H*0.32, gap=H*0.22, W=Math.ceil(pad+wN+gap+wL+pad), Hh=Math.ceil(H);
+  c=document.createElement('canvas'); c.width=W; c.height=Hh; const g=c.getContext('2d'), r=Hh/2;
+  g.fillStyle='rgba(4,5,12,.72)'; g.beginPath(); g.moveTo(r,0); g.arcTo(W,0,W,Hh,r); g.arcTo(W,Hh,0,Hh,r); g.arcTo(0,Hh,0,0,r); g.arcTo(0,0,W,0,r); g.closePath(); g.fill();
+  g.strokeStyle=col; g.globalAlpha=0.45; g.lineWidth=1.5; g.stroke(); g.globalAlpha=1;
+  g.textBaseline='middle'; g.textAlign='left'; g.fillStyle=col; g.shadowColor=col; g.shadowBlur=H*0.25;
+  g.font=`800 ${fN}px "Helvetica Neue",Arial`; g.fillText(String(v), pad, Hh*0.54); g.shadowBlur=0;
+  g.font=`800 ${fL}px "Helvetica Neue",Arial`; g.fillStyle='rgba(255,255,255,.88)'; g.fillText(lbl, pad+wN+gap, Hh*0.53);
+  CHIPS.set(key,c); return c; }
 function drawBanner(){
   if(GAME.msgT<=0) return;
   const a=Math.min(1, GAME.msgT*2.2); const cx=VW/2, cy=by+bh*0.30;
-  ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.globalAlpha=a;
-  ctx.shadowColor=GAME.msgCol; ctx.shadowBlur=30; ctx.fillStyle=GAME.msgCol;
-  ctx.font=`800 ${Math.round(unit*0.22)}px "Helvetica Neue",Arial`; ctx.fillText(GAME.msg, cx, cy);
-  if(GAME.sub){ ctx.font=`700 ${Math.round(unit*0.07)}px "Helvetica Neue",Arial`; ctx.fillStyle='#fff'; ctx.shadowBlur=12; ctx.fillText(GAME.sub, cx, cy+unit*0.17); }
-  ctx.restore();
+  const sp=bannerSprite(GAME.msg, GAME.msgCol, GAME.sub, unit);
+  ctx.save(); ctx.globalAlpha=a; ctx.drawImage(sp, Math.round(cx-sp.width/2), Math.round(cy-sp.cy)); ctx.restore();
 }
 
 function drawAttract(){
@@ -1332,6 +1410,9 @@ function coverDraw(im,x,y,w,h){
     yk.lbl=K.name; pk.lbl=opp.name;
     if(window.TD3D){ TD3D.skins(K.base, opp.base); if(TD3D.twoP){ yk.lbl='P1 · '+K.name; pk.lbl='P2 · '+opp.name; } }   // the score labels name the knockers actually playing (were hard-coded BEES / QUEENS)
     const b2=new Image(); b2.onload=()=>IMG.knockerP2B=b2; b2.src=C.knockerBottom(opp,'top');   // P2 underside
+    // HT 1127 (review fix 9): a same-knocker table (Throne QUEENS v QUEENS, Honey Hole BEES v BEES) said the same name on every
+    //   GOAL! sub, score label and win banner. Tell the ends apart the way the 2-player page and the throneuv boards already do.
+    if(yk.lbl===pk.lbl){ yk.lbl='P1 · '+yk.lbl; pk.lbl='P2 · '+pk.lbl; }
     BGFLIP=(R.key==='rivalry' && K.team==='bees');   // your half is YOUR end (see BGFLIP) — set before GEO, which mirrors with it
     GEO=geoFor(R.art||R.key,BGFLIP);                // the traced preset for this table -> its FULL render (not the cropped catalog bg)
     const bg=new Image(); const B3=window.TD3D&&TD3D.bgFor(GEO); if(B3) bg.__pre=TD3D.preFlipped(GEO);
@@ -1364,7 +1445,9 @@ function coverDraw(im,x,y,w,h){
   // ATTRACT (?demo): skip the front-end, drop straight into a self-playing CPU-vs-CPU match that loops.
   if(DEMO){ const DQ=new URLSearchParams(location.search); pick.rink = rinkFor(_tbl) || C.RINKS_TOP[0];
     pick.knock = C.knock(DQ.get('k1')||'bees') || C.knock('bees'); if(DQ.get('k1')) P1PICK=true;   // ?k1 / ?puck: the attract's chosen pairing (lib/attract.js)
-    pick.puck = C.puck(DQ.get('puck')||'neutral') || C.puck('neutral'); hideHint(); launch(); }
+    pick.puck = C.puck(DQ.get('puck')||'neutral') || C.puck('neutral'); hideHint();
+    try{ hint.style.display='none'; }catch(e){}   // HT 1127 (review fix 8): startMatch() re-arms the gameplay hint on every drop (and the attract's rematch loop); a CPU-vs-CPU demo never shows it
+    launch(); }
   else if(new URLSearchParams(location.search).has('go')){ pick.rink = rinkFor(_tbl) || C.RINKS_TOP[0]; pick.puck = C.puck('neutral'); launch(); }   // ?go (as in side.html): skip the front end straight into a match on ?table= — you on the gold knocker
   // THE ATTRACT (lib/attract.js, Joe 1117 "be consistent in all game modes with the attract"): a top-level TO-GO page boots into
   //   the TOP-DOWN ATTRACT (A&P PRESENTS -> CK ident -> title -> live top-down demos on every table) and falls back into it after

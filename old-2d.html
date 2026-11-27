@@ -691,6 +691,7 @@ const far ={X:0.5,Y:AR-0.5,vX:0,vY:0,TX:0.5,TY:AR-0.5,sup:0,big:0,hitT:0,expT:0,
 let scoreN=0,scoreF=0,clock=0,state='title',msg='',msgT=0,msg2='',msg2T=0,shake=0,flashT=0,flashCol='#fff',popN=0,popF=0;   // msg2 = secondary banner (e.g. HAT TRICK) drawn under the main so a big goal's SCORE/ONE-TIMER callout isn't clobbered
 let bootT=0, bootSmash=false, bootLogo=false, bootDrop=false, bootShot=false, bootLaunch=false, bootZap=false, bootClashHit=false;   // BOOT/ATTRACT: overture → team clash → hockey → 4th-wall smash → title
 let atkZone=0, atkCueCD=0;   // ATTACKING-ZONE cue: a team's breakaway cue when they push into the offensive third (throttled — the cue is long)
+let flashAt=null;   // HT 1127 (review fix 12): a GOAL flash lights from the scored mouth {ty: 0 near / 1 far, col, t: clock}; null = the full-screen flash
 let celebCard=null;   // jumbotron goal-celebration card (only when the horn sounds)
 const fx=[], ghosts=[], celes=[]; let foT=0,foDir=1; const FX_MAX=90;   // hard cap on live particles — restrained JUICE (sparks/swarms) is back ON, but capped so it can never stack into the old runaway bloom that crashed the tab
 // THE DROP, paced (Joe 2026-06-19): a real lead-in so play never lands "on top of" you. FOT = full faceoff
@@ -859,7 +860,7 @@ function broadcastState(){ if(!LINK2)return; LINK2.postMessage({t:'st',d:{
   px:puck.X,py:puck.Y,pvx:puck.vX,pvy:puck.vY,ps:puck.spin||0,ph:puck.hitT,phx:puck.hnx,phy:puck.hny,
   nx:near.X,ny:near.Y,ns:near.sup,nb:near.big,nh:near.hitT,nc:near.celebT,nl:near.celebLife,nbm:near.bm,nw:near.windT,nst:near.strT,nsm:near.smallT,nfl:near.celebFl,
   fx:far.X,fy:far.Y,fs:far.sup,fb:far.big,fh:far.hitT,fc:far.celebT,fl:far.celebLife,fbm:far.bm,fw:far.windT,fst:far.strT,fsm:far.smallT,ffl:far.celebFl,pbt:puck.blT,pbo:puck.blO,mc:msgC,md:msgD,m2:msg2,m2t:msg2T,m2c:msg2C,m2d:msg2D,spc:SPEC,
-  sn:scoreN,sf:scoreF,st:state,fo:foT,fd:foDropped,foh:foHold?1:0,mg:msg,mt:msgT,flt:flashT,flc:flashCol,sh:shake,
+  sn:scoreN,sf:scoreF,st:state,fo:foT,fd:foDropped,foh:foHold?1:0,mg:msg,mt:msgT,flt:flashT,flc:flashCol,fla:flashAt,sh:shake,
   es:estT,e0:est0,ei:estImg,zm:ZOOM,tb:tbl,mo:MONO,p2s:PUCKSTYLE,
   cw:CUP.win,cl:CUP.loss,con:CUP.on?1:0,cvr:CUP.variant,cip:CUP.inPlayoff?1:0,ctg:TARGET,ctm:champTeam,cht:champT,cun:champUnlock,   // RAISE IT series state (so the client's win/champion screen reads right)
   ck:clock }}); }
@@ -870,7 +871,7 @@ function applyNetState(){ const m=_netState; if(!m)return;
   near.X=m.nx;near.Y=m.ny;near.sup=m.ns;near.big=m.nb;near.hitT=m.nh;near.celebT=m.nc;near.celebLife=m.nl;near.bm=m.nbm||0;near.windT=m.nw||0;near.strT=m.nst||0;near.smallT=m.nsm||0;near.celebFl=m.nfl||1;
   far.X=m.fx;far.Y=m.fy;far.sup=m.fs;far.big=m.fb;far.hitT=m.fh;far.celebT=m.fc;far.celebLife=m.fl;far.bm=m.fbm||0;far.windT=m.fw||0;far.strT=m.fst||0;far.smallT=m.fsm||0;far.celebFl=m.ffl||1;
   puck.blT=m.pbt||0;puck.blO=m.pbo||null;msgC=m.mc||null;msgD=m.md||1;msg2=m.m2||'';msg2T=m.m2t||0;msg2C=m.m2c||null;msg2D=m.m2d||1;if(m.spc)SPEC=m.spc;
-  scoreN=m.sn;scoreF=m.sf;state=m.st;foT=m.fo;foDropped=m.fd;foHold=!!m.foh;msg=m.mg;msgT=m.mt;flashT=m.flt;flashCol=m.flc;shake=m.sh;
+  scoreN=m.sn;scoreF=m.sf;state=m.st;foT=m.fo;foDropped=m.fd;foHold=!!m.foh;msg=m.mg;msgT=m.mt;flashT=m.flt;flashCol=m.flc;flashAt=m.fla||null;shake=m.sh;
   estT=m.es;est0=m.e0;estImg=m.ei;ZOOM=m.zm;MONO=m.mo;clock=m.ck; }
 function sendP2Input(){ if(LINK2) LINK2.postMessage({t:'in',d:p2local}); }
 // 2-UP INPUT (2026-10-07). The client streams p2local every frame; the host now APPLIES it, but only what CHANGED,
@@ -1187,7 +1188,8 @@ function bmGain(k){ return (k===far&&CPUV&&!twoP&&!CAB2&&!DEMO)?CPUBLAST[DIFF].b
 const BMCAP=((LS.local||LS.app)&&Q.has('bmcap'))?(Q.get('bmcap')==='h'?'h':(Math.max(0,Math.min(9,+Q.get('bmcap')|0)))):2;
 function bmCapGain(k){ if(!BMCAP || (puck.Y<AR*0.5)!==(k===near)) return 1; const c=k._own=(k._own||0)+1; return BMCAP==='h'?Math.pow(0.5,c-1):(c<=BMCAP?1:0); }
 function volleyTouch(k){ if(clock-(k._vt==null?-9:k._vt)<BLASTM.gap) return; k._vt=clock; puck.lastT=kSide(k); if(OLDBLAST) return; k.bm=Math.min(1,k.bm+BLASTM.touch*bmGain(k)*bmCapGain(k)); }
-// the CPU picks a side of your mouth to aim its blast at (open side on a read, else a guess)
+// the CPU picks a side of your mouth to aim its blast at: a COIN FLIP. CPUBLAST rows carry no `read`, so `Math.random()<S.read` is
+//   always false and the open-side branch never fires (HT-4023/4029: Joe's default is to keep the coin flip; only this comment changed, 1125)
 function cpuAimBlast(S){ const open=(near.X<0.5?1:-1); far.blAim=0.5+(Math.random()<S.read?open:(Math.random()<0.5?1:-1))*GOAL*0.6; far.blAimW=S.aim; }
 // FAR-CPU CLEAR PLANNER (Joe 2026-06-19): once the CPU chooses to engage a slow/settled puck, decide HOW
 //   and commit to it for a beat so it reads as a decision, not a twitch. Variety = not a one-note blaster
@@ -1695,7 +1697,7 @@ function goal(side){
   const horn = pol==='both' ? true : pol==='home' ? (team===VENUE) : false;   // PENALTY BOX ('none') = no horn for anyone
   if(pol!=='none'){ if(horn) SFX.goal(team); else SFX.groan(); }
   shake = pol==='none' ? 24 : 18;                                             // no siren → lean on visual intensity
-  flashT=0.3; flashCol=wasOT?'#ffffff':((team==='bees')?'#ffe23a':'#b14cff');
+  flashT=0.3; flashCol=wasOT?'#ffffff':((team==='bees')?'#ffe23a':'#b14cff'); flashAt={ty:side==='far'?1:0,col:flashCol,t:clock};
   if(wasOT){ scK.sup=1; shake=Math.max(shake,28); flashT=0.42; hitstop=Math.max(hitstop,0.18); SFX.bee(1); }   // #1 reward: instant GET BIG super, harder freeze/flash, extra swarm — the highlight-reel payoff
   banner(wasOT?('★ ONE-TIMER!  +'+(1+OT_BONUS)+' ★'):(endName(side==='far')+(endColor(side==='far')?' SCORES!':' SCORE!')),1.8,endCol(side==='far'));
   if(kind&&kind!=='ot') banner2(kind==='bank'?'BANK BLAST!':kind==='ctr'?'COUNTER BLAST!':'BLAST GOAL!',1.8,endCol(side==='far'));   // banner follows the scoring TEAM (was hardcoded to the near end = bees)
@@ -2556,7 +2558,11 @@ function draw(){
   blastTell(near,NG,0);   // BLAST tell (1124) — loaded flare/pulse, wind-up ring, strike rim
   }
   for(let i=ghosts.length-1;i>=0;i--){const g=ghosts[i];g.t+=0.016;const k=g.t/g.life;if(k>=1){ghosts.splice(i,1);continue;}const im=STRIKE[g.team];if(im&&k<0.8&&!FXB.low){const fr=Math.min(STRIKE.frames-1,Math.floor(k*STRIKE.frames)),fw=im.width/STRIKE.frames,pp=project(g.tx,g.ty),d=depth(g.ty)*g.sc*Math.min(VW,VH)*0.78;ctx.save();ctx.globalAlpha=Math.max(0,1-k*0.3)*0.85*Math.min(1,(0.8-k)*6);ctx.drawImage(im,fr*fw,0,fw,im.height,pp[0]-d/2,pp[1]-d*0.55,d,d);ctx.restore();}}   // strike ghost, normal composite (no white bloom). PERF 1117: 18% smaller (it is a near-full-height sprite = the biggest overdraw on a rally), gone at 80% of its life, skipped when the frame budget is blown; the pool ages as before
-  for(let i=celes.length-1;i>=0;i--){const c=celes[i];c.t+=0.016;const k=c.t/c.life;if(k>=1){celes.splice(i,1);continue;}const im=CELE[c.team];if(im){const fr=Math.min(CELE.frames-1,Math.floor(k*CELE.frames)),fw=im.width/CELE.frames,pp=project(c.tx,c.ty),d=depth(c.ty)*Math.min(VW,VH)*1.7;ctx.save();ctx.globalAlpha=Math.max(0,1-k);ctx.drawImage(im,fr*fw,0,fw,im.height,pp[0]-d/2,pp[1]-d*0.6,d,d);ctx.restore();}}
+  // HT 1127 (review fix 6): the celebration skater was 1.7x the short screen side (~1800 px at 1080p), half the table and over the
+  //   goal housing. Now ~half that, standing on its spot (feet at the anchor), and clipped to the play area (the rink's 4 corners).
+  if(celes.length){ const cs=corners(); ctx.save(); ctx.beginPath(); ctx.moveTo(cs[0][0],cs[0][1]); ctx.lineTo(cs[1][0],cs[1][1]); ctx.lineTo(cs[3][0],cs[3][1]); ctx.lineTo(cs[2][0],cs[2][1]); ctx.closePath(); ctx.clip();
+  for(let i=celes.length-1;i>=0;i--){const c=celes[i];c.t+=0.016;const k=c.t/c.life;if(k>=1){celes.splice(i,1);continue;}const im=CELE[c.team];if(im){const fr=Math.min(CELE.frames-1,Math.floor(k*CELE.frames)),fw=im.width/CELE.frames,pp=project(c.tx,c.ty),d=depth(c.ty)*Math.min(VW,VH)*0.8;ctx.save();ctx.globalAlpha=Math.max(0,1-k)*0.85;ctx.drawImage(im,fr*fw,0,fw,im.height,pp[0]-d/2,pp[1]-d*0.9,d,d);ctx.restore();}}
+  ctx.restore(); }
   fxBudget();   // PERF 1117: which contact puffs/sparks get DRAWN (render-only; the pool below ages + expires exactly as before)
   for(let i=fx.length-1;i>=0;i--){const f=fx[i];f.t+=0.016;const k=f.t/f.life;if(k>=1){fx.splice(i,1);continue;}
     if(f.dot){f.tx+=(f.vx||0)*0.016;f.ty+=(f.vy||0)*0.016;f.vx*=0.9;f.vy*=0.9; if(f._v!==1||k>FXB.dotLife) continue;   // a budgeted puff, short-lived
@@ -2589,7 +2595,11 @@ function draw(){
   // CALLOUTS (Joe 1124: "lose the dialog boxes"): no plate, no box -- painted lettering in the HUD's own brush style (brushLabel, the
   //   same paint-splash swash as the meters), team/verb coloured, with a punch-in, a settle and a lift-out. Render-only.
   const endScr=(state==='win'||state==='champion'), swNow=state==='win'&&sweepNow();   // 1124: the result screens own the middle -> the goal call steps aside, SHUTOUT! takes the top band (under a SWEEP if there is one)
-  if(msgT>0&&!endScr){ const my=(state==='faceoff'&&!foHold)?VH*0.155:VH*0.28; drawCallout(msg,VW/2,my,VH*0.095,msgC||'#27a0ff',msgD-msgT,msgT,1); }
+  if(msgT>0&&!endScr){ const my=(state==='faceoff'&&!foHold)?VH*0.155:VH*0.28;
+    // HT 1127 recheck: the goal callout HANDS OFF to the jumbotron card -- both said "BEES SCORE!" at once (the callout ran
+    //   over the card's top edge). As the card fades in (0.25 s) the callout plays its own exit early. Render only.
+    const hand=(celebCard && /SCORES?!$/.test(msg)) ? Math.max(0,1-celebCard.t/0.25) : 1;
+    if(hand>0) drawCallout(msg,VW/2,my,VH*0.095,msgC||'#27a0ff',msgD-msgT,Math.min(msgT,hand*0.28),1); }
   if(msg2T>0){ const my2=endScr?(swNow?VH*0.30:VH*0.16):((state==='faceoff'&&!foHold)?VH*0.155:VH*0.28)+VH*0.105; drawCallout(msg2,VW/2,my2,VH*0.055,msg2C||'#ff37c7',msg2D-msg2T,msg2T,0.7); }
   if(REG){const cs=corners();ctx.save();ctx.strokeStyle='#27f6ff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cs[0][0],cs[0][1]);ctx.lineTo(cs[1][0],cs[1][1]);ctx.lineTo(cs[3][0],cs[3][1]);ctx.lineTo(cs[2][0],cs[2][1]);ctx.closePath();ctx.stroke();for(let i=0;i<4;i++){ctx.fillStyle=i===dragC?'#ffe23a':'#ff37c7';ctx.beginPath();ctx.arc(cs[i][0],cs[i][1],9,0,6.28);ctx.fill();}ctx.fillStyle='#cfe6ff';ctx.font='13px monospace';ctx.textAlign='left';ctx.fillText('REG · '+(TNAME[tbl]||tbl)+' ('+tbl+')  ·  drag the 4 corners onto the painted rink  ·  S=save (prints preset)  R=reset',16,24);ctx.fillText(JSON.stringify(RINK),16,44);ctx.restore();}
   if(state==='title'){ctx.save();ctx.fillStyle='rgba(2,2,10,.45)';ctx.fillRect(0,0,VW,VH);ctx.textAlign='center';
@@ -2619,19 +2629,38 @@ function draw(){
       fitFont(line,900,VH*0.05,VW*0.9); ctx.fillText(line,VW/2,VH*0.40);
       ctx.shadowBlur=0; drawSeriesBoard(won); }
     else if(TIMED){ctx.fillStyle='#ffe23a';ctx.shadowColor='#ff37c7';ctx.shadowBlur=18;const cl='CASTLE RULES · FINAL'+(otSudden?' · OT':'');fitFont(cl,900,VH*0.05,VW*0.9);ctx.fillText(cl,VW/2,VH*0.40);}
+    else {   // HT 1127 (review fix 5): an exhibition win named no winner (only the score). By PLAYER, never the team name (a
+      //   QUEENS-v-QUEENS table would say QUEENS WIN either way): P1 / P2 on a 2-player table, YOU / CPU against the CPU.
+      const wl=(twoP||CAB2)?(won?'P1 WINS':'P2 WINS'):(won?'YOU WIN':'CPU WINS');
+      ctx.fillStyle=wc;ctx.shadowColor=wc;ctx.shadowBlur=18;fitFont(wl,900,VH*0.06,VW*0.9);ctx.fillText(wl,VW/2,VH*0.40);}
     ctx.fillStyle='#fff';ctx.shadowColor=wc;ctx.shadowBlur=24;ctx.font=`900 ${Math.round(VH*0.075)}px "Helvetica Neue",Arial`;ctx.fillText(MIRROR2?(scoreF+'  –  '+scoreN):(scoreN+'  –  '+scoreF),VW/2,VH*0.5);   // P2's screen: your score first
     let sub='tap / space to play again';
     if(CUP.inPlayoff){ sub = won?'tap to claim the unlock':'tap — no unlock'; }
     else if(CUP.on){ const w=CUP.win+(won?1:0), l=CUP.loss+(won?0:1); sub = (w>=SERIES_WINS||l>=SERIES_WINS)?(twoP?'tap to play again':(w>=SERIES_WINS?(nextLocked()?'tap → UNLOCK PLAYOFF':'tap to RAISE IT'):'tap — series over')):'tap for the next game'; }
-    ctx.shadowBlur=0;ctx.fillStyle='#9fb6c8';ctx.font=`700 ${Math.round(VH*0.038)}px "Helvetica Neue",Arial`;ctx.fillText(sub,VW/2,VH*0.62);
+    // HT 1127 recheck: the two prompts sat straight on the parked mallets (grey #6f8496 on a dimmed table) -> a dark plate behind them
+    const escTxt=HYSCORE?'ESC — back to the attract':'ESC — back to the menu', fSub=`700 ${Math.round(VH*0.038)}px "Helvetica Neue",Arial`, fEsc=`700 ${Math.round(VH*0.028)}px "Helvetica Neue",Arial`;
+    ctx.shadowBlur=0; ctx.font=fSub; let pw=ctx.measureText(sub).width; ctx.font=fEsc; pw=Math.max(pw,ctx.measureText(escTxt).width)+VH*0.08;
+    ctx.fillStyle='rgba(2,2,10,.74)'; rr(VW/2-pw/2,VH*0.574,pw,VH*0.142,VH*0.024); ctx.fill();
+    ctx.fillStyle='#bcd0e0';ctx.font=fSub;ctx.fillText(sub,VW/2,VH*0.62);
     // an exit has to be VISIBLE or it may as well not exist -- this screen used to offer only a rematch
-    ctx.fillStyle='#6f8496';ctx.font=`700 ${Math.round(VH*0.028)}px "Helvetica Neue",Arial`;ctx.fillText(HYSCORE?'ESC — back to the attract':'ESC — back to the menu',VW/2,VH*0.69);
+    ctx.fillStyle='#8ea3b6';ctx.font=fEsc;ctx.fillText(escTxt,VW/2,VH*0.69);
     ctx.restore(); drawSpecialTally(); const sw=sweepNow(); if(sw) drawSweep(stAge,sw);}
   if(state==='select'){ if(selPhase==='puck') drawPuck(); else drawSelect(); }
   if(state==='champion') drawChampion();
-  if(celebCard) drawCelebCard();
+  if(celebCard && !endScr) drawCelebCard();   // HT 1127 (review fix 5): the match-winning goal's card no longer sits over the win / champion screen
   if(keyCardT>0 && estT<=0.3) drawKeyCard();
-  if(flashT>0){ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=flashT*0.16;ctx.fillStyle=flashCol;ctx.fillRect(0,0,VW,VH);ctx.restore();}
+  // HT 1127 (review fix 12): a GOAL's flash was this same flat full-screen 'lighter' fill (team colour, ~5%): a tint laid edge to
+  //   edge over the whole scene, and over the canvas's transparent letterbox bars (which a canvas grab shows as a solid slab).
+  //   A goal now lights from the scored mouth instead: a radial wash clipped to the rink. Blast / drop / one-timer flashes keep the fill.
+  if(flashT>0){ const mo=flashAt && flashAt.col===flashCol && (clock-flashAt.t)<0.7 && /^#[0-9a-f]{6}$/i.test(flashCol);
+    ctx.save();ctx.globalCompositeOperation='lighter';
+    if(mo){ const cs=corners(), m=project(0.5,flashAt.ty), e=project(0,flashAt.ty), R=Math.max(40,Math.hypot(m[0]-e[0],m[1]-e[1])*0.85);
+      ctx.beginPath(); ctx.moveTo(cs[0][0],cs[0][1]); ctx.lineTo(cs[1][0],cs[1][1]); ctx.lineTo(cs[3][0],cs[3][1]); ctx.lineTo(cs[2][0],cs[2][1]); ctx.closePath(); ctx.clip();
+      ctx.translate(m[0],m[1]); ctx.scale(1,0.5);   // the pool lies ON the foreshortened table plane (an ellipse, not a screen circle)
+      const g=ctx.createRadialGradient(0,0,0,0,0,R); g.addColorStop(0,flashCol+'cc'); g.addColorStop(0.3,flashCol+'50'); g.addColorStop(1,flashCol+'00');
+      ctx.globalAlpha=Math.min(1,flashT/0.3)*0.6; ctx.fillStyle=g; ctx.fillRect(-R,-R,2*R,2*R); }
+    else { ctx.globalAlpha=flashT*0.16;ctx.fillStyle=flashCol;ctx.fillRect(0,0,VW,VH); }
+    ctx.restore();}
   // attract DEMO overlay text hidden (Joe 2026-06-27) — the demo reads as a clean live game; the splash beat carries the INSERT COIN prompt. Any input (BLAST / START / etc.) still drops into a real game.
 }
 
